@@ -69,6 +69,8 @@ export const FR: Record<string, string> = {
   'Fetch on its own': 'Fetch automatique',
   'Fetching…': 'Récupération…',
   'File view': 'Vue fichier',
+  'Filter (Ctrl+Alt+F)': 'Filtrer (Ctrl+Alt+F)',
+  'Filter the branches, tags and stashes': 'Filtrer les branches, tags et stashs',
   General: 'Général',
   'git could not be found': 'git est introuvable',
   Graph: 'Graphe',
@@ -105,6 +107,7 @@ export const FR: Record<string, string> = {
   'No stash': 'Aucun stash',
   None: 'Aucune',
   none: 'aucun',
+  'Nothing by that name.': 'Rien de ce nom.',
   'Nothing changed.': 'Rien n’a changé.',
   'Open a Git repository to see its branches and its history.':
     'Ouvrez un dépôt Git pour voir ses branches et son historique.',

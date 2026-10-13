@@ -1,67 +1,105 @@
 <nav class="sidebar" [attr.aria-label]="'Branches and tags' | t">
-  @for (section of sections(); track section.key) {
-    <section>
-      <button
-        class="heading"
-        [class.folded]="collapsed().has(section.key)"
-        [attr.aria-expanded]="!collapsed().has(section.key)"
-        (click)="toggle(section.key)"
-      >
-        <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M3 2l3.5 3L3 8" />
-        </svg>
-        <span class="title">{{ section.title }}</span>
-        <span class="count">{{ section.count }}</span>
-      </button>
-      @if (!collapsed().has(section.key)) {
-        @for (group of section.groups; track group.key) {
-          @if (group.name !== null) {
-            <button
-              class="group"
-              [class.folded]="collapsed().has(group.key)"
-              [attr.aria-expanded]="!collapsed().has(group.key)"
-              (click)="toggle(group.key)"
-            >
-              <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
-                <path d="M3 2l3.5 3L3 8" />
-              </svg>
-              <svg class="cloud" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7 1A2.5 2.5 0 0 0 4.5 12.5z" />
-              </svg>
-              <span class="title">{{ group.name }}</span>
-              <span class="count">{{ group.items.length }}</span>
-            </button>
-          }
-          @if (group.name === null || !collapsed().has(group.key)) {
-            <ul [class.nested]="group.name !== null">
-              @for (item of group.items; track item.name + item.target) {
-                <li [class.stash]="section.key === 'stash'">
-                  <button
-                    class="item"
-                    [class.head]="section.key === 'local' && item.name === head()"
-                    [class.selected]="item.target === repository.selectedId()"
-                    (click)="repository.select(item.target)"
-                    (dblclick)="switchTo(section.key, item)"
-                    [title]="
-                      section.key === 'local' || section.key === 'remote'
-                        ? item.name + ' · ' + switchHint()
-                        : item.name
-                    "
-                  >
-                    <span class="dot"></span>
-                    <span class="title">{{ item.label }}</span>
-                  </button>
-                </li>
+  <label class="filter">
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5l3 3" />
+    </svg>
+    <input
+      #filter
+      type="search"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keydown.escape)="query.set(''); $event.stopPropagation()"
+      [placeholder]="'Filter (Ctrl+Alt+F)' | t"
+      [attr.aria-label]="'Filter the branches, tags and stashes' | t"
+      spellcheck="false"
+    />
+  </label>
+
+  <div class="sections">
+    @for (section of shown(); track section.key) {
+      <section>
+        <button
+          class="heading"
+          [class.folded]="!unfolded(section.key)"
+          [attr.aria-expanded]="unfolded(section.key)"
+          (click)="toggle(section.key)"
+        >
+          <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M3 2l3.5 3L3 8" />
+          </svg>
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+            @switch (section.key) {
+              @case ('local') {
+                <rect x="2" y="3" width="12" height="8" rx="1" />
+                <path d="M5.5 13.5h5" />
               }
-            </ul>
-          }
-        } @empty {
-          <p class="none">{{ 'None' | t }}</p>
+              @case ('remote') {
+                <path d="M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7 1A2.5 2.5 0 0 0 4.5 12.5z" />
+              }
+              @case ('tag') {
+                <path d="M2.5 2.5h5l6 6-5 5-6-6z" />
+                <circle cx="5.5" cy="5.5" r="1" />
+              }
+              @case ('stash') {
+                <path d="M2.5 9.5v4h11v-4M2.5 9.5l2-6h7l2 6M2.5 9.5h3.5l1 1.5h2l1-1.5h3.5" />
+              }
+            }
+          </svg>
+          <span class="title">{{ section.title }}</span>
+          <span class="count">{{ section.count }}</span>
+        </button>
+        @if (unfolded(section.key)) {
+          <div class="items">
+            @for (group of section.groups; track group.key) {
+              @if (group.name !== null) {
+                <button
+                  class="group"
+                  [class.folded]="!unfolded(group.key)"
+                  [attr.aria-expanded]="unfolded(group.key)"
+                  (click)="toggle(group.key)"
+                >
+                  <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
+                    <path d="M3 2l3.5 3L3 8" />
+                  </svg>
+                  <span class="title">{{ group.name }}</span>
+                  <span class="count">{{ group.items.length }}</span>
+                </button>
+              }
+              @if (group.name === null || unfolded(group.key)) {
+                <ul [class.nested]="group.name !== null">
+                  @for (item of group.items; track item.name + item.target) {
+                    <li [class.stash]="section.key === 'stash'">
+                      <button
+                        class="item"
+                        [class.head]="section.key === 'local' && item.name === head()"
+                        [class.selected]="item.target === repository.selectedId()"
+                        (click)="repository.select(item.target)"
+                        (dblclick)="switchTo(section.key, item)"
+                        [title]="
+                          section.key === 'local' || section.key === 'remote'
+                            ? item.name + ' · ' + switchHint()
+                            : item.name
+                        "
+                      >
+                        <span class="dot"></span>
+                        <span class="title">{{ item.label }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            } @empty {
+              <p class="none">{{ 'None' | t }}</p>
+            }
+            @if (section.groups.length === 1 && !section.groups[0].items.length) {
+              <p class="none">{{ 'None' | t }}</p>
+            }
+          </div>
         }
-        @if (section.groups.length === 1 && !section.groups[0].items.length) {
-          <p class="none">{{ 'None' | t }}</p>
-        }
-      }
-    </section>
-  }
+      </section>
+    } @empty {
+      <p class="none nothing">{{ 'Nothing by that name.' | t }}</p>
+    }
+  </div>
 </nav>

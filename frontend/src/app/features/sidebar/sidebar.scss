@@ -1,24 +1,69 @@
 .sidebar {
   height: 100%;
-  overflow-y: auto;
-  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--r-line);
   background: var(--r-base);
 }
 
-section + section {
-  margin-top: 8px;
+/* as tall as the history's heading strip, beside it */
+.filter {
+  flex: none;
+  position: relative;
+  height: var(--r-panel-head);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--r-line);
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 18px;
+    width: 13px;
+    height: 13px;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: var(--r-text-3);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+  input {
+    width: 100%;
+    height: 28px;
+    padding: 0 10px 0 30px;
+    border: 1px solid var(--r-line-strong);
+    border-radius: var(--r-radius);
+    background: var(--r-void);
+    color: var(--r-text);
+    font: inherit;
+    user-select: text;
+    &::placeholder {
+      color: var(--r-text-3);
+    }
+    &:focus {
+      outline: none;
+      border-color: var(--r-accent);
+    }
+  }
+}
+
+.sections {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* each section a compartment, ruled off from the next */
+section {
+  border-bottom: 1px solid var(--r-line);
 }
 
 button {
   width: 100%;
-  height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 8px;
   border: 0;
-  border-radius: var(--r-radius);
   background: transparent;
   color: var(--r-text-2);
   text-align: left;
@@ -32,18 +77,39 @@ button {
 }
 
 .heading {
-  gap: 6px;
-  padding-left: 4px;
-  color: var(--r-text-3);
-  font-size: 11px;
+  height: 36px;
+  gap: 7px;
+  padding: 0 12px 0 8px;
+  color: var(--r-text);
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  .count {
+    color: var(--r-accent);
+  }
+}
+
+.icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--r-text-2);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.items {
+  padding: 0 6px 8px;
 }
 
 .group {
+  height: 28px;
   gap: 6px;
-  padding-left: 14px;
+  padding: 0 8px 0 10px;
+  border-radius: var(--r-radius);
 }
 
 .title {
@@ -69,15 +135,6 @@ button {
   }
 }
 
-.cloud {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.4;
-}
-
 .count {
   flex: none;
   font: 500 11px var(--r-mono);
@@ -94,7 +151,9 @@ ul {
 }
 
 .item {
-  padding-left: 20px;
+  height: 28px;
+  padding: 0 8px 0 20px;
+  border-radius: var(--r-radius);
   &.selected {
     background: var(--r-raised);
     color: var(--r-text);
@@ -121,6 +180,9 @@ ul {
   margin: 0;
   padding: 4px 8px 4px 20px;
   color: var(--r-text-3);
+  &.nothing {
+    padding: 16px;
+  }
 }
 
 .stash .dot {
