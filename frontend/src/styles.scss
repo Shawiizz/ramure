@@ -19,6 +19,10 @@ body {
 button {
   font: inherit;
   color: inherit;
+  /* rows and list items show where they are by their own colours, never by a frame */
+  &:focus {
+    outline: none;
+  }
 }
 
 .r-btn {

@@ -16,16 +16,16 @@
   </div>
   @if (lines().length || wip()) {
     <div
+      #rows
       class="rows"
       role="listbox"
       [attr.aria-label]="'History' | t"
-      (scroll)="unfolded.set(null)"
+      (scroll)="scrolled($event)"
     >
       @if (wip(); as wip) {
         <button
           role="option"
           class="row wip"
-          [id]="'commit-' + wipId"
           [class.selected]="repository.selectedId() === wipId"
           [attr.aria-selected]="repository.selectedId() === wipId"
           (click)="repository.select(wipId)"
@@ -54,11 +54,11 @@
           <span class="sha"></span>
         </button>
       }
-      @for (line of lines(); track line.commit.id) {
+      <div [style.height.px]="range().start * row"></div>
+      @for (line of shown(); track line.commit.id) {
         <button
           role="option"
           class="row"
-          [id]="'commit-' + line.commit.id"
           [class.selected]="line.commit.id === repository.selectedId()"
           [attr.aria-selected]="line.commit.id === repository.selectedId()"
           (click)="repository.select(line.commit.id)"
@@ -82,10 +82,11 @@
             [row]="line.row"
             [width]="graphWidth()"
             [initials]="line.initials"
+            [email]="line.commit.email"
             [merge]="line.commit.parents.length > 1"
             [stash]="line.stash"
             [labeled]="line.labels.length > 0"
-            [fromWip]="$first && !!wip()?.linked"
+            [fromWip]="range().start + $index === 0 && !!wip()?.linked"
           />
           <span class="message" [class.stashed]="line.stash">
             @if (line.stash) {
@@ -101,6 +102,7 @@
           <span class="sha r-mono">{{ line.commit.id.slice(0, 7) }}</span>
         </button>
       }
+      <div [style.height.px]="(lines().length - range().end) * row"></div>
     </div>
   } @else {
     <p class="empty">{{ 'No commit yet on this branch.' | t }}</p>

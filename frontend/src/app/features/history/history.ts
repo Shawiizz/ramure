@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
@@ -11,6 +20,8 @@ import { RefPill } from './ref-pill';
 const FIRST_LANES = 6;
 /** Wide enough for its heading. */
 const MIN_GRAPH_WIDTH = 64;
+/** Rows drawn beyond each edge of the view, so that scrolling never shows a gap. */
+const OVERSCAN = 12;
 
 interface Line {
   commit: Commit;
@@ -34,7 +45,10 @@ interface Unfolded {
   width: number;
 }
 
-/** The history: one line per commit, its branches and tags on the left, then the graph. */
+/**
+ * The history: one line per commit, its branches and tags on the left, then the graph.
+ * Only the rows in view are drawn, between two spacers as tall as the rows left out.
+ */
 @Component({
   selector: 'app-history',
   templateUrl: './history.html',
@@ -50,6 +64,9 @@ export class History {
   protected readonly unfolded = signal<Unfolded | null>(null);
   /** The graph's width as the user dragged it, null until then. */
   private readonly dragged = signal<number | null>(null);
+  private readonly rows = viewChild<ElementRef<HTMLElement>>('rows');
+  private readonly scrollTop = signal(0);
+  private readonly viewHeight = signal(0);
 
   /** The working tree's changes above the history, joined to HEAD's commit when it is the first. */
   protected readonly wip = computed(() => {
@@ -77,6 +94,23 @@ export class History {
     }));
   });
 
+  /** The commits' rows in view, as indexes into [`lines`]: from `start`, up to `end`. */
+  protected readonly range = computed(() => {
+    const count = this.lines().length;
+    const top = this.scrollTop() - (this.wip() ? ROW : 0);
+    const start = Math.min(count, Math.max(0, Math.floor(top / ROW) - OVERSCAN));
+    const end = Math.min(
+      count,
+      Math.max(start, Math.ceil((top + this.viewHeight()) / ROW) + OVERSCAN),
+    );
+    return { start, end };
+  });
+
+  protected readonly shown = computed(() => {
+    const { start, end } = this.range();
+    return this.lines().slice(start, end);
+  });
+
   /** Wide enough for every lane. */
   private readonly fullWidth = computed(() =>
     Math.max(MIN_GRAPH_WIDTH, graphWidth(Math.max(1, ...this.lines().map((l) => l.row.width)))),
@@ -90,11 +124,34 @@ export class History {
   );
 
   constructor() {
+    effect((onCleanup) => {
+      const view = this.rows()?.nativeElement;
+      if (!view) return;
+      const observer = new ResizeObserver(() => this.viewHeight.set(view.clientHeight));
+      observer.observe(view);
+      onCleanup(() => observer.disconnect());
+    });
     // a commit chosen elsewhere (a branch in the sidebar) is brought into view
     effect(() => {
       const id = this.repository.selectedId();
-      if (id) document.getElementById(`commit-${id}`)?.scrollIntoView({ block: 'nearest' });
+      untracked(() => this.reveal(id));
     });
+  }
+
+  protected scrolled(event: Event) {
+    this.scrollTop.set((event.target as HTMLElement).scrollTop);
+    this.unfolded.set(null);
+  }
+
+  private reveal(id: string | null) {
+    const view = this.rows()?.nativeElement;
+    if (!view || !id) return;
+    const index = id === WIP ? -1 : this.lines().findIndex((line) => line.commit.id === id);
+    if (id !== WIP && index < 0) return;
+    const top = id === WIP ? 0 : (this.wip() ? ROW : 0) + index * ROW;
+    if (top < view.scrollTop) view.scrollTop = top;
+    else if (top + ROW > view.scrollTop + view.clientHeight)
+      view.scrollTop = top + ROW - view.clientHeight;
   }
 
   /** Drags the graph column's edge, from its heading. */

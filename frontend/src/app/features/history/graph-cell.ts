@@ -1,14 +1,19 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { GraphRow } from '../../core/models/repository';
+import { GravatarService } from '../../core/services/gravatar.service';
 
 /** Row height and lane spacing of the graph, in px. */
 export const ROW = 32;
-export const LANE = 22;
+export const LANE = 24;
 const PAD = 14;
 const LANE_COLORS = 8;
 /** A commit's disc, wide enough for its author's initials. */
-export const NODE = 10;
+export const NODE = 11;
 const MERGE = 4.5;
+/** The picture inside the disc's coloured ring. */
+const PICTURE = NODE - 1.5;
+/** Tells each cell's clip path from the others'. */
+let cells = 0;
 
 export function laneColor(lane: number): string {
   return `var(--r-lane-${lane % LANE_COLORS})`;
@@ -31,7 +36,8 @@ interface Line {
 
 /**
  * One row of the commit graph: the lines crossing it, a band of the commit's colour from
- * it to the message, and the commit: its author's initials, or a small dot for a merge.
+ * it to the message, and the commit: its author's picture or initials, a small dot for a
+ * merge, a dashed box for a stash.
  */
 @Component({
   selector: 'app-graph-cell',
@@ -74,7 +80,23 @@ interface Line {
         />
       } @else {
         <circle [attr.cx]="cx()" [attr.cy]="height / 2" [attr.r]="nodeR" [style.fill]="color()" />
-        <text [attr.x]="cx()" [attr.y]="height / 2">{{ initials() }}</text>
+        @if (picture(); as picture) {
+          <clipPath [attr.id]="clipId">
+            <circle [attr.cx]="cx()" [attr.cy]="height / 2" [attr.r]="pictureR" />
+          </clipPath>
+          <image
+            [attr.href]="picture"
+            [attr.x]="cx() - pictureR"
+            [attr.y]="height / 2 - pictureR"
+            [attr.width]="pictureR * 2"
+            [attr.height]="pictureR * 2"
+            [attr.clip-path]="'url(#' + clipId + ')'"
+            preserveAspectRatio="xMidYMid slice"
+            (error)="gravatar.notFound(email())"
+          />
+        } @else {
+          <text [attr.x]="cx()" [attr.y]="height / 2">{{ initials() }}</text>
+        }
       }
     </svg>
   `,
@@ -113,16 +135,19 @@ interface Line {
     }
     text {
       fill: var(--r-on-accent);
-      font: 700 8.5px var(--r-font);
+      font: 700 9px var(--r-font);
       text-anchor: middle;
       dominant-baseline: central;
     }
   `,
 })
 export class GraphCell {
+  protected readonly gravatar = inject(GravatarService);
   readonly row = input.required<GraphRow>();
   readonly width = input.required<number>();
   readonly initials = input('');
+  /** The author's, for their picture. */
+  readonly email = input('');
   /** A merge commit: a dot, the branches it joins tell the story. */
   readonly merge = input(false);
   /** A stash: a dashed box, hanging on the commit it was made on. */
@@ -134,6 +159,9 @@ export class GraphCell {
   protected readonly height = ROW;
   protected readonly nodeR = NODE;
   protected readonly mergeR = MERGE;
+  protected readonly pictureR = PICTURE;
+  protected readonly clipId = `node-${++cells}`;
+  protected readonly picture = computed(() => this.gravatar.url(this.email()));
   protected readonly stashSide = NODE * 1.7;
   protected readonly color = computed(() => laneColor(this.row().lane));
   protected readonly cx = computed(() => laneX(this.row().lane));

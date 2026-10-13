@@ -59,7 +59,7 @@ export const KIND: Record<ChangeKind, { letter: string; title: string; color: st
       flex: 1;
       min-width: 0;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 8px;
       height: 28px;
       padding: 0 8px 0 var(--inset, 8px);

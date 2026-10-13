@@ -69,7 +69,7 @@
       }
 
       <div class="meta">
-        <app-avatar [name]="commit.author" [key]="commit.email" [size]="34" />
+        <app-avatar [name]="commit.author" [email]="commit.email" [size]="34" />
         <div class="who">
           <span class="author" [title]="commit.email">{{ commit.author }}</span>
           <span class="date" [title]="fullDate(commit.time)">{{

@@ -18,7 +18,7 @@ import { Avatar } from '../../shared/avatar';
       >
         <app-avatar
           [name]="active.identity.name || active.name"
-          [key]="active.identity.email"
+          [email]="active.identity.email"
           [size]="22"
         />
         <span class="label">{{ active.name }}</span>
@@ -27,21 +27,26 @@ import { Avatar } from '../../shared/avatar';
     }
     @if (open()) {
       <div class="backdrop" (click)="open.set(false)"></div>
-      <div class="r-popover" (keydown.escape)="open.set(false)">
+      <div class="r-popover" [class.list]="editing() === null" (keydown.escape)="open.set(false)">
         @if (editing() === null) {
           <ul>
             @for (profile of profiles.profiles(); track profile.id) {
-              <li [class.current]="profile.id === profiles.active()?.id">
+              <li>
                 <button class="item" (click)="use(profile)">
                   <app-avatar
                     [name]="profile.identity.name || profile.name"
-                    [key]="profile.identity.email"
+                    [email]="profile.identity.email"
                     [size]="28"
                   />
                   <span class="who">
                     <span class="name">{{ profile.name }}</span>
                     <span class="identity">{{ describe(profile) }}</span>
                   </span>
+                  @if (profile.id === profiles.active()?.id) {
+                    <svg class="check" viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M3 8.5l3 3 7-7" />
+                    </svg>
+                  }
                 </button>
                 <button class="edit" (click)="edit(profile)" [title]="'Edit this profile' | t">
                   {{ 'Edit' | t }}
@@ -49,7 +54,10 @@ import { Avatar } from '../../shared/avatar';
               </li>
             }
           </ul>
-          <button class="r-btn" (click)="edit(null)">{{ 'New profile' | t }}</button>
+          <button class="add" (click)="edit(null)">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+            {{ 'New profile' | t }}
+          </button>
         } @else {
           <form (submit)="$event.preventDefault(); save()">
             <h3>{{ editing() === 'new' ? ('New profile' | t) : ('Edit the profile' | t) }}</h3>
@@ -146,8 +154,13 @@ import { Avatar } from '../../shared/avatar';
       right: 0;
       width: 320px;
     }
+    .list {
+      gap: 2px;
+      padding: 6px 6px 0;
+      overflow: hidden;
+    }
     ul {
-      margin: 0 -6px;
+      margin: 0;
       padding: 0;
       list-style: none;
     }
@@ -157,10 +170,6 @@ import { Avatar } from '../../shared/avatar';
       border-radius: 6px;
       &:hover {
         background: var(--r-hover);
-      }
-      &.current {
-        background: var(--r-hover);
-        box-shadow: inset 2px 0 var(--r-accent);
       }
       &:hover .edit {
         visibility: visible;
@@ -179,6 +188,7 @@ import { Avatar } from '../../shared/avatar';
       cursor: pointer;
     }
     .who {
+      flex: 1;
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -196,6 +206,41 @@ import { Avatar } from '../../shared/avatar';
     .identity {
       color: var(--r-text-3);
       font-size: 12px;
+    }
+    .check {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: var(--r-accent);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .add {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px -6px 0;
+      padding: 0 14px;
+      border: 0;
+      border-top: 1px solid var(--r-line);
+      background: transparent;
+      color: var(--r-text-2);
+      cursor: pointer;
+      svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+      }
+      &:hover {
+        background: var(--r-hover);
+        color: var(--r-text);
+      }
     }
     .edit {
       visibility: hidden;

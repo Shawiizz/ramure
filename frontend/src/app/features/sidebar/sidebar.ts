@@ -1,18 +1,36 @@
 import { Component, computed, inject } from '@angular/core';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { Branch } from '../../core/models/repository';
 import { RepositoryService } from '../../core/services/repository.service';
+import { SettingsService } from '../../core/services/settings.service';
+
+type Kind = 'local' | 'remote' | 'tag' | 'stash';
+
+interface Item {
+  /** What the list shows: a remote branch without its remote's name. */
+  label: string;
+  /** The full name, for git. */
+  name: string;
+  target: string;
+}
+
+/** Items under a heading of their own (a remote's branches), or under none. */
+interface Group {
+  key: string;
+  name: string | null;
+  items: Item[];
+}
 
 interface Section {
+  key: Kind;
   title: string;
-  kind: 'local' | 'remote' | 'tag' | 'stash';
-  items: Branch[];
+  count: number;
+  groups: Group[];
 }
 
 /**
- * The branches, remote branches, tags and stashes: a click shows their commit, a double
- * click on a branch switches to it.
+ * The branches, remote branches (by remote), tags and stashes, each section and remote
+ * folding away: a click shows their commit, a double click on a branch switches to it.
  */
 @Component({
   selector: 'app-sidebar',
@@ -22,30 +40,67 @@ interface Section {
 })
 export class Sidebar {
   protected readonly repository = inject(RepositoryService);
+  private readonly store = inject(SettingsService);
+  protected readonly collapsed = computed(() => new Set(this.store.settings().collapsed));
   protected readonly head = computed(() => {
     const head = this.repository.snapshot()?.head;
     return head?.kind === 'branch' ? head.name : null;
   });
+
   protected readonly sections = computed<Section[]>(() => {
     const s = this.repository.snapshot();
     if (!s) return [];
+    const plain = (items: Item[]): Group[] => [{ key: '', name: null, items }];
+    const remotes = new Map<string, Item[]>();
+    for (const b of s.remoteBranches) {
+      const cut = b.name.indexOf('/');
+      const remote = b.name.slice(0, cut);
+      const item = { label: b.name.slice(cut + 1), name: b.name, target: b.target };
+      remotes.set(remote, [...(remotes.get(remote) ?? []), item]);
+    }
+    const named = (b: { name: string; target: string }): Item => ({ label: b.name, ...b });
     return [
-      { title: t('Branches'), kind: 'local', items: s.branches },
-      { title: t('Remote'), kind: 'remote', items: s.remoteBranches },
-      { title: t('Tags'), kind: 'tag', items: s.tags },
       {
+        key: 'local',
+        title: t('Branches'),
+        count: s.branches.length,
+        groups: plain(s.branches.map(named)),
+      },
+      {
+        key: 'remote',
+        title: t('Remote'),
+        count: s.remoteBranches.length,
+        groups: [...remotes].map(([name, items]) => ({ key: `remote/${name}`, name, items })),
+      },
+      { key: 'tag', title: t('Tags'), count: s.tags.length, groups: plain(s.tags.map(named)) },
+      {
+        key: 'stash',
         title: t('Stashes'),
-        kind: 'stash',
-        items: s.stashes.map((stash) => ({ name: stash.message, target: stash.id })),
+        count: s.stashes.length,
+        groups: plain(
+          s.stashes.map((stash) => ({
+            label: stash.message,
+            name: stash.message,
+            target: stash.id,
+          })),
+        ),
       },
     ];
   });
   protected readonly switchHint = t('Double-click to switch to it');
 
-  protected switchTo(section: Section, item: Branch) {
-    const branch = section.kind === 'local' || section.kind === 'remote';
-    if (branch && !(section.kind === 'local' && item.name === this.head())) {
-      this.repository.checkout(item.name, section.kind === 'remote');
+  protected toggle(key: string) {
+    this.store.update((s) => ({
+      ...s,
+      collapsed: s.collapsed.includes(key)
+        ? s.collapsed.filter((k) => k !== key)
+        : [...s.collapsed, key],
+    }));
+  }
+
+  protected switchTo(kind: Kind, item: Item) {
+    if (kind === 'remote' || (kind === 'local' && item.name !== this.head())) {
+      this.repository.checkout(item.name, kind === 'remote');
     }
   }
 }

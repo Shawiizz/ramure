@@ -5,13 +5,8 @@
         <span class="caption">{{ 'Repository' | t }}</span>
         <span class="value" [title]="snapshot.path">{{ snapshot.name }}</span>
       </div>
-      @if (head(); as head) {
-        <svg class="chevron" viewBox="0 0 8 12" aria-hidden="true"><path d="M2 1l4 5-4 5" /></svg>
-        <div class="place">
-          <span class="caption">{{ 'Branch' | t }}</span>
-          <span class="value r-mono" [title]="'Current branch' | t">{{ head }}</span>
-        </div>
-      }
+      <svg class="chevron" viewBox="0 0 8 12" aria-hidden="true"><path d="M2 1l4 5-4 5" /></svg>
+      <app-branch-picker />
     </div>
 
     <div class="tools">

@@ -12,6 +12,12 @@
         (mousedown)="$event.button === 0 && tabs.activate(tab.id)"
         (auxclick)="auxClick($event, tab.id)"
       >
+        <svg class="glyph" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="5" cy="3.5" r="1.6" />
+          <circle cx="5" cy="12.5" r="1.6" />
+          <circle cx="11" cy="5.5" r="1.6" />
+          <path d="M5 5.1v5.8M11 7.1c0 2.4-3 2.6-5.4 4" />
+        </svg>
         <span class="name">{{ tab.path ? split(tab.path).name : ('New tab' | t) }}</span>
         <button
           class="close-tab"

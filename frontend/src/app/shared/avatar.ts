@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { GravatarService } from '../core/services/gravatar.service';
 
 const COLORS = 8;
 
@@ -18,13 +19,19 @@ export function personColor(key: string): string {
   return `var(--r-lane-${Math.abs(hash) % COLORS})`;
 }
 
-/** A person as a coloured disc with their initials. */
+/** A person: their Gravatar picture, or a coloured disc with their initials. */
 @Component({
   selector: 'app-avatar',
-  template: `{{ letters() }}`,
+  template: `
+    @if (picture(); as picture) {
+      <img [src]="picture" alt="" (error)="gravatar.notFound(email())" />
+    } @else {
+      {{ letters() }}
+    }
+  `,
   host: {
     '[style.--size.px]': 'size()',
-    '[style.background]': 'color() ?? personColor(key() || name())',
+    '[style.background]': 'color() ?? personColor(email() || name())',
     '[attr.title]': 'name()',
   },
   styles: `
@@ -34,20 +41,28 @@ export function personColor(key: string): string {
       height: var(--size);
       display: inline-grid;
       place-items: center;
+      overflow: hidden;
       border-radius: 50%;
       color: var(--r-on-accent);
       font: 700 calc(var(--size) * 0.4) / 1 var(--r-font);
       letter-spacing: -0.02em;
       user-select: none;
     }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   `,
 })
 export class Avatar {
+  protected readonly gravatar = inject(GravatarService);
   readonly name = input.required<string>();
-  /** What picks the colour, the name when empty (an email is steadier). */
-  readonly key = input('');
+  /** Finds their picture, and picks the colour (more steadily than the name). */
+  readonly email = input('');
   readonly color = input<string | null>(null);
   readonly size = input(28);
   protected readonly letters = computed(() => initials(this.name()));
+  protected readonly picture = computed(() => this.gravatar.url(this.email()));
   protected readonly personColor = personColor;
 }

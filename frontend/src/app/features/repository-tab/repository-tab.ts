@@ -18,11 +18,13 @@ import { Welcome } from '../welcome/welcome';
       <app-toolbar />
       <div class="workspace">
         <app-sidebar />
-        @if (repository.diff()) {
-          <app-diff-view />
-        } @else {
+        <!-- the history stays beneath an open diff: closing it shows it back at once -->
+        <div class="center">
           <app-history />
-        }
+          @if (repository.diff()) {
+            <app-diff-view />
+          }
+        </div>
         <app-details />
       </div>
     } @else {
@@ -42,6 +44,20 @@ import { Welcome } from '../welcome/welcome';
     app-welcome {
       flex: 1;
       min-height: 0;
+    }
+    .center {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+    }
+    app-history {
+      display: block;
+      height: 100%;
+    }
+    app-diff-view {
+      position: absolute;
+      inset: 0;
+      background: var(--r-void);
     }
     .workspace {
       flex: 1;

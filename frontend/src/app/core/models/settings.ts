@@ -27,6 +27,8 @@ export interface Settings {
   tabs: string[];
   activeTab: number;
   recent: string[];
+  /** The sidebar's sections and groups folded away, by key. */
+  collapsed: string[];
 }
 
 export const NO_SETTINGS: Settings = {
@@ -36,6 +38,7 @@ export const NO_SETTINGS: Settings = {
   tabs: [],
   activeTab: 0,
   recent: [],
+  collapsed: [],
 };
 
 /** Settings read back from disk: whatever does not fit is left out. */
@@ -73,6 +76,7 @@ export function parseSettings(value: unknown): Settings {
     tabs: strings(value['tabs']),
     activeTab: typeof activeTab === 'number' && Number.isInteger(activeTab) ? activeTab : 0,
     recent: strings(value['recent']),
+    collapsed: strings(value['collapsed']),
   };
 }
 

@@ -64,8 +64,6 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
-  content-visibility: auto;
-  contain-intrinsic-size: auto var(--r-row);
   &:hover {
     background: var(--r-hover);
   }
