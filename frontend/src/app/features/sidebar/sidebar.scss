@@ -91,17 +91,33 @@ section {
   }
 }
 
-/* a line of the list: the name, and its ⋯ shown under the pointer */
+/* a line of the list: the name, and its ⋮ shown under the pointer; the line lights as one */
 .row {
   display: flex;
   align-items: center;
   border-radius: var(--r-radius);
+  &:hover {
+    background: var(--r-hover);
+    > button:first-child {
+      color: var(--r-text);
+    }
+  }
+  &:has(> .item.selected) {
+    background: var(--r-raised);
+  }
   > button:first-child {
     flex: 1;
     min-width: 0;
   }
+  > button:hover {
+    background: transparent;
+  }
   .more {
     visibility: hidden;
+    color: var(--r-text-3);
+    &:hover {
+      color: var(--r-text);
+    }
   }
   &:hover .more,
   &:focus-within .more {
@@ -255,7 +271,6 @@ ul {
   padding: 0 8px 0 20px;
   border-radius: var(--r-radius);
   &.selected {
-    background: var(--r-raised);
     color: var(--r-text);
   }
   &.head {

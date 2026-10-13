@@ -63,6 +63,12 @@
     height: 24px;
     padding: 0;
     justify-content: center;
+    color: var(--r-text-3);
+    /* the row is lit already: the button only brightens its dots */
+    &:hover {
+      background: transparent;
+      color: var(--r-text);
+    }
     svg circle {
       fill: currentColor;
       stroke: none;
