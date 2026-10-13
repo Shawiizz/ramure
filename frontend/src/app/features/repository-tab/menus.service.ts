@@ -165,7 +165,11 @@ export class MenusService {
       null,
       ...(isCurrent
         ? [
-            { label: t('Pull {name}', { name }), run: () => r.exchangeWith('pull') },
+            {
+              label: t('Pull {name}', { name }),
+              disabled: !r.snapshot()?.status.upstream,
+              run: () => r.exchangeWith('pull'),
+            },
             { label: t('Push {name}', { name }), run: () => r.exchangeWith('push') },
           ]
         : [{ label: t('Push {name}', { name }), run: () => r.pushBranch(name) }]),

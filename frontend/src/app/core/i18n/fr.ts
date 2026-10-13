@@ -47,7 +47,6 @@ export const FR: Record<string, string> = {
   'Bring the changes back and keep the stash': 'Ramener les changements et garder le stash',
   'Bring the changes back and take the stash off the list':
     'Ramener les changements et retirer le stash de la liste',
-  'Bring the upstream’s commits here': 'Rapatrier les commits de la branche distante',
   'Brings what the remotes have new, in every open repository.':
     'Récupère les nouveautés des dépôts distants, dans chaque dépôt ouvert.',
   Cancel: 'Annuler',
@@ -138,6 +137,7 @@ export const FR: Record<string, string> = {
   'How far a wheel’s notch scrolls the history and the diffs.':
     'La distance parcourue par un cran de molette dans l’historique et les diffs.',
   'How the file’s bytes are read': 'Comment les octets du fichier sont lus',
+  'How the Pull button pulls': 'Comment le bouton Pull rapatrie les commits',
   'Ignore spaces at the start and end of lines': 'Ignorer les espaces en début et fin de ligne',
   'In a stash': 'Dans un stash',
   'In commit {id}': 'Dans le commit {id}',
@@ -212,6 +212,9 @@ export const FR: Record<string, string> = {
   'Previous match (Shift+Enter)': 'Résultat précédent (Maj+Entrée)',
   'Profile name': 'Nom du profil',
   Pull: 'Pull',
+  'Pull (fast-forward if possible)': 'Pull (avance rapide si possible)',
+  'Pull (fast-forward only)': 'Pull (avance rapide uniquement)',
+  'Pull (rebase)': 'Pull (rebase)',
   'Pull {name}': 'Pull de {name}',
   'Pull, push, or fetch when there is nothing to send or bring':
     'Pull, push, ou fetch quand il n’y a rien à envoyer ni à rapatrier',
@@ -325,6 +328,8 @@ export const FR: Record<string, string> = {
   Theme: 'Thème',
   'Then send it to the upstream': 'Puis l’envoyer sur la branche distante',
   'There is nothing to replay onto {name}.': 'Il n’y a rien à rejouer sur {name}.',
+  'This branch follows no remote branch: set its upstream to pull.':
+    'Cette branche ne suit aucune branche distante : définissez-en une pour faire un pull.',
   'Type changed': 'Type changé',
   Undo: 'Annuler',
   'Undo {what} (Ctrl+Z)': 'Annuler {what} (Ctrl+Z)',

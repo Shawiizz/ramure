@@ -90,6 +90,26 @@
   }
 }
 
+.split {
+  display: flex;
+  .tool:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.caret {
+  min-width: 0;
+  width: 16px;
+  padding: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
 .count {
   position: absolute;
   top: 3px;

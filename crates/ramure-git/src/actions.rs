@@ -59,21 +59,46 @@ pub fn fetch(dir: &Path) -> Result<(), Error> {
     git(dir, &["fetch", "--all", "--prune"]).map(drop)
 }
 
-/// Brings the upstream's commits into the current branch, as the user's settings say; a
-/// merge commit it makes is signed by `identity`.
-pub fn pull(dir: &Path, identity: Option<&Identity>) -> Result<(), Error> {
-    git_as(dir, &["pull"], identity).map(drop)
+/// How a pull joins the upstream's commits to the branch's own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Pull {
+    /// Moves the branch forward when it has nothing of its own, merges otherwise.
+    Merge,
+    /// Only moves the branch forward: refused once the two have diverged.
+    FastForward,
+    /// Replays the branch's own commits on top of the upstream's.
+    Rebase,
+}
+
+/// Brings the upstream's commits into the current branch, as `how` says, the changes being
+/// worked on set aside meanwhile; a merge commit it makes is signed by `identity`. A branch
+/// following no remote branch is refused rather than given the remote's default branch.
+pub fn pull(dir: &Path, how: Pull, identity: Option<&Identity>) -> Result<(), Error> {
+    if !has_upstream(dir)? {
+        return Err(Error::Command("This branch follows no remote branch: set its upstream to pull.".into()));
+    }
+    let how = match how {
+        Pull::Merge => "--no-rebase",
+        Pull::FastForward => "--ff-only",
+        Pull::Rebase => "--rebase",
+    };
+    git_as(dir, &["pull", how, "--autostash"], identity).map(drop)
 }
 
 /// Sends the current branch to its upstream; without one, to `origin`, which it then
 /// follows.
 pub fn push(dir: &Path) -> Result<(), Error> {
-    let upstream = git_answer(dir, &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])?;
-    if upstream.is_some() {
+    if has_upstream(dir)? {
         git(dir, &["push"]).map(drop)
     } else {
         git(dir, &["push", "-u", "origin", "HEAD"]).map(drop)
     }
+}
+
+/// Whether the current branch follows a remote branch.
+fn has_upstream(dir: &Path) -> Result<bool, Error> {
+    Ok(git_answer(dir, &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])?.is_some())
 }
 
 /// Puts every change aside, new files included, under `message` (git's own when `None`),

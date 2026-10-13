@@ -3,6 +3,7 @@
 mod common;
 
 use common::{commit, git, init, repository, write};
+use ramure_git::actions::Pull;
 use ramure_git::{
     actions, commit_files, file_diff, file_versions, stash_files, status, Change, ChangeKind, Head, Identity,
     LineKind, Repository, Side,
@@ -138,7 +139,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
 
     actions::fetch(mine.path()).unwrap();
     assert_eq!(status(mine.path()).unwrap().upstream.unwrap().behind, 1);
-    actions::pull(mine.path(), None).unwrap();
+    actions::pull(mine.path(), Pull::Merge, None).unwrap();
     assert!(mine.path().join("b.txt").exists());
     assert_eq!(status(mine.path()).unwrap().upstream.unwrap().behind, 0);
 
@@ -150,6 +151,93 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     let snapshot = Repository::open(mine.path()).unwrap().snapshot(10).unwrap();
     assert!(matches!(snapshot.head, Head::Branch { ref name } if name == "topic"));
     assert_eq!(snapshot.status.upstream.unwrap().name, "origin/topic");
+}
+
+/// The commit `what` names in `dir`, and its parents.
+fn parents(dir: &std::path::Path, what: &str) -> Vec<String> {
+    let out = std::process::Command::new("git")
+        .args(["rev-list", "--parents", "-n1", what])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    String::from_utf8(out.stdout).unwrap().split_whitespace().map(str::to_owned).collect()
+}
+
+/// A remote and the clone `mine`, where `main` and its upstream each have a commit the
+/// other lacks.
+fn diverged() -> (tempfile::TempDir, tempfile::TempDir) {
+    let remote = tempfile::tempdir().unwrap();
+    git(remote.path(), &["init", "-q", "--bare", "-b", "main"]);
+    let url = remote.path().to_str().unwrap();
+    let mine = tempfile::tempdir().unwrap();
+    init(mine.path());
+    git(mine.path(), &["remote", "add", "origin", url]);
+    commit(mine.path(), "First", 0);
+    actions::push(mine.path()).unwrap();
+
+    let theirs = tempfile::tempdir().unwrap();
+    git(theirs.path(), &["clone", "-q", url, "."]);
+    init(theirs.path());
+    write(theirs.path(), "theirs.txt", "theirs\n");
+    git(theirs.path(), &["add", "."]);
+    commit(theirs.path(), "Theirs", 1);
+    git(theirs.path(), &["push", "-q"]);
+
+    write(mine.path(), "mine.txt", "mine\n");
+    git(mine.path(), &["add", "."]);
+    commit(mine.path(), "Mine", 2);
+    actions::fetch(mine.path()).unwrap();
+    (remote, mine)
+}
+
+#[test]
+fn a_pull_joins_diverged_branches_as_asked() {
+    let (_remote, mine) = diverged();
+    let d = mine.path();
+    let before = parents(d, "HEAD")[0].clone();
+    let upstream = parents(d, "origin/main")[0].clone();
+
+    let error = actions::pull(d, Pull::FastForward, None).unwrap_err().to_string();
+    assert!(!error.is_empty());
+    assert_eq!(parents(d, "HEAD")[0], before);
+
+    actions::pull(d, Pull::Rebase, None).unwrap();
+    assert_eq!(parents(d, "HEAD")[1], upstream);
+    assert!(d.join("theirs.txt").exists() && d.join("mine.txt").exists());
+
+    git(d, &["reset", "-q", "--hard", &before]);
+    actions::pull(d, Pull::Merge, None).unwrap();
+    assert_eq!(parents(d, "HEAD")[1..], [before, upstream]);
+}
+
+#[test]
+fn a_pull_keeps_the_changes_being_worked_on() {
+    let (_remote, mine) = diverged();
+    let d = mine.path();
+    write(d, "mine.txt", "still mine\n");
+    actions::pull(d, Pull::Rebase, None).unwrap();
+    assert!(d.join("theirs.txt").exists());
+    assert_eq!(std::fs::read_to_string(d.join("mine.txt")).unwrap().trim_end(), "still mine");
+}
+
+#[test]
+fn a_pull_moves_a_branch_with_nothing_of_its_own_forward() {
+    let (_remote, mine) = diverged();
+    let d = mine.path();
+    git(d, &["reset", "-q", "--hard", "HEAD~"]);
+    actions::pull(d, Pull::FastForward, None).unwrap();
+    assert_eq!(parents(d, "HEAD")[0], parents(d, "origin/main")[0]);
+}
+
+#[test]
+fn a_branch_following_no_remote_branch_is_not_pulled() {
+    let (_remote, mine) = diverged();
+    let d = mine.path();
+    git(d, &["switch", "-q", "-c", "topic"]);
+    let before = parents(d, "HEAD")[0].clone();
+    let error = actions::pull(d, Pull::Merge, None).unwrap_err().to_string();
+    assert!(error.contains("upstream"), "{error}");
+    assert_eq!(parents(d, "HEAD")[0], before);
 }
 
 #[test]

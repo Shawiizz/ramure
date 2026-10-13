@@ -52,18 +52,32 @@
         </svg>
         <span>{{ repository.exchange() === 'fetch' ? ('Fetching…' | t) : ('Fetch' | t) }}</span>
       </button>
-      <button
-        class="tool"
-        (click)="repository.exchangeWith('pull')"
-        [disabled]="repository.working()"
-        [title]="'Bring the upstream’s commits here' | t"
-      >
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v10M4 8l4 4 4-4M3 14h10" /></svg>
-        <span>{{ repository.exchange() === 'pull' ? ('Pulling…' | t) : ('Pull' | t) }}</span>
-        @if (upstream()?.behind) {
-          <span class="count">{{ upstream()?.behind }}</span>
-        }
-      </button>
+      <div class="split">
+        <button
+          class="tool"
+          (click)="repository.exchangeWith('pull')"
+          [disabled]="repository.working() || !upstream()"
+          [title]="
+            upstream()
+              ? pullLabel()
+              : ('This branch follows no remote branch: set its upstream to pull.' | t)
+          "
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v10M4 8l4 4 4-4M3 14h10" /></svg>
+          <span>{{ repository.exchange() === 'pull' ? ('Pulling…' | t) : ('Pull' | t) }}</span>
+          @if (upstream()?.behind) {
+            <span class="count">{{ upstream()?.behind }}</span>
+          }
+        </button>
+        <button
+          class="tool caret"
+          (click)="choosePull($any($event.currentTarget))"
+          [attr.aria-label]="'How the Pull button pulls' | t"
+          [title]="'How the Pull button pulls' | t"
+        >
+          <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 4l2.5 2.5L7.5 4" /></svg>
+        </button>
+      </div>
       <button
         class="tool"
         (click)="repository.exchangeWith('push')"

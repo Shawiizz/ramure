@@ -485,7 +485,8 @@ export class RepositoryService {
     try {
       if (kind === 'pull') {
         const what = { what: t('the pull'), how: 'keep' as const };
-        await this.change(kind, { identity: this.profiles.identity() }, what);
+        const how = this.preferences.preferences().pull;
+        await this.change(kind, { how, identity: this.profiles.identity() }, what);
       } else {
         await this.change(kind, {});
       }

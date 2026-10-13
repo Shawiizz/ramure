@@ -141,7 +141,7 @@ export interface MenuItem {
       align-items: center;
       gap: 8px;
     }
-    .tick {
+    .label .tick {
       width: 14px;
       height: 14px;
       fill: none;

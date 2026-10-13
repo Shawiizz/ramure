@@ -36,6 +36,9 @@ export const DEFAULT_COLUMNS: readonly Column[] = [
   { id: 'sha', shown: true },
 ];
 
+/** How a pull joins the upstream's commits to the branch's own (`ramure_git::actions::Pull`). */
+export type PullMode = 'merge' | 'fastForward' | 'rebase';
+
 /** The whole file with its changes marked, or the changes themselves. */
 export type DiffMode = 'file' | 'diff';
 /** The changes alone with a little context, inline with the whole file, or side by side. */
@@ -68,6 +71,8 @@ export interface Preferences {
   descriptions: boolean;
   /** Authors' pictures on the graph, their initials otherwise. */
   pictures: boolean;
+  /** What the Pull button does. */
+  pull: PullMode;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -75,6 +80,7 @@ export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
 export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
 export const DIFF_MODES: readonly DiffMode[] = ['file', 'diff'];
 export const DIFF_LAYOUTS: readonly DiffLayout[] = ['hunks', 'inline', 'split'];
+export const PULL_MODES: readonly PullMode[] = ['merge', 'fastForward', 'rebase'];
 export const SCROLL_SPEEDS: readonly number[] = [1, 1.5, 2.5];
 /** The zoom's steps, as a browser has them. */
 export const ZOOMS: readonly number[] = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
@@ -94,6 +100,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   columns: [...DEFAULT_COLUMNS],
   descriptions: true,
   pictures: true,
+  pull: 'merge',
 };
 
 /** Where the panels are and how big: dragged by the user, kept from run to run. */
@@ -216,6 +223,7 @@ function parsePreferences(value: unknown): Preferences {
     columns: parseColumns(saved['columns']),
     descriptions: flag('descriptions', d.descriptions),
     pictures: flag('pictures', d.pictures),
+    pull: among('pull', PULL_MODES, d.pull),
   };
 }
 

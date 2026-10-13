@@ -2,7 +2,7 @@
 //! Every command names the repository by its path; those that change it answer with its
 //! new state.
 
-use ramure_git::actions::{Planned, Reset, Step};
+use ramure_git::actions::{Planned, Pull, Reset, Step};
 use ramure_git::{
     actions, Change, FileDiff, Identity, Move, Operation, RefState, Repository, Side, Snapshot, View,
 };
@@ -167,8 +167,8 @@ fn fetch(path: PathBuf) -> Answer<Snapshot> {
 }
 
 #[tauri::command(async)]
-fn pull(path: PathBuf, identity: Option<Identity>) -> Answer<Snapshot> {
-    actions::pull(&path, identity.as_ref())?;
+fn pull(path: PathBuf, how: Pull, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::pull(&path, how, identity.as_ref())?;
     snapshot(&path)
 }
 
