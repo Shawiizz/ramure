@@ -1,0 +1,73 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--r-void);
+  color: var(--r-text);
+  font: 400 13px / 1.4 var(--r-font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.r-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: var(--r-radius);
+  background: var(--r-raised);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--r-fast);
+  &:hover {
+    background: var(--r-hover);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--r-accent);
+    outline-offset: 2px;
+  }
+}
+
+.r-btn--primary {
+  border-color: transparent;
+  background: var(--r-accent);
+  color: var(--r-on-accent);
+  &:hover {
+    background: #79ddb8;
+  }
+}
+
+.r-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.r-mono {
+  font-family: var(--r-mono);
+  font-size: 12px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--r-line-strong);
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background-clip: padding-box;
+}

@@ -1,0 +1,40 @@
+<aside class="details" [attr.aria-label]="'Commit' | t">
+  @if (repository.selected(); as commit) {
+    <h2>{{ commit.summary }}</h2>
+    @if (labels().length) {
+      <div class="labels">
+        @for (label of labels(); track label.kind + label.name) {
+          <span class="label" [class.head]="label.head">{{ label.name }}</span>
+        }
+      </div>
+    }
+    <dl>
+      <dt>{{ 'Author' | t }}</dt>
+      <dd>
+        {{ commit.author }}
+        <span class="email">{{ commit.email }}</span>
+      </dd>
+      <dt>{{ 'Date' | t }}</dt>
+      <dd>{{ fullDate(commit.time) }}</dd>
+      <dt>SHA</dt>
+      <dd class="sha">
+        <span class="r-mono">{{ commit.id }}</span>
+        <button class="r-btn r-btn--ghost copy" (click)="copy(commit.id)">
+          {{ copied() ? ('Copied' | t) : ('Copy' | t) }}
+        </button>
+      </dd>
+      <dt>{{ 'Parents' | t }}</dt>
+      <dd>
+        @for (parent of commit.parents; track parent) {
+          <button class="parent r-mono" (click)="repository.selectedId.set(parent)">
+            {{ parent.slice(0, 7) }}
+          </button>
+        } @empty {
+          <span class="none">{{ 'None: the first commit' | t }}</span>
+        }
+      </dd>
+    </dl>
+  } @else {
+    <p class="none">{{ 'Select a commit.' | t }}</p>
+  }
+</aside>

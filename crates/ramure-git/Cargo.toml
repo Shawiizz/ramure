@@ -1,0 +1,16 @@
+[package]
+name = "ramure-git"
+description = "Reads Git repositories for Ramure: branches, tags, history and its graph"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+gix.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

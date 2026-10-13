@@ -1,0 +1,44 @@
+<header class="titlebar" data-tauri-drag-region>
+  <div class="brand" data-tauri-drag-region>
+    <img src="logo.svg" class="mark" alt="" />
+    ramure
+  </div>
+
+  @if (repository.snapshot(); as snapshot) {
+    <div class="repo" data-tauri-drag-region>
+      <button
+        class="r-btn r-btn--ghost"
+        (click)="repository.close()"
+        [title]="'All repositories' | t"
+      >
+        {{ snapshot.name }}
+      </button>
+      @if (head(); as head) {
+        <span class="branch" [title]="'Current branch' | t">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="5" cy="3.5" r="1.6" />
+            <circle cx="5" cy="12.5" r="1.6" />
+            <circle cx="11" cy="5.5" r="1.6" />
+            <path d="M5 5.1v5.8M11 7.1c0 2.4-3 2.6-5.4 4" />
+          </svg>
+          {{ head }}
+        </span>
+      }
+    </div>
+  }
+
+  <div class="spacer" data-tauri-drag-region></div>
+  <button class="r-btn r-btn--ghost" (click)="repository.pick()">{{ 'Open' | t }}</button>
+
+  <div class="window">
+    <button class="win" (click)="minimize()" [attr.aria-label]="'Minimize' | t">
+      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5h8" /></svg>
+    </button>
+    <button class="win" (click)="toggleMaximize()" [attr.aria-label]="'Maximize' | t">
+      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5h7v7h-7z" /></svg>
+    </button>
+    <button class="win close" (click)="close()" [attr.aria-label]="'Close' | t">
+      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+    </button>
+  </div>
+</header>

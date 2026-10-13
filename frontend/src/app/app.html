@@ -1,0 +1,12 @@
+<app-titlebar />
+<main>
+  @if (repository.snapshot()) {
+    <div class="workspace">
+      <app-sidebar />
+      <app-history />
+      <app-details />
+    </div>
+  } @else {
+    <app-welcome />
+  }
+</main>

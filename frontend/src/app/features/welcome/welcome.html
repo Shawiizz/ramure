@@ -1,0 +1,39 @@
+<section class="welcome">
+  <img src="logo.svg" class="logo" alt="" />
+  <h1>ramure</h1>
+  <p class="lead">{{ 'Open a Git repository to see its branches and its history.' | t }}</p>
+  <button
+    class="r-btn r-btn--primary"
+    (click)="repository.pick()"
+    [disabled]="repository.loading()"
+  >
+    {{ repository.loading() ? ('Opening…' | t) : ('Open a repository' | t) }}
+  </button>
+  @if (repository.error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (repository.recent().length) {
+    <div class="recent">
+      <h2>{{ 'Recent' | t }}</h2>
+      <ul>
+        @for (path of repository.recent(); track path) {
+          <li>
+            <button class="open" (click)="repository.open(path)" [title]="path">
+              <span class="name">{{ split(path).name }}</span>
+              <span class="where">{{ split(path).parent }}</span>
+            </button>
+            <button
+              class="forget"
+              (click)="repository.forget(path)"
+              [attr.aria-label]="'Remove from the list' | t"
+              [title]="'Remove from the list' | t"
+            >
+              <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" /></svg>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</section>

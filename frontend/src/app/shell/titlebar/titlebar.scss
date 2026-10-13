@@ -1,0 +1,90 @@
+.titlebar {
+  height: var(--r-titlebar);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 14px;
+  border-bottom: 1px solid var(--r-line);
+  background: var(--r-base);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  .mark {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.repo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--r-line);
+  .r-btn {
+    font-weight: 600;
+  }
+}
+
+.branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: var(--r-raised);
+  color: var(--r-text-2);
+  font: 500 12px var(--r-mono);
+  svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: var(--r-accent);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    circle {
+      fill: var(--r-accent);
+      stroke: none;
+    }
+  }
+}
+
+.spacer {
+  flex: 1;
+  align-self: stretch;
+}
+
+.window {
+  display: flex;
+  align-self: stretch;
+}
+
+.win {
+  width: 46px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  svg {
+    width: 10px;
+    height: 10px;
+    fill: none;
+    stroke: var(--r-text-2);
+    stroke-width: 1;
+  }
+  &:hover {
+    background: var(--r-hover);
+  }
+  &.close:hover {
+    background: #c42b1c;
+    svg {
+      stroke: #fff;
+    }
+  }
+}

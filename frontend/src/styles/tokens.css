@@ -1,0 +1,40 @@
+/*
+ * Ramure's design tokens: a near-black forest ground, light text, and branch colours that
+ * belong to the history only (the lanes of the graph, the branch labels). Commits are
+ * white dots, as in the logo.
+ */
+:root {
+  --r-void: #070908;
+  --r-base: #0c0f0e;
+  --r-raised: #121614;
+  --r-hover: #182019;
+  --r-line: #1f2522;
+  --r-line-strong: #2a312d;
+
+  --r-text: #e8ebe6;
+  --r-text-2: #a3aaa5;
+  --r-text-3: #7d8681;
+  --r-commit: #eef1ec;
+
+  --r-accent: #5fd3a8;
+  --r-on-accent: #07120d;
+  --r-danger: #ef6f6c;
+
+  /* the graph's lanes, in the order branches take them */
+  --r-lane-0: #5fd3a8;
+  --r-lane-1: #f2b84b;
+  --r-lane-2: #8f8bf7;
+  --r-lane-3: #ef6f6c;
+  --r-lane-4: #5ab0f0;
+  --r-lane-5: #e88ad6;
+  --r-lane-6: #b4dc5a;
+  --r-lane-7: #4fd0d6;
+
+  --r-font: 'Geist Variable', 'Segoe UI', sans-serif;
+  --r-mono: 'Geist Mono Variable', 'Cascadia Mono', monospace;
+
+  --r-titlebar: 44px;
+  --r-row: 30px;
+  --r-radius: 6px;
+  --r-fast: 120ms;
+}

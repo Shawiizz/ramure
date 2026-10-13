@@ -1,0 +1,28 @@
+<nav class="sidebar" [attr.aria-label]="'Branches and tags' | t">
+  @for (section of sections(); track section.title) {
+    <section>
+      <h2>
+        {{ section.title }}
+        <span class="count">{{ section.items.length }}</span>
+      </h2>
+      @if (section.items.length) {
+        <ul>
+          @for (item of section.items; track item.name) {
+            <li>
+              <button
+                [class.head]="section.local && item.name === head()"
+                [class.selected]="item.target === repository.selectedId()"
+                (click)="repository.selectedId.set(item.target)"
+                [title]="item.name"
+              >
+                <span class="dot"></span>{{ item.name }}
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="none">{{ 'None' | t }}</p>
+      }
+    </section>
+  }
+</nav>
