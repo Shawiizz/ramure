@@ -14,6 +14,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
+mod terminal;
+
 /// Commits read at once, as the settings say.
 static HISTORY_LIMIT: AtomicUsize = AtomicUsize::new(5000);
 /// The names each repository's history is drawn from, as its sidebar sets them.
@@ -547,6 +549,10 @@ pub fn run() {
             blame,
             open_file,
             reveal_file,
+            terminal::terminal_open,
+            terminal::terminal_write,
+            terminal::terminal_resize,
+            terminal::terminal_close,
             checkout_commit,
             cherry_pick,
             revert,

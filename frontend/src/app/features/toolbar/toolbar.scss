@@ -70,6 +70,9 @@
     opacity: 0.5;
     cursor: default;
   }
+  &.on {
+    color: var(--r-accent);
+  }
 }
 
 /* Pull and the caret choosing what it does: one button lit as one, its two parts parted

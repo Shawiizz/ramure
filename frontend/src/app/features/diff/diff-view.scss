@@ -46,10 +46,10 @@
   display: flex;
   gap: 8px;
   .plus {
-    color: var(--r-lane-0);
+    color: rgb(var(--r-added-rgb));
   }
   .minus {
-    color: var(--r-lane-3);
+    color: rgb(var(--r-removed-rgb));
   }
 }
 

@@ -218,3 +218,43 @@ header {
     font-weight: 600;
   }
 }
+
+/* the accents to choose from, each in its own colour; the one in use ringed */
+.swatches {
+  flex: none;
+  display: flex;
+  gap: 8px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1px var(--r-line-strong);
+  cursor: pointer;
+  transition: box-shadow var(--r-fast);
+  &:hover {
+    box-shadow: 0 0 0 1px var(--r-text-3);
+  }
+  &[aria-checked='true'] {
+    box-shadow: 0 0 0 2px var(--r-text);
+  }
+  &.blue {
+    background-color: #4c9aff;
+  }
+  &.violet {
+    background-color: #9d8cff;
+  }
+  &.green {
+    background-color: #5fd3a8;
+  }
+  &.orange {
+    background-color: #f0883e;
+  }
+  &.neutral {
+    background-color: #e8ebe9;
+  }
+}

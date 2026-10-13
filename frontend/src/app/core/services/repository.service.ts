@@ -84,6 +84,9 @@ export class RepositoryService {
   readonly working = signal(false);
   readonly diff = signal<OpenDiff | null>(null);
   readonly filePanel = signal<FilePanel | null>(null);
+  /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
+  readonly terminalOpen = signal(false);
+  readonly terminalShown = signal(false);
   /** The files of the selected commit, once read. */
   readonly commitFiles = signal<{ id: string; files: Change[] } | null>(null);
   /** The commit message being written, kept while other commits are looked at. */
@@ -313,6 +316,19 @@ export class RepositoryService {
   /** Writes a file of the working tree; its changes show at once. */
   writeFile(file: string, text: string) {
     return this.change('write_file', { file, text });
+  }
+
+  /** Shows the terminal, opening one first; hides it when in sight, its shell kept. */
+  toggleTerminal() {
+    const shown = !this.terminalShown();
+    this.terminalShown.set(shown);
+    if (shown) this.terminalOpen.set(true);
+  }
+
+  /** Ends the terminal and its shell. */
+  closeTerminal() {
+    this.terminalShown.set(false);
+    this.terminalOpen.set(false);
   }
 
   /** A file's history, blame or editor, in place of any diff. */

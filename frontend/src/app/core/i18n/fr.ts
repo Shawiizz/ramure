@@ -16,8 +16,10 @@ export const FR: Record<string, string> = {
   'A rebase is under way.': 'Un rebase est en cours.',
   'A revert is under way.': 'Un revert est en cours.',
   'A reworded commit needs a message.': 'Un commit reformulé a besoin d’un message.',
+  'A terminal in this repository (Ctrl+`)': 'Un terminal dans ce dépôt (Ctrl+²)',
   Abort: 'Annuler',
   About: 'À propos',
+  'Accent colour': 'Couleur d’accent',
   'Actions on {id}': 'Actions sur {id}',
   'Actions on {name}': 'Actions sur {name}',
   'Add a remote': 'Ajouter un dépôt distant',
@@ -40,6 +42,7 @@ export const FR: Record<string, string> = {
   'Back to the history (Esc)': 'Retour à l’historique (Échap)',
   'Before and after, side by side': 'Avant et après, côte à côte',
   Binary: 'Binaire',
+  Blue: 'Bleu',
   Branch: 'Branche',
   'Branch / tag': 'Branche / tag',
   'Branch name': 'Nom de la branche',
@@ -144,6 +147,7 @@ export const FR: Record<string, string> = {
   'Edit this profile': 'Modifier ce profil',
   'Edit {name}…': 'Modifier {name}…',
   Editing: 'Modification',
+  'End the terminal': 'Fermer le terminal',
   'Every change, staged or not, and every new file is thrown away for good.':
     'Toutes les modifications, indexées ou non, et tous les nouveaux fichiers sont perdus définitivement.',
   'Every file ending in {extension}': 'Tous les fichiers en {extension}',
@@ -167,9 +171,11 @@ export const FR: Record<string, string> = {
   General: 'Général',
   'git could not be found': 'git est introuvable',
   Graph: 'Graphe',
+  Green: 'Vert',
   Guess: 'Deviner',
   'Hard: throw every change away…': 'Hard : jeter tous les changements…',
   'Hide from the history': 'Masquer de l’historique',
+  'Hide the terminal, its shell kept': 'Masquer le terminal, sans le fermer',
   History: 'Historique',
   'How far a wheel’s notch scrolls the history and the diffs.':
     'La distance parcourue par un cran de molette dans l’historique et les diffs.',
@@ -220,6 +226,7 @@ export const FR: Record<string, string> = {
   'More reach further back, and take longer to read.':
     'Plus remonte plus loin, mais prend plus de temps à lire.',
   Name: 'Nom',
+  Neutral: 'Neutre',
   Never: 'Jamais',
   'New branch name': 'Nom de la nouvelle branche',
   'New name': 'Nouveau nom',
@@ -259,6 +266,7 @@ export const FR: Record<string, string> = {
   'Open a repository…': 'Ouvrir un dépôt…',
   'Open the file': 'Ouvrir le fichier',
   'Opening…': 'Ouverture…',
+  Orange: 'Orange',
   parent: 'parent',
   parents: 'parents',
   Path: 'Chemin',
@@ -360,12 +368,15 @@ export const FR: Record<string, string> = {
   'Tag name': 'Nom du tag',
   'Tag {name}': 'Tag {name}',
   Tags: 'Tags',
+  Terminal: 'Terminal',
   'the amend of the last commit': 'la modification du dernier commit',
   'The author needs a name and an email.': 'L’auteur a besoin d’un nom et d’un e-mail.',
   'The branch goes back to {id}: its later commits and every change in the working tree are thrown away.':
     'La branche revient à {id} : ses commits suivants et tous les changements de la copie de travail sont perdus.',
   'The branch goes from the remote, for everyone working with it.':
     'La branche disparaît du dépôt distant, pour tous ceux qui l’utilisent.',
+  'The buttons, the selections and the graph’s main lane.':
+    'Les boutons, les sélections et la branche principale du graphe.',
   'The changes alone, with a little context': 'Les changements seuls, avec un peu de contexte',
   'the cherry-pick of {id}': 'le cherry-pick de {id}',
   'The commit date too, shown by most tools':
@@ -413,6 +424,7 @@ export const FR: Record<string, string> = {
   URL: 'URL',
   'Very fast': 'Très rapide',
   View: 'Vue',
+  Violet: 'Violet',
   'What the history shows': 'Ce que montre l’historique',
   'What to do with {id}': 'Que faire de {id}',
   'with {name}': 'avec {name}',

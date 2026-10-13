@@ -90,6 +90,26 @@
             </div>
             <div class="row">
               <div>
+                <span class="name">{{ 'Accent colour' | t }}</span>
+                <span class="help">{{
+                  'The buttons, the selections and the graph’s main lane.' | t
+                }}</span>
+              </div>
+              <div class="swatches" role="radiogroup" [attr.aria-label]="'Accent colour' | t">
+                @for (accent of accents; track accent) {
+                  <button
+                    role="radio"
+                    [class]="'swatch ' + accent"
+                    [attr.aria-checked]="prefs().accent === accent"
+                    [attr.aria-label]="accentNames()[accent]"
+                    [title]="accentNames()[accent]"
+                    (click)="set('accent', accent)"
+                  ></button>
+                }
+              </div>
+            </div>
+            <div class="row">
+              <div>
                 <span class="name">{{ 'Reopen the tabs' | t }}</span>
                 <span class="help">{{
                   'At startup, the repositories open when Ramure closed.' | t

@@ -4,14 +4,18 @@ import { Change, ChangeKind } from '../core/models/repository';
 
 /** Each kind of change: its letter, its name (in the language of the moment), its colour. */
 export const KIND: Record<ChangeKind, { letter: string; title: () => string; color: string }> = {
-  added: { letter: 'A', title: () => t('Added'), color: 'var(--r-lane-0)' },
-  untracked: { letter: '?', title: () => t('New, not followed yet'), color: 'var(--r-lane-0)' },
+  added: { letter: 'A', title: () => t('Added'), color: 'rgb(var(--r-added-rgb))' },
+  untracked: {
+    letter: '?',
+    title: () => t('New, not followed yet'),
+    color: 'rgb(var(--r-added-rgb))',
+  },
   modified: { letter: 'M', title: () => t('Modified'), color: 'var(--r-lane-1)' },
   typeChanged: { letter: 'T', title: () => t('Type changed'), color: 'var(--r-lane-1)' },
   renamed: { letter: 'R', title: () => t('Renamed'), color: 'var(--r-lane-2)' },
   copied: { letter: 'C', title: () => t('Copied'), color: 'var(--r-lane-2)' },
-  deleted: { letter: 'D', title: () => t('Deleted'), color: 'var(--r-lane-3)' },
-  conflicted: { letter: '!', title: () => t('In conflict'), color: 'var(--r-lane-3)' },
+  deleted: { letter: 'D', title: () => t('Deleted'), color: 'rgb(var(--r-removed-rgb))' },
+  conflicted: { letter: '!', title: () => t('In conflict'), color: 'rgb(var(--r-removed-rgb))' },
 };
 
 /** How many changes of each kind, in the order of the letters. */

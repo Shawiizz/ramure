@@ -38,7 +38,7 @@ export function injectMonaco(): {
   );
   effect(() => {
     const m = monaco();
-    const light = preferences.theme() === 'light';
+    const light = preferences.look().theme === 'light';
     // once the page wears the theme's colours, which Monaco's theme copies
     if (m) requestAnimationFrame(() => applyTheme(m, light));
   });

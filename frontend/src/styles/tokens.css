@@ -23,8 +23,8 @@
   --r-knob: #e6eae7;
   --r-danger: #ef6f6c;
 
-  /* the graph's lanes, in the order branches take them */
-  --r-lane-0: #5fd3a8;
+  /* the graph's lanes, in the order branches take them: the first in the accent */
+  --r-lane-0: var(--r-accent);
   --r-lane-1: #f2b84b;
   --r-lane-2: #8f8bf7;
   --r-lane-3: #ef6f6c;
@@ -69,7 +69,6 @@
   --r-knob: #ffffff;
   --r-danger: #c63d39;
 
-  --r-lane-0: #12875f;
   --r-lane-1: #b97a0c;
   --r-lane-2: #5550d0;
   --r-lane-3: #cc433d;
@@ -79,4 +78,45 @@
   --r-lane-7: #0f8a91;
   --r-added-rgb: 46 150 70;
   --r-removed-rgb: 214 72 70;
+}
+
+/* the accent chosen in the settings (green without one); the lane whose colour it takes
+   gets the green */
+:root[data-accent='blue'] {
+  --r-accent: #4c9aff;
+  --r-on-accent: #06101f;
+  --r-lane-4: #5fd3a8;
+}
+:root[data-accent='violet'] {
+  --r-accent: #9d8cff;
+  --r-on-accent: #110d24;
+  --r-lane-2: #5fd3a8;
+}
+:root[data-accent='orange'] {
+  --r-accent: #f0883e;
+  --r-on-accent: #1a0d03;
+  --r-lane-1: #5fd3a8;
+}
+:root[data-accent='neutral'] {
+  --r-accent: #e8ebe9;
+  --r-on-accent: #0e1211;
+}
+:root[data-theme='light'][data-accent='blue'] {
+  --r-accent: #1f6feb;
+  --r-on-accent: #ffffff;
+  --r-lane-4: #12875f;
+}
+:root[data-theme='light'][data-accent='violet'] {
+  --r-accent: #6e56cf;
+  --r-on-accent: #ffffff;
+  --r-lane-2: #12875f;
+}
+:root[data-theme='light'][data-accent='orange'] {
+  --r-accent: #c4580d;
+  --r-on-accent: #ffffff;
+  --r-lane-1: #12875f;
+}
+:root[data-theme='light'][data-accent='neutral'] {
+  --r-accent: #1c2420;
+  --r-on-accent: #ffffff;
 }

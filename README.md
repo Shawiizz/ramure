@@ -23,6 +23,7 @@ tags at hand, the commit you pick in detail.
   a local branch dropped on another merges or rebases them.
 - A commit of the current branch rewritten after the fact: its message, author and dates;
   a branch that parted from its upstream force-pushed, once sure.
+- A terminal in the repository under the history (Ctrl+`), its shell kept while hidden.
 - Undo and redo (Ctrl+Z, Ctrl+Y) of commits, merges, rebases, resets, branches and tags.
 - A search through the commits (Ctrl+F); the history's columns shown, hidden and reordered;
   the panels resized, the sidebar's sections reordered and resized.

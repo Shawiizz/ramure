@@ -4,7 +4,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { LANGUAGES, language, locale, setLanguage, t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import {
+  ACCENTS,
   AUTO_FETCH_MINUTES,
+  Accent,
   HISTORY_LIMITS,
   Preferences,
   SCROLL_SPEEDS,
@@ -36,6 +38,14 @@ export class SettingsDialog {
   protected readonly languages = LANGUAGES;
   protected readonly setLanguage = setLanguage;
   protected readonly themes = THEMES;
+  protected readonly accents = ACCENTS;
+  protected readonly accentNames = computed<Record<Accent, string>>(() => ({
+    blue: t('Blue'),
+    violet: t('Violet'),
+    green: t('Green'),
+    orange: t('Orange'),
+    neutral: t('Neutral'),
+  }));
   protected readonly themeNames = computed<Record<Theme, string>>(() => ({
     dark: t('Dark'),
     light: t('Light'),

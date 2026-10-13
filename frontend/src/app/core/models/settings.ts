@@ -19,6 +19,8 @@ export interface Workspace {
 }
 
 export type Theme = 'dark' | 'light' | 'system';
+/** The colour of the buttons, the selections and the graph's main lane. */
+export type Accent = 'blue' | 'violet' | 'green' | 'orange' | 'neutral';
 /** A column of the history. */
 export type ColumnId = 'refs' | 'graph' | 'message' | 'author' | 'date' | 'sha';
 
@@ -47,6 +49,7 @@ export type DiffLayout = 'hunks' | 'inline' | 'split';
 /** How Ramure behaves, as set in the settings. */
 export interface Preferences {
   theme: Theme;
+  accent: Accent;
   /** The tabs of the last run open again at startup. */
   reopenTabs: boolean;
   /** "3 days ago" rather than the date, in the history. */
@@ -78,6 +81,7 @@ export interface Preferences {
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
+export const ACCENTS: readonly Accent[] = ['blue', 'violet', 'green', 'orange', 'neutral'];
 export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
 export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
 export const DIFF_MODES: readonly DiffMode[] = ['file', 'diff'];
@@ -89,6 +93,7 @@ export const ZOOMS: readonly number[] = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'dark',
+  accent: 'blue',
   reopenTabs: true,
   relativeDates: true,
   autoFetchMinutes: 0,
@@ -113,6 +118,8 @@ export interface Layout {
   details: number;
   /** The most a commit's message takes of the details panel, in px: past it, it scrolls. */
   message: number;
+  /** The terminal's height under the history, in px. */
+  terminal: number;
   /** The sidebar's sections, in their order, by key. */
   sections: string[];
   /** The height given to a section's list, by its key; a section left out is as tall as its list. */
@@ -121,6 +128,8 @@ export interface Layout {
 
 /** A commit's message is never given less than this. */
 export const MIN_MESSAGE = 60;
+/** Nor the terminal. */
+export const MIN_TERMINAL = 100;
 
 export const SECTIONS: readonly string[] = ['local', 'remote', 'tag', 'stash'];
 
@@ -128,6 +137,7 @@ export const DEFAULT_LAYOUT: Layout = {
   sidebar: 228,
   details: 340,
   message: 220,
+  terminal: 260,
   sections: [...SECTIONS],
   heights: {},
 };
@@ -225,6 +235,7 @@ function parsePreferences(value: unknown): Preferences {
     choices.includes(saved[key] as T) ? (saved[key] as T) : fallback;
   return {
     theme: among('theme', THEMES, d.theme),
+    accent: among('accent', ACCENTS, d.accent),
     reopenTabs: flag('reopenTabs', d.reopenTabs),
     relativeDates: flag('relativeDates', d.relativeDates),
     autoFetchMinutes: among('autoFetchMinutes', AUTO_FETCH_MINUTES, d.autoFetchMinutes),
@@ -257,6 +268,7 @@ function parseLayout(value: unknown): Layout {
     sidebar: size('sidebar', 120, DEFAULT_LAYOUT.sidebar),
     details: size('details', 120, DEFAULT_LAYOUT.details),
     message: size('message', MIN_MESSAGE, DEFAULT_LAYOUT.message),
+    terminal: size('terminal', MIN_TERMINAL, DEFAULT_LAYOUT.terminal),
     sections: [...order, ...SECTIONS.filter((k) => !order.includes(k))],
     heights: Object.fromEntries(
       Object.entries(heights).filter(

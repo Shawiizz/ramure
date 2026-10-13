@@ -16,6 +16,9 @@ export class PreferencesService {
   readonly open = signal(false);
   private readonly systemLight = signal(matchMedia('(prefers-color-scheme: light)').matches);
 
+  /** The theme shown and the accent: what the colours of the page come from. */
+  readonly look = computed(() => ({ theme: this.theme(), accent: this.preferences().accent }));
+
   /** The theme shown: the system's when it is followed. */
   readonly theme = computed(() => {
     const theme = this.preferences().theme;
@@ -28,6 +31,7 @@ export class PreferencesService {
     query.addEventListener('change', follow);
     inject(DestroyRef).onDestroy(() => query.removeEventListener('change', follow));
     effect(() => (document.documentElement.dataset['theme'] = this.theme()));
+    effect(() => (document.documentElement.dataset['accent'] = this.preferences().accent));
     effect(() => {
       getCurrentWebview()
         .setZoom(this.preferences().zoom)

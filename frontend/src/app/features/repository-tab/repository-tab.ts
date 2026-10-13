@@ -18,6 +18,8 @@ import { Toast } from '../../shell/toast/toast';
 import { Details } from '../details/details';
 import { DiffView } from '../diff/diff-view';
 import { FilePanel } from '../file/file-panel';
+import { TerminalPanel } from '../terminal/terminal-panel';
+import { MIN_TERMINAL } from '../../core/models/settings';
 import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
 import { RebaseDialog } from '../rebase/rebase-dialog';
@@ -47,11 +49,29 @@ import { follow } from '../../shared/drag';
         ></div>
         <!-- the history stays beneath a diff or a file: closing them shows it back at once -->
         <div class="center">
-          <app-history />
-          @if (repository.filePanel()) {
-            <app-file-panel />
-          } @else if (repository.diff()) {
-            <app-diff-view />
+          <div class="main">
+            <app-history />
+            @if (repository.filePanel()) {
+              <app-file-panel />
+            } @else if (repository.diff()) {
+              <app-diff-view />
+            }
+          </div>
+          <!-- out of sight, the terminal keeps its shell -->
+          @if (repository.terminalOpen()) {
+            <div
+              class="splitter row"
+              [class.gone]="!repository.terminalShown()"
+              (pointerdown)="resizeTerminal($event)"
+              [title]="'Drag to resize' | t"
+            ></div>
+            <!-- xterm.js loads the first time a terminal opens -->
+            @defer {
+              <app-terminal-panel
+                [class.gone]="!repository.terminalShown()"
+                [style.height.px]="store.layout().terminal"
+              />
+            }
           }
         </div>
         <div
@@ -98,9 +118,24 @@ import { follow } from '../../shared/drag';
       min-height: 0;
     }
     .center {
-      position: relative;
       min-width: 0;
       min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .main {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+    app-terminal-panel {
+      flex: none;
+      max-height: 80%;
+    }
+    /* hidden, its host's own display set aside */
+    app-terminal-panel.gone,
+    .splitter.gone {
+      display: none;
     }
     app-history {
       display: block;
@@ -133,6 +168,17 @@ import { follow } from '../../shared/drag';
         background: color-mix(in srgb, var(--r-accent) 50%, transparent);
         inset: 0 -1px;
       }
+      /* between the history and the terminal, dragged up and down */
+      &.row {
+        height: 0;
+        cursor: row-resize;
+        &::before {
+          inset: -3px 0;
+        }
+        &:hover::before {
+          inset: -1px 0;
+        }
+      }
     }
   `,
   providers: [RepositoryService, MenusService],
@@ -145,6 +191,7 @@ import { follow } from '../../shared/drag';
     History,
     DiffView,
     FilePanel,
+    TerminalPanel,
     Details,
     Welcome,
     StatusBar,
@@ -160,7 +207,7 @@ export class RepositoryTab {
   readonly active = input(false);
   protected readonly repository = inject(RepositoryService);
   protected readonly menus = inject(MenusService);
-  private readonly store = inject(SettingsService);
+  protected readonly store = inject(SettingsService);
   protected readonly columns = computed(() => {
     const { sidebar, details } = this.store.layout();
     return `${sidebar}px 0 minmax(0, 1fr) 0 ${details}px`;
@@ -201,6 +248,11 @@ export class RepositoryTab {
   @HostListener('document:keydown', ['$event'])
   protected history(event: KeyboardEvent) {
     if (!this.active() || !event.ctrlKey || event.altKey) return;
+    // the key left of 1, whatever the layout writes on it: Ctrl+` or Ctrl+²
+    if (event.code === 'Backquote') {
+      event.preventDefault();
+      return this.repository.toggleTerminal();
+    }
     const target = event.target as HTMLElement;
     if (target.closest('input, textarea, select, .monaco-editor')) return;
     const key = event.key.toLowerCase();
@@ -211,6 +263,14 @@ export class RepositoryTab {
   }
 
   /** Drags the border of the sidebar or of the details panel: the width is kept. */
+  /** Drags the terminal's top edge: the height is kept. */
+  protected resizeTerminal(event: PointerEvent) {
+    const start = this.store.layout().terminal;
+    follow(event, (_, dy) =>
+      this.store.setLayout({ terminal: Math.round(Math.max(MIN_TERMINAL, start - dy)) }),
+    );
+  }
+
   protected resize(event: PointerEvent, panel: 'sidebar' | 'details') {
     const start = this.store.layout()[panel];
     const [min, max] = panel === 'sidebar' ? [160, 520] : [260, 720];
