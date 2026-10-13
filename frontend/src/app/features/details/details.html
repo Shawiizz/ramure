@@ -29,8 +29,8 @@
     <div class="scroll">
       <section class="message">
         <h2>{{ commit.summary }}</h2>
-        @if (commit.body) {
-          <p class="body">{{ commit.body }}</p>
+        @if (message().text) {
+          <p class="body">{{ message().text }}</p>
         }
       </section>
 
@@ -69,9 +69,31 @@
       }
 
       <div class="meta">
-        <app-avatar [name]="commit.author" [email]="commit.email" [size]="34" />
+        <div class="faces" [title]="everyone()">
+          <app-avatar class="face" [name]="commit.author" [email]="commit.email" [size]="34" />
+          @for (co of message().coAuthors; track co.email) {
+            <app-avatar
+              class="face co"
+              [name]="co.name"
+              [email]="co.email"
+              [size]="24"
+              [style.z-index]="-1 - $index"
+            />
+          }
+        </div>
         <div class="who">
           <span class="author" [title]="commit.email">{{ commit.author }}</span>
+          @if (message().coAuthors; as coAuthors) {
+            @if (coAuthors.length === 1) {
+              <span class="with" [title]="coAuthors[0].email">{{
+                'with {name}' | t: { name: coAuthors[0].name }
+              }}</span>
+            } @else if (coAuthors.length > 1) {
+              <span class="with" [title]="everyone()">{{
+                'with {n} co-authors' | t: { n: coAuthors.length }
+              }}</span>
+            }
+          }
           <span class="date" [title]="fullDate(commit.time)">{{
             'authored {date}' | t: { date: shortDate(commit.time) }
           }}</span>

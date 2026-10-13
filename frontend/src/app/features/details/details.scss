@@ -114,6 +114,26 @@ h2 {
   border-bottom: 1px solid var(--r-line);
 }
 
+/* the author in front, the co-authors tucked behind, spread out under the pointer */
+.faces {
+  position: relative;
+  z-index: 0;
+  flex: none;
+  display: flex;
+  align-items: center;
+  .face {
+    position: relative;
+    box-shadow: 0 0 0 2px var(--r-base);
+    transition: margin var(--r-fast);
+  }
+  .co {
+    margin-left: -14px;
+  }
+  &:hover .co {
+    margin-left: 4px;
+  }
+}
+
 .who {
   flex: 1;
   min-width: 0;
@@ -128,6 +148,14 @@ h2 {
   text-overflow: ellipsis;
   white-space: nowrap;
   user-select: text;
+}
+
+.with {
+  overflow: hidden;
+  color: var(--r-text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .date {

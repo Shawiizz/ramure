@@ -159,6 +159,8 @@ export const FR: Record<string, string> = {
   Unstaged: 'Non indexés',
   'What this commit does': 'Ce que fait ce commit',
   'Why, if it helps (optional)': 'Pourquoi, si c’est utile (facultatif)',
+  'with {name}': 'avec {name}',
+  'with {n} co-authors': 'avec {n} co-auteurs',
   'Work, personal…': 'Travail, perso…',
   'Workspace name': 'Nom de l’espace de travail',
   Workspaces: 'Espaces de travail',

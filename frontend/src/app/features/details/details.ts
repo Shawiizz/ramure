@@ -3,6 +3,7 @@ import { TPipe } from '../../core/i18n/t.pipe';
 import { ChangeKind, Stash } from '../../core/models/repository';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { Avatar } from '../../shared/avatar';
+import { splitCoAuthors } from '../../shared/co-authors';
 import { FileList, KIND } from '../../shared/file-list';
 import { fullDate, shortDate } from '../../shared/when';
 import { Staging } from '../staging/staging';
@@ -22,6 +23,18 @@ export class Details {
   protected readonly copied = signal(false);
   /** Deleting the stash waits for a second click. */
   protected readonly dropping = signal(false);
+  /** The description, its `Co-authored-by:` lines taken out and shown as people. */
+  protected readonly message = computed(() =>
+    splitCoAuthors(this.repository.selected()?.body ?? ''),
+  );
+  /** Who wrote the commit, one per line: the author, then the co-authors. */
+  protected readonly everyone = computed(() => {
+    const commit = this.repository.selected();
+    if (!commit) return '';
+    return [commit, ...this.message().coAuthors.map((c) => ({ author: c.name, email: c.email }))]
+      .map((p) => `${p.author} <${p.email}>`)
+      .join('\n');
+  });
   /** The selected commit's files, once read. */
   protected readonly files = computed(() => {
     const loaded = this.repository.commitFiles();

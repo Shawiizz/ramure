@@ -3,9 +3,14 @@ import { GravatarService } from '../core/services/gravatar.service';
 
 const COLORS = 8;
 
-/** Up to two letters for a person: the first of their first and last names. */
+/**
+ * Up to two letters for a person: the first of their first and last names, numbers left
+ * out ("Claude Sonnet 5.5" is CS).
+ */
 export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+  const all = name.trim().split(/\s+/).filter(Boolean);
+  const named = all.filter((word) => /^\p{L}/u.test(word));
+  const words = named.length ? named : all;
   if (!words.length) return '?';
   const first = [...words[0]][0];
   const last = words.length > 1 ? [...words[words.length - 1]][0] : '';
