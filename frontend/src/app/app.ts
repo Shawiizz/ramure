@@ -15,8 +15,11 @@ import { Tooltip } from './shell/tooltip/tooltip';
         <app-repository-tab [tab]="tab" [active]="tab.id === tabs.activeId()" />
       }
     </main>
+    <!-- loaded the first time the settings open -->
     @if (preferences.open()) {
-      <app-settings-dialog />
+      @defer {
+        <app-settings-dialog />
+      }
     }
     <app-tooltip />
   `,
