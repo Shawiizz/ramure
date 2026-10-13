@@ -4,8 +4,8 @@ mod common;
 
 use common::{commit, git, init, repository, write};
 use ramure_git::{
-    actions, commit_files, file_diff, stash_files, status, Change, ChangeKind, Head, Identity, LineKind,
-    Repository, Side,
+    actions, commit_files, file_diff, file_versions, stash_files, status, Change, ChangeKind, Head, Identity,
+    LineKind, Repository, Side,
 };
 
 fn change(path: &str, kind: ChangeKind) -> Change {
@@ -274,4 +274,29 @@ fn a_diff_can_leave_out_changes_of_spaces_alone() {
     };
     assert_eq!(changed(false), 3);
     assert_eq!(changed(true), 1);
+}
+
+#[test]
+fn a_change_gives_its_file_as_it_was_and_as_it_is() {
+    let dir = repository();
+    let d = dir.path();
+    write(d, "a.txt", "one\n");
+    git(d, &["add", "a.txt"]);
+    commit(d, "Add a", 1);
+    let first = Repository::open(d).unwrap().snapshot(1).unwrap().commits[0].id.clone();
+    write(d, "a.txt", "two\n");
+    git(d, &["add", "a.txt"]);
+    write(d, "a.txt", "three\n");
+    write(d, "new.txt", "new\n");
+
+    let versions = |change: Change, side| {
+        let v = file_versions(d, &change, side).unwrap();
+        (v.old.map(String::from_utf8).transpose().unwrap(), v.new.map(String::from_utf8).transpose().unwrap())
+    };
+    let text = |s: &str| Some(s.to_owned());
+    let modified = || change("a.txt", ChangeKind::Modified);
+    assert_eq!(versions(modified(), Side::Unstaged), (text("two\n"), text("three\n")));
+    assert_eq!(versions(modified(), Side::Staged), (text("one\n"), text("two\n")));
+    assert_eq!(versions(change("a.txt", ChangeKind::Added), Side::Commit(&first)), (None, text("one\n")));
+    assert_eq!(versions(change("new.txt", ChangeKind::Untracked), Side::Unstaged), (None, text("new\n")));
 }

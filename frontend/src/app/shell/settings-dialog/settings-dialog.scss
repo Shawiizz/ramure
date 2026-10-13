@@ -185,7 +185,7 @@ header {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: var(--r-text);
+    background: var(--r-knob);
     transition: transform var(--r-fast);
   }
   &[aria-checked='true'] {

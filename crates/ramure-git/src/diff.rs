@@ -1,7 +1,7 @@
 //! What changed in a file: in the working tree, in the index, or in a commit, as hunks of
 //! numbered lines.
 
-use crate::cli::git;
+use crate::cli::{git, git_answer};
 use crate::status::{Change, ChangeKind};
 use crate::Error;
 use serde::Serialize;
@@ -9,6 +9,8 @@ use std::path::Path;
 
 /// Lines beyond this are left out: a diff that long is read in an editor.
 const MAX_LINES: usize = 20_000;
+/// Files beyond this are not read whole: one that big is opened in an editor.
+const MAX_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,8 +61,8 @@ pub enum Side<'a> {
     Stash(&'a str),
 }
 
-/// The diff of the file `change` in the repository at `dir`; lines whose only change is
-/// in their spaces left out when `ignore_whitespace`.
+/// The diff of the file `change` in the repository at `dir`; lines whose spaces alone
+/// changed in amount (indentation, the end of the line) left out when `ignore_whitespace`.
 pub fn file_diff(
     dir: &Path,
     change: &Change,
@@ -85,11 +87,74 @@ pub fn file_diff(
         }
     };
     if ignore_whitespace {
-        args.push("--ignore-all-space");
+        args.push("--ignore-space-change");
     }
     args.push("--");
     args.extend(paths);
     Ok(parse(&String::from_utf8_lossy(&git(dir, &args)?)))
+}
+
+/// A changed file as it was and as it is, in bytes (their encoding is the reader's to
+/// choose); none on the side where the file is not.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Versions {
+    pub old: Option<Vec<u8>>,
+    pub new: Option<Vec<u8>>,
+}
+
+/// The two versions of the file `change`: before and after it, on its `side`.
+pub fn file_versions(dir: &Path, change: &Change, side: Side) -> Result<Versions, Error> {
+    let path = change.path.as_str();
+    let old_path = change.old_path.as_deref().unwrap_or(path);
+    let added = matches!(change.kind, ChangeKind::Added | ChangeKind::Untracked);
+    let deleted = change.kind == ChangeKind::Deleted;
+    let blob_unless = |gone: bool, spec: String| if gone { Ok(None) } else { blob(dir, &spec) };
+    let (old, new) = match side {
+        Side::Unstaged => {
+            // in a conflict, the index holds our side as stage 2
+            let stage = if change.kind == ChangeKind::Conflicted { "2" } else { "0" };
+            let new = if deleted { None } else { working_copy(dir, path)? };
+            (blob_unless(change.kind == ChangeKind::Untracked, format!(":{stage}:{path}"))?, new)
+        }
+        Side::Staged => {
+            (blob_unless(added, format!("HEAD:{old_path}"))?, blob_unless(deleted, format!(":0:{path}"))?)
+        }
+        Side::Commit(id) => {
+            (blob_unless(added, format!("{id}^:{old_path}"))?, blob_unless(deleted, format!("{id}:{path}"))?)
+        }
+        Side::Stash(id) if change.kind == ChangeKind::Untracked => {
+            (None, blob(dir, &format!("{id}^3:{path}"))?)
+        }
+        Side::Stash(id) => {
+            (blob_unless(added, format!("{id}^1:{old_path}"))?, blob_unless(deleted, format!("{id}:{path}"))?)
+        }
+    };
+    Ok(Versions { old, new })
+}
+
+/// The blob `spec` names (`HEAD:src/a.rs`), none when there is no such blob.
+fn blob(dir: &Path, spec: &str) -> Result<Option<Vec<u8>>, Error> {
+    let bytes = git_answer(dir, &["cat-file", "blob", spec])?;
+    bytes.map(too_big).transpose()
+}
+
+/// The file in the working tree, none when it is not there.
+fn working_copy(dir: &Path, path: &str) -> Result<Option<Vec<u8>>, Error> {
+    match std::fs::read(dir.join(path)) {
+        Ok(bytes) => too_big(bytes).map(Some),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(Error::Command(format!("{path}: {e}"))),
+    }
+}
+
+fn too_big(bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
+    if bytes.len() > MAX_BYTES {
+        return Err(Error::Command(format!(
+            "This file is {} MB: too big to show here.",
+            bytes.len() / (1024 * 1024)
+        )));
+    }
+    Ok(bytes)
 }
 
 /// The files a commit changed (against its first parent).

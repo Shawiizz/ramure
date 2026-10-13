@@ -15,7 +15,7 @@ app-staging {
 
 .bar {
   flex: none;
-  height: 40px;
+  height: var(--r-panel-head);
   display: flex;
   align-items: center;
   justify-content: center;

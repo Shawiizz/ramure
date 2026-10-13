@@ -158,21 +158,6 @@
                 }
               </div>
             </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Ignore spaces in diffs' | t }}</span>
-                <span class="help">{{
-                  'Lines whose indentation or spaces alone changed are left out.' | t
-                }}</span>
-              </div>
-              <button
-                class="switch"
-                role="switch"
-                [attr.aria-checked]="prefs().ignoreWhitespace"
-                [attr.aria-label]="'Ignore spaces in diffs' | t"
-                (click)="set('ignoreWhitespace', !prefs().ignoreWhitespace)"
-              ></button>
-            </div>
           }
           @case ('about') {
             <div class="about">

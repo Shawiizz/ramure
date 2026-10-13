@@ -159,3 +159,23 @@ button {
   border-radius: 999px;
   background-clip: padding-box;
 }
+
+/* the diff's file view, in Monaco: added lines tinted, a notch where lines went */
+.monaco-editor {
+  .r-line-added {
+    background: rgb(var(--r-added-rgb) / 0.16);
+  }
+  .r-gutter-added {
+    margin-left: 4px;
+    width: 3px !important;
+    background: rgb(var(--r-added-rgb));
+  }
+  .r-gutter-removed {
+    margin-left: 4px;
+    width: 0 !important;
+    height: 0 !important;
+    border-top: 5px solid transparent;
+    border-left: 6px solid rgb(var(--r-removed-rgb));
+    transform: translateY(-5px);
+  }
+}

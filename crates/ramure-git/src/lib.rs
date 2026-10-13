@@ -11,7 +11,7 @@ mod repository;
 mod stash;
 mod status;
 
-pub use diff::{commit_files, file_diff, FileDiff, Hunk, Line, LineKind, Side};
+pub use diff::{commit_files, file_diff, file_versions, FileDiff, Hunk, Line, LineKind, Side, Versions};
 pub use graph::{layout, Row};
 pub use identity::{git_version, global_identity, Identity};
 pub use repository::{Branch, Commit, Head, Repository, Snapshot};

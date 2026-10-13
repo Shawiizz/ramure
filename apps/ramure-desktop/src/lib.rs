@@ -48,15 +48,38 @@ enum Where {
     Stash { id: String },
 }
 
+impl Where {
+    fn side(&self) -> Side<'_> {
+        match self {
+            Where::Unstaged => Side::Unstaged,
+            Where::Staged => Side::Staged,
+            Where::Commit { id } => Side::Commit(id),
+            Where::Stash { id } => Side::Stash(id),
+        }
+    }
+}
+
 #[tauri::command(async)]
 fn file_diff(path: PathBuf, change: Change, side: Where, ignore_whitespace: bool) -> Answer<FileDiff> {
-    let side = match &side {
-        Where::Unstaged => Side::Unstaged,
-        Where::Staged => Side::Staged,
-        Where::Commit { id } => Side::Commit(id),
-        Where::Stash { id } => Side::Stash(id),
-    };
-    Ok(ramure_git::file_diff(&path, &change, side, ignore_whitespace)?)
+    Ok(ramure_git::file_diff(&path, &change, side.side(), ignore_whitespace)?)
+}
+
+/// The file's two versions in one buffer, for the interface to decode as it chooses: a
+/// byte saying which are there (1 the old, 2 the new), the old one's length (4 bytes,
+/// little-endian), then the old bytes and the new bytes.
+#[tauri::command(async)]
+fn file_versions(path: PathBuf, change: Change, side: Where) -> Answer<tauri::ipc::Response> {
+    let versions = ramure_git::file_versions(&path, &change, side.side())?;
+    let old = versions.old.as_deref().unwrap_or_default();
+    let new = versions.new.as_deref().unwrap_or_default();
+    let present = u8::from(versions.old.is_some()) | u8::from(versions.new.is_some()) << 1;
+    let mut buffer = Vec::with_capacity(5 + old.len() + new.len());
+    buffer.push(present);
+    // a file is at most 16 MB: its length fits
+    buffer.extend_from_slice(&(old.len() as u32).to_le_bytes());
+    buffer.extend_from_slice(old);
+    buffer.extend_from_slice(new);
+    Ok(tauri::ipc::Response::new(buffer))
 }
 
 #[tauri::command(async)]
@@ -238,6 +261,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_repository,
             file_diff,
+            file_versions,
             commit_files,
             stash_files,
             stage,

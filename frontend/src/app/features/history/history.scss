@@ -15,7 +15,7 @@
 
 .columns {
   flex: none;
-  height: 30px;
+  height: var(--r-panel-head);
   overflow: hidden;
   border-bottom: 1px solid var(--r-line);
   color: var(--r-text-3);

@@ -6,7 +6,10 @@ tags at hand, the commit you pick in detail.
 - Repositories in tabs, and workspaces that reopen several of them at once.
 - Profiles: the name and email Ramure signs commits with, switched from the title bar
   (the git configuration stays as it is).
-- The working tree: stage, unstage, commit (and push at once); diffs of any file or commit.
+- The working tree: stage, unstage, commit (and push at once).
+- Diffs of any file, commit or stash: the file view or the changes (alone, inline or side by
+  side), spaces at the ends of lines ignored or not, long lines wrapped or not, the bytes
+  read in the encoding of your choice.
 - Stashes, drawn in the history on the commit they were made on: stash, pop, apply, delete.
 - Branches created and switched to; fetch, pull and push.
 
@@ -16,7 +19,8 @@ tags at hand, the commit you pick in detail.
   (pure Rust): HEAD, branches, tags, the history newest first with every commit before its
   parents, and the graph's lanes.
 - `apps/ramure-desktop`: the desktop application, [Tauri v2](https://tauri.app).
-- `frontend`: the interface, Angular (standalone components, signals, no zone.js), pnpm.
+- `frontend`: the interface, Angular (standalone components, signals, no zone.js), pnpm;
+  diffs in [Monaco](https://microsoft.github.io/monaco-editor/), VS Code's editor.
 - `design`: the logo and the design rules.
 
 ## Developing

@@ -19,6 +19,8 @@
 
   --r-accent: #5fd3a8;
   --r-on-accent: #07120d;
+  /* a switch's knob when it is off */
+  --r-knob: #e6eae7;
   --r-danger: #ef6f6c;
 
   /* the graph's lanes, in the order branches take them */
@@ -38,6 +40,8 @@
   --r-mono: 'Geist Mono Variable', 'Cascadia Mono', monospace;
 
   --r-titlebar: 44px;
+  /* the heading strip of every panel (history, diff, details): their lines meet */
+  --r-panel-head: 38px;
   --r-row: 32px;
   /* everything clicked on, and the panels floating over the page */
   --r-radius: 6px;
@@ -62,6 +66,7 @@
 
   --r-accent: #12875f;
   --r-on-accent: #ffffff;
+  --r-knob: #ffffff;
   --r-danger: #c63d39;
 
   --r-lane-0: #12875f;

@@ -3,16 +3,18 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--r-void);
 }
 
-header {
+.head {
   flex: none;
+  height: var(--r-panel-head);
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 44px;
-  padding: 0 8px 0 16px;
+  padding: 0 6px 0 16px;
   border-bottom: 1px solid var(--r-line);
+  background: var(--r-base);
 }
 
 .file {
@@ -24,9 +26,9 @@ header {
   overflow: hidden;
   white-space: nowrap;
   .path {
-    font-size: 13px;
-    color: var(--r-text);
     overflow: hidden;
+    color: var(--r-text);
+    font-size: 13px;
     text-overflow: ellipsis;
   }
   .from {
@@ -51,83 +53,104 @@ header {
   }
 }
 
-.body {
+.encoding {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: var(--r-radius);
+  background: var(--r-raised);
+  color: var(--r-text-2);
+  font: 500 11px var(--r-mono);
+  cursor: pointer;
+  &:focus {
+    outline: none;
+    border-color: var(--r-accent);
+  }
+}
+
+.icon {
+  width: 30px;
+  padding: 0;
+  justify-content: center;
+  svg {
+    width: 15px;
+    height: 15px;
+    stroke-linejoin: round;
+  }
+  .head & svg {
+    width: 10px;
+    height: 10px;
+  }
+  &.open {
+    color: var(--r-accent);
+  }
+}
+
+.tools {
+  flex: none;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--r-line);
+  background: var(--r-base);
+}
+
+.group {
+  display: flex;
+  gap: 2px;
+}
+
+.space {
   flex: 1;
-  overflow: auto;
-  user-select: text;
+}
+
+/* a choice between two: the chosen one lit */
+.seg {
+  display: flex;
+  padding: 3px;
+  border-radius: var(--r-radius);
+  background: var(--r-void);
+  button {
+    height: 26px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: calc(var(--r-radius) - 2px);
+    background: transparent;
+    color: var(--r-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    &:hover {
+      color: var(--r-text);
+    }
+    &[aria-checked='true'] {
+      background: var(--r-hover);
+      color: var(--r-text);
+    }
+  }
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor {
+  position: absolute;
+  inset: 0;
 }
 
 .note {
-  margin: 32px auto;
+  position: absolute;
+  inset: 32px 0 auto;
+  margin: 0;
   color: var(--r-text-3);
   text-align: center;
-}
-
-.hunks {
-  min-width: max-content;
-  padding-bottom: 24px;
-  font-size: 12.5px;
-  line-height: 21px;
-}
-
-.hunk {
-  margin-top: 10px;
-  padding: 5px 16px;
-  border-block: 1px solid var(--r-line);
-  background: var(--r-raised);
-  color: var(--r-lane-4);
-}
-
-/* added and removed lines: a tinted line, a deeper gutter, and what changed in them deeper still */
-.line {
-  display: flex;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 21px;
-  &.added {
-    --tint: var(--r-added-rgb);
-    --ink: var(--r-lane-0);
+  &.error {
+    color: var(--r-danger);
+    user-select: text;
   }
-  &.removed {
-    --tint: var(--r-removed-rgb);
-    --ink: var(--r-lane-3);
-  }
-  &.added,
-  &.removed {
-    background: rgb(var(--tint) / 0.16);
-    .n {
-      background: rgb(var(--tint) / 0.24);
-      color: var(--ink);
-    }
-    .sign {
-      color: var(--ink);
-      font-weight: 700;
-    }
-    .mark {
-      border-radius: 2px;
-      background: rgb(var(--tint) / 0.42);
-    }
-  }
-}
-
-.n {
-  flex: none;
-  width: 52px;
-  padding-right: 10px;
-  color: var(--r-text-3);
-  text-align: right;
-  user-select: none;
-}
-
-.sign {
-  flex: none;
-  width: 22px;
-  text-align: center;
-  user-select: none;
-}
-
-.text {
-  padding-right: 24px;
-  color: var(--r-text);
-  white-space: pre;
-  tab-size: 4;
 }

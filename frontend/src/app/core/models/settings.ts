@@ -19,6 +19,10 @@ export interface Workspace {
 }
 
 export type Theme = 'dark' | 'light' | 'system';
+/** The whole file with its changes marked, or the changes themselves. */
+export type DiffMode = 'file' | 'diff';
+/** The changes alone with a little context, inline with the whole file, or side by side. */
+export type DiffLayout = 'hunks' | 'inline' | 'split';
 
 /** How Ramure behaves, as set in the settings. */
 export interface Preferences {
@@ -33,11 +37,17 @@ export interface Preferences {
   historyLimit: number;
   /** Diffs leave out the lines whose spaces alone changed. */
   ignoreWhitespace: boolean;
+  diffMode: DiffMode;
+  diffLayout: DiffLayout;
+  /** Long lines of a diff wrap rather than scroll. */
+  wordWrap: boolean;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
 export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
 export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
+export const DIFF_MODES: readonly DiffMode[] = ['file', 'diff'];
+export const DIFF_LAYOUTS: readonly DiffLayout[] = ['hunks', 'inline', 'split'];
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'dark',
@@ -46,6 +56,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   autoFetchMinutes: 0,
   historyLimit: 5000,
   ignoreWhitespace: false,
+  diffMode: 'diff',
+  diffLayout: 'hunks',
+  wordWrap: false,
 };
 
 /** What Ramure remembers from one run to the next. */
@@ -129,6 +142,9 @@ function parsePreferences(value: unknown): Preferences {
     autoFetchMinutes: among('autoFetchMinutes', AUTO_FETCH_MINUTES, d.autoFetchMinutes),
     historyLimit: among('historyLimit', HISTORY_LIMITS, d.historyLimit),
     ignoreWhitespace: flag('ignoreWhitespace', d.ignoreWhitespace),
+    diffMode: among('diffMode', DIFF_MODES, d.diffMode),
+    diffLayout: among('diffLayout', DIFF_LAYOUTS, d.diffLayout),
+    wordWrap: flag('wordWrap', d.wordWrap),
   };
 }
 
