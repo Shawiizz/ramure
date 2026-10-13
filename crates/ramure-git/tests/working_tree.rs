@@ -186,20 +186,11 @@ fn a_profile_signs_the_commit_instead_of_the_configured_identity() {
 fn a_stash_puts_work_aside_and_brings_it_back() {
     let dir = repository();
     let d = dir.path();
-    write(
-        d, "a.txt", "one
-",
-    );
+    write(d, "a.txt", "one\n");
     git(d, &["add", "a.txt"]);
     commit(d, "Add a", 1);
-    write(
-        d, "a.txt", "two
-",
-    );
-    write(
-        d, "b.txt", "new
-",
-    );
+    write(d, "a.txt", "two\n");
+    write(d, "b.txt", "new\n");
 
     actions::stash(d, Some("Put aside"), None).unwrap();
     assert!(status(d).unwrap().unstaged.is_empty());
@@ -237,24 +228,15 @@ fn a_stash_puts_work_aside_and_brings_it_back() {
 fn a_merge_lists_what_it_brought_to_its_first_parent_once() {
     let dir = repository();
     let d = dir.path();
-    write(
-        d, "a.txt", "a
-",
-    );
+    write(d, "a.txt", "a\n");
     git(d, &["add", "a.txt"]);
     commit(d, "Add a", 1);
     git(d, &["switch", "-q", "-c", "feature"]);
-    write(
-        d, "f.txt", "f
-",
-    );
+    write(d, "f.txt", "f\n");
     git(d, &["add", "f.txt"]);
     commit(d, "Add f", 2);
     git(d, &["switch", "-q", "main"]);
-    write(
-        d, "m.txt", "m
-",
-    );
+    write(d, "m.txt", "m\n");
     git(d, &["add", "m.txt"]);
     commit(d, "Add m", 3);
     git(d, &["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"]);
@@ -262,4 +244,18 @@ fn a_merge_lists_what_it_brought_to_its_first_parent_once() {
     assert_eq!(commit_files(d, &merge).unwrap(), [change("f.txt", ChangeKind::Added)]);
     let diff = file_diff(d, &change("f.txt", ChangeKind::Added), Side::Commit(&merge)).unwrap();
     assert_eq!(diff.hunks.len(), 1);
+}
+
+#[test]
+fn line_endings_changed_alone_are_no_change() {
+    let dir = repository();
+    let d = dir.path();
+    git(d, &["config", "core.autocrlf", "true"]);
+    write(d, "same.txt", "one\ntwo\n");
+    write(d, "real.txt", "one\n");
+    git(d, &["add", "same.txt", "real.txt"]);
+    commit(d, "Add", 1);
+    write(d, "same.txt", "one\r\ntwo\r\n");
+    write(d, "real.txt", "two\n");
+    assert_eq!(staged_and_unstaged(d).1, [change("real.txt", ChangeKind::Modified)]);
 }

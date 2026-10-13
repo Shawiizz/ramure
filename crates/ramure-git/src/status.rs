@@ -4,6 +4,7 @@
 use crate::cli::git;
 use crate::Error;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::Path;
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize)]
@@ -68,7 +69,26 @@ pub fn status(dir: &Path) -> Result<Status, Error> {
         dir,
         &["--no-optional-locks", "status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"],
     )?;
-    Ok(parse(&out))
+    let mut status = parse(&out);
+    if status.unstaged.iter().any(|c| c.kind == ChangeKind::Modified) {
+        // git calls a file modified as soon as its size changes, which a change of line
+        // endings alone does (core.autocrlf): only the files whose lines differ are kept
+        let out = git(
+            dir,
+            &[
+                "--no-optional-locks",
+                "-c",
+                "diff.autoRefreshIndex=true",
+                "diff",
+                "--no-ext-diff",
+                "--name-only",
+                "-z",
+            ],
+        )?;
+        let changed: HashSet<&[u8]> = out.split(|&b| b == 0).filter(|p| !p.is_empty()).collect();
+        status.unstaged.retain(|c| c.kind != ChangeKind::Modified || changed.contains(c.path.as_bytes()));
+    }
+    Ok(status)
 }
 
 /// Reads `git status --porcelain=v2 -z --branch`.

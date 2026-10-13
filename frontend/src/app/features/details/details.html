@@ -80,7 +80,7 @@
           <span class="caption">{{
             stash ? ('made on' | t) : commit.parents.length > 1 ? ('parents' | t) : ('parent' | t)
           }}</span>
-          @for (parent of commit.parents; track parent) {
+          @for (parent of commit.parents; track $index) {
             <button class="parent r-mono" (click)="repository.select(parent)">
               {{ parent.slice(0, 7) }}
             </button>
