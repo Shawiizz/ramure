@@ -56,6 +56,7 @@ export const FR: Record<string, string> = {
   'Fetching…': 'Récupération…',
   Graph: 'Graphe',
   History: 'Historique',
+  'In a stash': 'Dans un stash',
   'In commit {id}': 'Dans le commit {id}',
   'In conflict': 'En conflit',
   'Keep the open repository as': 'Garder le dépôt ouvert sous le nom',

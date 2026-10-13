@@ -34,7 +34,7 @@
         </p>
       } @else {
         <div class="hunks r-mono">
-          @for (hunk of open.diff.hunks; track $index) {
+          @for (hunk of hunks(); track $index) {
             <div class="hunk">{{ hunk.header }}</div>
             @for (line of hunk.lines; track $index) {
               <div class="line" [class]="line.kind">
@@ -43,7 +43,11 @@
                 <span class="sign">{{
                   line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ''
                 }}</span>
-                <span class="text">{{ line.text }}</span>
+                <span class="text">
+                  @for (part of line.parts; track $index) {
+                    <span [class.mark]="part.changed">{{ part.text }}</span>
+                  }
+                </span>
               </div>
             }
           }

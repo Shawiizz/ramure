@@ -66,38 +66,52 @@ header {
 .hunks {
   min-width: max-content;
   padding-bottom: 24px;
-  font-size: 12px;
-  line-height: 20px;
+  font-size: 12.5px;
+  line-height: 21px;
 }
 
 .hunk {
-  padding: 4px 16px;
-  margin-top: 8px;
+  margin-top: 10px;
+  padding: 5px 16px;
+  border-block: 1px solid var(--r-line);
   background: var(--r-raised);
-  color: var(--r-text-3);
+  color: var(--r-lane-4);
 }
 
+/* added and removed lines: a tinted line, a deeper gutter, and what changed in them deeper still */
 .line {
   display: flex;
   content-visibility: auto;
-  contain-intrinsic-size: auto 20px;
+  contain-intrinsic-size: auto 21px;
   &.added {
-    background: rgb(95 211 168 / 0.1);
-    .sign {
-      color: var(--r-lane-0);
-    }
+    --tint: 95 211 168;
+    --ink: var(--r-lane-0);
   }
   &.removed {
-    background: rgb(239 111 108 / 0.11);
+    --tint: 239 111 108;
+    --ink: var(--r-lane-3);
+  }
+  &.added,
+  &.removed {
+    background: rgb(var(--tint) / 0.16);
+    .n {
+      background: rgb(var(--tint) / 0.24);
+      color: var(--ink);
+    }
     .sign {
-      color: var(--r-lane-3);
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .mark {
+      border-radius: 2px;
+      background: rgb(var(--tint) / 0.42);
     }
   }
 }
 
 .n {
   flex: none;
-  width: 48px;
+  width: 52px;
   padding-right: 10px;
   color: var(--r-text-3);
   text-align: right;
@@ -106,13 +120,14 @@ header {
 
 .sign {
   flex: none;
-  width: 18px;
+  width: 22px;
   text-align: center;
   user-select: none;
 }
 
 .text {
   padding-right: 24px;
+  color: var(--r-text);
   white-space: pre;
   tab-size: 4;
 }

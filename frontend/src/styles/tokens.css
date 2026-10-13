@@ -5,15 +5,15 @@
  */
 :root {
   --r-void: #070908;
-  --r-base: #0c0f0e;
-  --r-raised: #121614;
-  --r-hover: #182019;
-  --r-line: #1f2522;
-  --r-line-strong: #2a312d;
+  --r-base: #0e1211;
+  --r-raised: #161b18;
+  --r-hover: #1f2823;
+  --r-line: #262e2a;
+  --r-line-strong: #38423c;
 
-  --r-text: #e8ebe6;
-  --r-text-2: #a3aaa5;
-  --r-text-3: #7d8681;
+  --r-text: #f1f3f0;
+  --r-text-2: #bcc3be;
+  --r-text-3: #929b96;
   --r-commit: #eef1ec;
 
   --r-accent: #5fd3a8;

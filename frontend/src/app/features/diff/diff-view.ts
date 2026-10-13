@@ -2,8 +2,12 @@ import { Component, HostListener, computed, inject } from '@angular/core';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
+import { markChanges } from './changed-parts';
 
-/** A file's changes, in the middle of the window: hunks of numbered lines. */
+/**
+ * A file's changes, in the middle of the window: hunks of numbered lines, what changed
+ * inside a modified line marked.
+ */
 @Component({
   selector: 'app-diff-view',
   templateUrl: './diff-view.html',
@@ -17,8 +21,15 @@ export class DiffView {
     const where = this.open()?.where;
     if (!where) return '';
     if (where.kind === 'commit') return t('In commit {id}', { id: where.id.slice(0, 7) });
+    if (where.kind === 'stash') return t('In a stash');
     return where.kind === 'staged' ? t('Staged') : t('Unstaged');
   });
+  protected readonly hunks = computed(() =>
+    (this.open()?.diff?.hunks ?? []).map((hunk) => ({
+      header: hunk.header,
+      lines: markChanges(hunk),
+    })),
+  );
   protected readonly counts = computed(() => {
     let added = 0;
     let removed = 0;
