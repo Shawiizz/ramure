@@ -12,6 +12,9 @@ tags at hand, the commit you pick in detail.
   read in the encoding of your choice.
 - Stashes, drawn in the history on the commit they were made on: stash, pop, apply, delete.
 - Branches created and switched to; fetch, pull and push.
+- A commit's menu: check it out, branch or tag it (plain or annotated), cherry-pick or
+  revert it, rebase or reset the current branch onto it, copy its id or its web link; a
+  rebase, cherry-pick, revert or merge stopped on conflicts can be aborted or continued.
 
 ## Stack
 

@@ -7,6 +7,7 @@ import { Toast } from '../../shell/toast/toast';
 import { Details } from '../details/details';
 import { DiffView } from '../diff/diff-view';
 import { History } from '../history/history';
+import { OperationBanner } from '../operation/operation-banner';
 import { Sidebar } from '../sidebar/sidebar';
 import { Toolbar } from '../toolbar/toolbar';
 import { Welcome } from '../welcome/welcome';
@@ -17,6 +18,7 @@ import { Welcome } from '../welcome/welcome';
   template: `
     @if (repository.snapshot()) {
       <app-toolbar />
+      <app-operation-banner />
       <div class="workspace">
         <app-sidebar />
         <!-- the history stays beneath an open diff: closing it shows it back at once -->
@@ -69,7 +71,7 @@ import { Welcome } from '../welcome/welcome';
   `,
   providers: [RepositoryService],
   host: { '[class.behind]': '!active()' },
-  imports: [Toolbar, Sidebar, History, DiffView, Details, Welcome, Toast],
+  imports: [Toolbar, OperationBanner, Sidebar, History, DiffView, Details, Welcome, Toast],
 })
 export class RepositoryTab {
   readonly tab = input.required<Tab>();

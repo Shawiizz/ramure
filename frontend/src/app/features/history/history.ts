@@ -8,13 +8,17 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { GravatarService } from '../../core/services/gravatar.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
+import { Ask, AskDialog } from '../../shared/ask-dialog';
 import { initials } from '../../shared/avatar';
+import { ContextMenu, MenuEntry } from '../../shared/context-menu';
 import { speedUpWheel } from '../../shared/wheel';
+import { commitUrl } from '../../shared/web-url';
 import { fullDate, shortDate, when } from '../../shared/when';
 import {
   MERGE,
@@ -72,7 +76,7 @@ interface Unfolded {
   selector: 'app-history',
   templateUrl: './history.html',
   styleUrl: './history.scss',
-  imports: [TPipe, RefPill],
+  imports: [TPipe, RefPill, ContextMenu, AskDialog],
 })
 export class History {
   protected readonly repository = inject(RepositoryService);
@@ -86,6 +90,10 @@ export class History {
   protected readonly stashSide = STASH;
   protected readonly clip = `history-${++histories}-`;
   protected readonly unfolded = signal<Unfolded | null>(null);
+  /** A commit's menu, open where it was asked for. */
+  protected readonly menu = signal<{ x: number; y: number; entries: MenuEntry[] } | null>(null);
+  /** A question asked before an action: a name to give, a yes to say. */
+  protected readonly asking = signal<Ask | null>(null);
   /** The graph's width as the user dragged it, null until then. */
   private readonly dragged = signal<number | null>(null);
   private readonly rows = viewChild<ElementRef<HTMLElement>>('rows');
@@ -211,6 +219,139 @@ export class History {
     handle.addEventListener('pointerup', () => handle.removeEventListener('pointermove', move), {
       once: true,
     });
+  }
+
+  /** A commit's menu, the commit selected. */
+  protected openMenu(event: MouseEvent, commit: Commit) {
+    event.preventDefault();
+    this.repository.select(commit.id);
+    this.menu.set({ x: event.clientX, y: event.clientY, entries: this.entriesFor(commit) });
+  }
+
+  private ask(question: Ask) {
+    this.asking.set({
+      ...question,
+      answered: (values) => {
+        this.asking.set(null);
+        question.answered(values);
+      },
+    });
+  }
+
+  /** What can be done from a commit, or from a stash. */
+  private entriesFor(commit: Commit): MenuEntry[] {
+    const r = this.repository;
+    const stash = r.stashes().get(commit.id);
+    if (stash) {
+      return [
+        { label: t('Pop this stash'), run: () => r.restore(stash, true) },
+        { label: t('Apply this stash'), run: () => r.restore(stash, false) },
+        null,
+        {
+          label: t('Delete this stash…'),
+          danger: true,
+          run: () =>
+            this.ask({
+              title: t('Delete this stash?'),
+              text: stash.message,
+              fields: [],
+              confirm: t('Delete'),
+              danger: true,
+              answered: () => r.dropStash(stash),
+            }),
+        },
+      ];
+    }
+    const snapshot = r.snapshot()!;
+    const branch = snapshot.head.kind === 'branch' ? snapshot.head.name : null;
+    const isHead = commit.id === r.headId();
+    const id = commit.id.slice(0, 7);
+    const remote = snapshot.remotes.find((x) => x.name === 'origin') ?? snapshot.remotes[0];
+    const link = remote && commitUrl(remote.url, commit.id);
+    const tagName = { label: t('Tag name'), placeholder: 'v1.0.0', code: true };
+    return [
+      {
+        label: t('Check out this commit'),
+        disabled: isHead && !branch,
+        run: () => r.checkoutCommit(commit.id),
+      },
+      null,
+      {
+        label: t('Create a branch here…'),
+        run: () =>
+          this.ask({
+            title: t('A new branch at {id}', { id }),
+            fields: [{ label: t('Branch name'), code: true }],
+            confirm: t('Create and switch'),
+            answered: ([name]) => r.createBranchAt(name, commit.id),
+          }),
+      },
+      { label: t('Cherry-pick this commit'), disabled: isHead, run: () => r.cherryPick(commit.id) },
+      {
+        label: branch
+          ? t('Rebase {branch} onto this commit', { branch })
+          : t('Rebase onto this commit'),
+        disabled: !branch || isHead,
+        run: () => r.rebase(commit.id),
+      },
+      {
+        label: branch ? t('Reset {branch} to this commit', { branch }) : t('Reset to this commit'),
+        disabled: !branch,
+        children: [
+          { label: t('Soft: keep every change, staged'), run: () => r.reset(commit.id, 'soft') },
+          { label: t('Mixed: keep the changes, unstaged'), run: () => r.reset(commit.id, 'mixed') },
+          {
+            label: t('Hard: throw every change away…'),
+            danger: true,
+            run: () =>
+              this.ask({
+                title: t('Reset {branch} hard?', { branch: branch ?? '' }),
+                text: t(
+                  'The branch goes back to {id}: its later commits and every change in the working tree are thrown away.',
+                  { id },
+                ),
+                fields: [],
+                confirm: t('Reset hard'),
+                danger: true,
+                answered: () => r.reset(commit.id, 'hard'),
+              }),
+          },
+        ],
+      },
+      { label: t('Revert this commit'), run: () => r.revert(commit.id) },
+      null,
+      { label: t('Copy the commit’s id'), run: () => navigator.clipboard.writeText(commit.id) },
+      ...(remote && link
+        ? [
+            {
+              label: t('Copy the link to this commit on {remote}', { remote: remote.name }),
+              run: () => navigator.clipboard.writeText(link),
+            },
+          ]
+        : []),
+      null,
+      {
+        label: t('Create a tag here…'),
+        run: () =>
+          this.ask({
+            title: t('A new tag at {id}', { id }),
+            fields: [tagName],
+            confirm: t('Create the tag'),
+            answered: ([name]) => r.tag(name, commit.id, null),
+          }),
+      },
+      {
+        label: t('Create an annotated tag here…'),
+        run: () =>
+          this.ask({
+            title: t('A new annotated tag at {id}', { id }),
+            text: t('It keeps who made it, when, and a message: the usual kind for a release.'),
+            fields: [tagName, { label: t('Message'), multiline: true }],
+            confirm: t('Create the tag'),
+            answered: ([name, message]) => r.tag(name, commit.id, message || name),
+          }),
+      },
+    ];
   }
 
   /** Several names on a commit: all of them, over the rows below, under the pointer. */

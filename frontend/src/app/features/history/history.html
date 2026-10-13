@@ -57,6 +57,7 @@
           class="row"
           [class.selected]="selected"
           [attr.aria-selected]="selected"
+          (contextmenu)="openMenu($event, line.commit)"
           (click)="repository.select(line.commit.id)"
         >
           <span class="refs" (mouseenter)="unfold($event, line)">
@@ -164,6 +165,18 @@
     </div>
   } @else {
     <p class="empty">{{ 'No commit yet on this branch.' | t }}</p>
+  }
+
+  @if (menu(); as menu) {
+    <app-context-menu
+      [entries]="menu.entries"
+      [x]="menu.x"
+      [y]="menu.y"
+      (closed)="this.menu.set(null)"
+    />
+  }
+  @if (asking(); as asking) {
+    <app-ask-dialog [ask]="asking" (cancelled)="this.asking.set(null)" />
   }
 
   @if (unfolded(); as unfolded) {

@@ -40,8 +40,10 @@ fn run(dir: Option<&Path>, args: &[&str], identity: Option<&Identity>) -> Result
     command
         .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
         .args(args)
-        // never wait for an answer on a terminal nobody sees
-        .env("GIT_TERMINAL_PROMPT", "0");
+        // never wait for an answer on a terminal nobody sees, nor in an editor: a message
+        // git would ask for is the one it proposes
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_EDITOR", "true");
     if let Some(dir) = dir {
         command.current_dir(dir);
     }

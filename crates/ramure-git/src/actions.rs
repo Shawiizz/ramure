@@ -1,7 +1,8 @@
 //! What changes a repository or talks to its remotes, through the git command.
 
 use crate::cli::{git, git_answer, git_as};
-use crate::{Error, Identity};
+use crate::{Error, Identity, Operation};
+use serde::Deserialize;
 use std::path::Path;
 
 /// Stages `paths`: their changes go into the next commit.
@@ -110,6 +111,84 @@ fn with_stash(dir: &Path, command: &str, index: usize, id: &str) -> Result<(), E
         return Err(Error::Command("The stashes changed meanwhile: look at them again.".into()));
     }
     git(dir, &["stash", command, "-q", &name]).map(drop)
+}
+
+/// Puts HEAD on the commit `id`, on no branch.
+pub fn checkout_commit(dir: &Path, id: &str) -> Result<(), Error> {
+    git(dir, &["switch", "-q", "--detach", id]).map(drop)
+}
+
+/// Applies the changes the commit `id` brought (to its first parent, for a merge) onto the
+/// current branch, as a new commit signed by `identity`.
+pub fn cherry_pick(dir: &Path, id: &str, identity: Option<&Identity>) -> Result<(), Error> {
+    with_mainline(dir, "cherry-pick", id, identity)
+}
+
+/// A new commit undoing what the commit `id` brought (to its first parent, for a merge).
+pub fn revert(dir: &Path, id: &str, identity: Option<&Identity>) -> Result<(), Error> {
+    with_mainline(dir, "revert", id, identity)
+}
+
+fn with_mainline(dir: &Path, command: &str, id: &str, identity: Option<&Identity>) -> Result<(), Error> {
+    let merge = git_answer(dir, &["rev-parse", "--verify", "-q", &format!("{id}^2")])?.is_some();
+    let mut args = vec![command, "--no-edit"];
+    if merge {
+        args.extend(["-m", "1"]);
+    }
+    args.push(id);
+    git_as(dir, &args, identity).map(drop)
+}
+
+/// Replays the current branch's own commits on top of the commit `onto`.
+pub fn rebase(dir: &Path, onto: &str, identity: Option<&Identity>) -> Result<(), Error> {
+    git_as(dir, &["rebase", onto], identity).map(drop)
+}
+
+/// How far a reset goes besides moving the branch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Reset {
+    /// The index and the working tree stay: what the commits after held is staged.
+    Soft,
+    /// The index follows, the working tree stays: their changes are left unstaged.
+    Mixed,
+    /// Both follow: every change since is gone.
+    Hard,
+}
+
+/// Moves the current branch to the commit `id`.
+pub fn reset(dir: &Path, id: &str, mode: Reset) -> Result<(), Error> {
+    let mode = match mode {
+        Reset::Soft => "--soft",
+        Reset::Mixed => "--mixed",
+        Reset::Hard => "--hard",
+    };
+    git(dir, &["reset", "-q", mode, id]).map(drop)
+}
+
+/// The tag `name` on the commit `id`: a plain name, or with `message` an annotated tag,
+/// signed by `identity` and dated.
+pub fn tag(
+    dir: &Path,
+    name: &str,
+    id: &str,
+    message: Option<&str>,
+    identity: Option<&Identity>,
+) -> Result<(), Error> {
+    match message {
+        Some(message) => git_as(dir, &["tag", "-a", name, "-m", message, id], identity).map(drop),
+        None => git(dir, &["tag", name, id]).map(drop),
+    }
+}
+
+/// Gives up the operation under way, the repository as it was before it.
+pub fn abort(dir: &Path, operation: Operation) -> Result<(), Error> {
+    git(dir, &[operation.command(), "--abort"]).map(drop)
+}
+
+/// Goes on with the operation under way, its conflicts resolved and staged.
+pub fn proceed(dir: &Path, operation: Operation, identity: Option<&Identity>) -> Result<(), Error> {
+    git_as(dir, &[operation.command(), "--continue"], identity).map(drop)
 }
 
 fn has_commits(dir: &Path) -> Result<bool, Error> {

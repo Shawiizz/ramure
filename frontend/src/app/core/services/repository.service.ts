@@ -1,6 +1,15 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
-import { Change, Commit, FileDiff, RefLabel, Snapshot, Stash, Where } from '../models/repository';
+import {
+  Change,
+  Commit,
+  FileDiff,
+  RefLabel,
+  Reset,
+  Snapshot,
+  Stash,
+  Where,
+} from '../models/repository';
 import { PreferencesService } from './preferences.service';
 import { ProfilesService } from './profiles.service';
 
@@ -205,7 +214,52 @@ export class RepositoryService {
   /** A new branch at the selected commit (at HEAD from the working tree), switched to. */
   createBranch(name: string) {
     const id = this.selectedId();
-    return this.change('create_branch', { name, start: id && id !== WIP ? id : null });
+    return this.createBranchAt(name, id && id !== WIP ? id : null);
+  }
+
+  createBranchAt(name: string, start: string | null) {
+    return this.change('create_branch', { name, start });
+  }
+
+  /** HEAD on the commit `id`, on no branch. */
+  checkoutCommit(id: string) {
+    return this.change('checkout_commit', { id });
+  }
+
+  cherryPick(id: string) {
+    return this.change('cherry_pick', { id, identity: this.profiles.identity() });
+  }
+
+  revert(id: string) {
+    return this.change('revert', { id, identity: this.profiles.identity() });
+  }
+
+  /** The current branch's own commits replayed on top of `onto`. */
+  rebase(onto: string) {
+    return this.change('rebase', { onto, identity: this.profiles.identity() });
+  }
+
+  /** The current branch moved to the commit `id`. */
+  reset(id: string, mode: Reset) {
+    return this.change('reset', { id, mode });
+  }
+
+  /** A tag on the commit `id`; annotated with a message. */
+  tag(name: string, id: string, message: string | null) {
+    return this.change('tag', { name, id, message, identity: this.profiles.identity() });
+  }
+
+  /** Gives up what git stopped in the middle of. */
+  abortOperation() {
+    const operation = this.snapshot()?.operation;
+    return operation ? this.change('abort', { operation }) : Promise.resolve(false);
+  }
+
+  /** Goes on with what git stopped in the middle of, its conflicts resolved. */
+  proceedOperation() {
+    const operation = this.snapshot()?.operation;
+    if (!operation) return Promise.resolve(false);
+    return this.change('proceed', { operation, identity: this.profiles.identity() });
   }
 
   checkout(name: string, remote: boolean) {
@@ -276,21 +330,30 @@ export class RepositoryService {
     }
   }
 
-  /** Runs a command that changes the repository and takes its new state; false on failure. */
+  /**
+   * Runs a command that changes the repository and takes its new state; false on failure,
+   * after which the repository is read again: git may have stopped halfway, on conflicts.
+   */
   private async change(command: string, args: Record<string, unknown>): Promise<boolean> {
     const path = this.snapshot()?.path;
     if (!path) return false;
     this.working.set(true);
     this.error.set(null);
+    let done = false;
     try {
       this.apply(await invoke<Snapshot>(command, { path, ...args }));
-      return true;
+      done = true;
     } catch (e) {
       this.error.set(String(e));
-      return false;
     } finally {
       this.working.set(false);
     }
+    if (!done) {
+      await this.refresh();
+      // stopped on conflicts: the banner says so, and how to go on
+      if (this.snapshot()?.operation) this.error.set(null);
+    }
+    return done;
   }
 
   /** Takes a new state, keeping the selection where it still makes sense. */

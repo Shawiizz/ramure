@@ -11,7 +11,20 @@ export interface Snapshot {
   status: Status;
   /** Newest first; their commits are in the history too. */
   stashes: Stash[];
+  remotes: Remote[];
+  /** What git stopped in the middle of, waiting for conflicts to be resolved. */
+  operation: Operation | null;
 }
+
+export interface Remote {
+  name: string;
+  url: string;
+}
+
+export type Operation = 'rebase' | 'cherryPick' | 'revert' | 'merge';
+
+/** How far a reset goes besides moving the branch (`ramure_git::actions::Reset`). */
+export type Reset = 'soft' | 'mixed' | 'hard';
 
 /** Work put aside (`ramure_git::Stash`). */
 export interface Stash {

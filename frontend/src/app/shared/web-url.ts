@@ -1,0 +1,21 @@
+/**
+ * A commit's page on the website hosting a remote (GitHub, GitLab, Bitbucket, Gitea…),
+ * from the remote's URL in any of its forms; null for a remote that is a folder.
+ */
+export function commitUrl(remoteUrl: string, id: string): string | null {
+  const site = siteOf(remoteUrl.trim());
+  if (!site) return null;
+  const commits = site.host.includes('bitbucket') ? 'commits' : 'commit';
+  return `https://${site.host}/${site.path}/${commits}/${id}`;
+}
+
+function siteOf(url: string): { host: string; path: string } | null {
+  // git@github.com:owner/repo.git
+  const scp = /^[\w.-]+@([\w.-]+):(?!\/)(.+)$/.exec(url);
+  // ssh://git@host:22/owner/repo.git, https://user@host/owner/repo.git, git://host/…
+  const full = /^(?:ssh|https?|git):\/\/(?:[^@/]+@)?([\w.-]+)(?::\d+)?\/(.+)$/.exec(url);
+  const found = scp ?? full;
+  if (!found) return null;
+  const [, host, path] = found;
+  return { host, path: path.replace(/\/+$/, '').replace(/\.git$/, '') };
+}

@@ -2,7 +2,8 @@
 //! Every command names the repository by its path; those that change it answer with its
 //! new state.
 
-use ramure_git::{actions, Change, FileDiff, Identity, Repository, Side, Snapshot};
+use ramure_git::actions::Reset;
+use ramure_git::{actions, Change, FileDiff, Identity, Operation, Repository, Side, Snapshot};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -175,6 +176,60 @@ fn git_version() -> Answer<String> {
     Ok(ramure_git::git_version()?)
 }
 
+#[tauri::command(async)]
+fn checkout_commit(path: PathBuf, id: String) -> Answer<Snapshot> {
+    actions::checkout_commit(&path, &id)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn cherry_pick(path: PathBuf, id: String, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::cherry_pick(&path, &id, identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn revert(path: PathBuf, id: String, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::revert(&path, &id, identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn rebase(path: PathBuf, onto: String, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::rebase(&path, &onto, identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn reset(path: PathBuf, id: String, mode: Reset) -> Answer<Snapshot> {
+    actions::reset(&path, &id, mode)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn tag(
+    path: PathBuf,
+    name: String,
+    id: String,
+    message: Option<String>,
+    identity: Option<Identity>,
+) -> Answer<Snapshot> {
+    actions::tag(&path, &name, &id, message.as_deref(), identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn abort(path: PathBuf, operation: Operation) -> Answer<Snapshot> {
+    actions::abort(&path, operation)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn proceed(path: PathBuf, operation: Operation, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::proceed(&path, operation, identity.as_ref())?;
+    snapshot(&path)
+}
+
 /// The identity git uses when no profile says otherwise.
 #[tauri::command(async)]
 fn global_identity() -> Answer<Identity> {
@@ -276,6 +331,14 @@ pub fn run() {
             stash_apply,
             stash_pop,
             stash_drop,
+            checkout_commit,
+            cherry_pick,
+            revert,
+            rebase,
+            reset,
+            tag,
+            abort,
+            proceed,
             global_identity,
             git_version,
             set_history_limit,

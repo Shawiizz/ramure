@@ -7,7 +7,7 @@ use crate::status::{status, Status};
 use crate::Error;
 use gix::bstr::ByteSlice;
 use gix::ObjectId;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BinaryHeap, HashMap};
 use std::path::{Path, PathBuf};
 
@@ -31,6 +31,39 @@ pub struct Snapshot {
     pub status: Status,
     /// Newest first; their commits are in the history, each after the one it was made on.
     pub stashes: Vec<Stash>,
+    pub remotes: Vec<Remote>,
+    /// What git stopped in the middle of, waiting for conflicts to be resolved.
+    pub operation: Option<Operation>,
+}
+
+/// A remote and where it fetches from.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Remote {
+    pub name: String,
+    pub url: String,
+}
+
+/// An operation git stopped in the middle of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Operation {
+    Rebase,
+    CherryPick,
+    Revert,
+    Merge,
+}
+
+impl Operation {
+    /// The git command that goes on with it or gives it up.
+    pub(crate) fn command(self) -> &'static str {
+        match self {
+            Operation::Rebase => "rebase",
+            Operation::CherryPick => "cherry-pick",
+            Operation::Revert => "revert",
+            Operation::Merge => "merge",
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -106,6 +139,8 @@ impl Repository {
             (Status::default(), Vec::new())
         };
         let commits = children_first(commits);
+        let remotes = self.remotes()?;
+        let operation = self.operation();
         let graph = layout(&commits.iter().map(|c| (c.id.clone(), c.parents.clone())).collect::<Vec<_>>());
         Ok(Snapshot {
             name,
@@ -118,7 +153,37 @@ impl Repository {
             graph,
             status,
             stashes,
+            remotes,
+            operation,
         })
+    }
+
+    fn remotes(&self) -> Result<Vec<Remote>, Error> {
+        let mut remotes = Vec::new();
+        for name in self.repo.remote_names() {
+            let name: &gix::bstr::BStr = name.as_ref();
+            let remote = self.repo.find_remote(name).map_err(Error::git)?;
+            if let Some(url) = remote.url(gix::remote::Direction::Fetch) {
+                remotes.push(Remote { name: name.to_string(), url: url.to_bstring().to_string() });
+            }
+        }
+        Ok(remotes)
+    }
+
+    /// What the files git leaves while it waits tell it is in the middle of.
+    fn operation(&self) -> Option<Operation> {
+        let dir = self.repo.git_dir();
+        if dir.join("rebase-merge").exists() || dir.join("rebase-apply").exists() {
+            Some(Operation::Rebase)
+        } else if dir.join("CHERRY_PICK_HEAD").exists() {
+            Some(Operation::CherryPick)
+        } else if dir.join("REVERT_HEAD").exists() {
+            Some(Operation::Revert)
+        } else if dir.join("MERGE_HEAD").exists() {
+            Some(Operation::Merge)
+        } else {
+            None
+        }
     }
 
     fn head(&self, head_id: Option<ObjectId>) -> Result<Head, Error> {
