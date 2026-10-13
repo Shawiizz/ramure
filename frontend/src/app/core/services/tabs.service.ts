@@ -1,4 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { SettingsService } from './settings.service';
 
 /** A tab: a repository, or the welcome page until one is chosen. */
@@ -9,10 +11,23 @@ export interface Tab {
 
 const RECENT_MAX = 10;
 
-/** The open tabs, the repositories opened lately, and the workspaces that reopen tabs together. */
+/** The repository a window opened for a tab dragged out of another shows first. */
+declare global {
+  interface Window {
+    __RAMURE_TAB__?: string;
+  }
+}
+
+/**
+ * The open tabs, the repositories opened lately, and the workspaces that reopen tabs
+ * together. The first window's tabs are the ones kept from run to run; a window opened for a
+ * tab dragged out starts with that one alone.
+ */
 @Injectable({ providedIn: 'root' })
 export class TabsService {
   private readonly store = inject(SettingsService);
+  private readonly window = getCurrentWebviewWindow();
+  readonly main = this.window.label === 'main';
   readonly tabs = signal<Tab[]>([]);
   readonly activeId = signal('');
   readonly recent = computed(() => this.store.settings().recent);
@@ -27,6 +42,15 @@ export class TabsService {
 
   /** The tabs the last run left open, unless the settings say to start afresh. */
   restore() {
+    // a tab dropped here from another window
+    void this.window.listen<string>('adopt-tab', ({ payload }) => this.add(payload));
+    const dragged = window.__RAMURE_TAB__;
+    if (dragged) {
+      const tab = newTab(dragged);
+      this.tabs.set([tab]);
+      this.activeId.set(tab.id);
+      return;
+    }
     const { tabs, activeTab, preferences } = this.store.settings();
     const restored = preferences.reopenTabs ? tabs.map(newTab) : [];
     this.tabs.set(restored.length ? restored : [newTab(null)]);
@@ -55,6 +79,43 @@ export class TabsService {
     }
     this.tabs.update((tabs) => tabs.map((tab) => (tab.id === id ? { ...tab, path } : tab)));
     this.persist();
+  }
+
+  /** Moves the tab `id` to the place `index` among the tabs. */
+  move(id: string, index: number) {
+    const tabs = this.tabs();
+    const tab = tabs.find((t) => t.id === id);
+    if (!tab || tabs.indexOf(tab) === index) return;
+    const rest = tabs.filter((t) => t !== tab);
+    this.tabs.set([...rest.slice(0, index), tab, ...rest.slice(index)]);
+    this.persist();
+  }
+
+  /** The tab `id` in a window of its own, its top left corner at the screen point given. */
+  async detach(id: string, x: number, y: number): Promise<void> {
+    const path = this.tabs().find((tab) => tab.id === id)?.path;
+    if (!path) return;
+    await invoke('open_window', { path, x: Math.round(x), y: Math.round(y) });
+    this.release(id);
+  }
+
+  /** The tab `id` moved to the window `to`. */
+  async give(id: string, to: string): Promise<void> {
+    const path = this.tabs().find((tab) => tab.id === id)?.path;
+    if (!path) return;
+    await invoke('give_tab', { to, path });
+    this.release(id);
+  }
+
+  /** The window whose title bar holds the screen point given, in physical pixels. */
+  windowUnder(x: number, y: number): Promise<string | null> {
+    return invoke<string | null>('window_under', { from: this.window.label, x, y });
+  }
+
+  /** A tab gone to another window: a window other than the first closes with its last. */
+  private release(id: string) {
+    if (!this.main && this.tabs().length === 1) void this.window.close();
+    else this.close(id);
   }
 
   activate(id: string) {
@@ -135,6 +196,7 @@ export class TabsService {
   }
 
   private persist() {
+    if (!this.main) return;
     const paths = this.paths();
     const active = this.tabs().find((tab) => tab.id === this.activeId())?.path;
     this.store.update((s) => ({

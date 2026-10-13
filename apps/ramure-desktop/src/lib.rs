@@ -15,6 +15,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
 mod terminal;
+mod windows;
 
 /// Commits read at once, as the settings say.
 static HISTORY_LIMIT: AtomicUsize = AtomicUsize::new(5000);
@@ -487,12 +488,9 @@ fn save_settings(app: AppHandle, file: State<'_, SettingsFile>, settings: serde_
 /// The page is an application, not a web page: no browser menu on a right click, no
 /// browser shortcuts (reload, print, find, the inspector).
 #[cfg(windows)]
-fn lock_down(app: &tauri::App) -> tauri::Result<()> {
+fn lock_down(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
     use windows_core::Interface;
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
-    };
     window.with_webview(|webview| {
         // SAFETY: COM calls on the window's own WebView2, on the thread that owns it
         let locked = unsafe {
@@ -509,7 +507,7 @@ fn lock_down(app: &tauri::App) -> tauri::Result<()> {
 
 /// Only WebView2 is locked down so far.
 #[cfg(not(windows))]
-fn lock_down(_app: &tauri::App) -> tauri::Result<()> {
+fn lock_down(_window: &tauri::WebviewWindow) -> tauri::Result<()> {
     Ok(())
 }
 
@@ -520,7 +518,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(SettingsFile::default())
-        .setup(|app| Ok(lock_down(app)?))
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                lock_down(&window)?;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             open_repository,
             file_diff,
@@ -550,6 +553,9 @@ pub fn run() {
             open_file,
             reveal_file,
             terminal::terminal_open,
+            windows::open_window,
+            windows::window_under,
+            windows::give_tab,
             terminal::terminal_write,
             terminal::terminal_resize,
             terminal::terminal_close,

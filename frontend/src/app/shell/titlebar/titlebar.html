@@ -3,15 +3,18 @@
   <app-workspace-menu />
   <span class="divider" data-tauri-drag-region></span>
 
-  <div class="tabs" role="tablist" data-tauri-drag-region>
+  <div #strip class="tabs" role="tablist" data-tauri-drag-region>
     @for (tab of tabs.tabs(); track tab.id) {
       <div
         class="tab"
         role="tab"
         [class.active]="tab.id === tabs.activeId()"
+        [class.held]="held()?.id === tab.id"
+        [class.out]="held()?.id === tab.id && held()?.out"
+        [attr.data-tab]="tab.id"
         [attr.aria-selected]="tab.id === tabs.activeId()"
         [title]="tab.path ?? ''"
-        (mousedown)="$event.button === 0 && tabs.activate(tab.id)"
+        (pointerdown)="press($event, tab.id)"
         (auxclick)="auxClick($event, tab.id)"
       >
         <svg class="glyph" viewBox="0 0 16 16" aria-hidden="true">
@@ -23,7 +26,7 @@
         <span class="name">{{ tab.path ? split(tab.path).name : ('New tab' | t) }}</span>
         <button
           class="close-tab"
-          (mousedown)="$event.stopPropagation()"
+          (pointerdown)="$event.stopPropagation()"
           (click)="tabs.close(tab.id)"
           [attr.aria-label]="'Close the tab (Ctrl+W)' | t"
           [title]="'Close the tab (Ctrl+W)' | t"

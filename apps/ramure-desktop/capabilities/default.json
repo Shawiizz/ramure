@@ -1,8 +1,8 @@
 {
   "$schema": "../../../target/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window",
-  "windows": ["main"],
+  "description": "Every window: the first, and those tabs dragged out open",
+  "windows": ["main", "window-*"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

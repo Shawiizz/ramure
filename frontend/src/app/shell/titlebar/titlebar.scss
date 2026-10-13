@@ -43,10 +43,22 @@
   padding: 0 4px 0 10px;
   border-radius: var(--r-radius);
   color: var(--r-text-3);
-  cursor: default;
+  cursor: pointer;
   transition:
     background var(--r-fast),
     color var(--r-fast);
+  /* pulled: above the others, under the pointer */
+  &.held {
+    position: relative;
+    z-index: 1;
+    cursor: grabbing;
+    transition: none;
+  }
+  /* pulled away from the strip: about to leave for another window */
+  &.out {
+    opacity: 0.85;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  }
   &:hover:not(.active) {
     background: var(--r-hover);
     color: var(--r-text-2);

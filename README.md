@@ -3,7 +3,8 @@
 A free and open source Git client: the history as a graph of branches, the branches and
 tags at hand, the commit you pick in detail.
 
-- Repositories in tabs, and workspaces that reopen several of them at once.
+- Repositories in tabs, moved by dragging, dragged out into a window of their own and back
+  again, as in a browser; workspaces that reopen several of them at once.
 - Profiles: the name and email Ramure signs commits with, switched from the title bar
   (the git configuration stays as it is).
 - The working tree: stage, unstage, commit (and push at once); throw changes away, one file

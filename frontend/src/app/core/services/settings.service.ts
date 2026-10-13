@@ -1,12 +1,24 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
+import { emit, listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Layout, NO_SETTINGS, Settings, parseSettings } from '../models/settings';
 
-/** What Ramure remembers between runs, read once at startup and written on every change. */
+/** The settings one window wrote, told to the others. */
+interface Saved {
+  from: string;
+  settings: Settings;
+}
+
+/**
+ * What Ramure remembers between runs, read once at startup and written on every change.
+ * Every window holds them: what one writes, the others take, so none writes back older ones.
+ */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   readonly settings = signal<Settings>(NO_SETTINGS);
   readonly layout = computed(() => this.settings().layout);
+  private readonly window = getCurrentWindow().label;
   private writing: Promise<void> = Promise.resolve();
   private queued = false;
 
@@ -16,6 +28,9 @@ export class SettingsService {
     } catch (e) {
       console.error('settings not read', e);
     }
+    await listen<Saved>('settings-saved', ({ payload }) => {
+      if (payload.from !== this.window) this.settings.set(parseSettings(payload.settings));
+    });
   }
 
   /** The panels' sizes and order, changed in part. */
@@ -35,7 +50,9 @@ export class SettingsService {
     this.writing = this.writing.then(async () => {
       this.queued = false;
       try {
-        await invoke('save_settings', { settings: this.settings() });
+        const settings = this.settings();
+        await invoke('save_settings', { settings });
+        await emit('settings-saved', { from: this.window, settings } satisfies Saved);
       } catch (e) {
         console.error('settings not saved', e);
       }
