@@ -18,6 +18,8 @@ export interface AskField {
   multiline?: boolean;
   /** Text written with a monospace font (a branch or tag name). */
   code?: boolean;
+  /** What the field holds at first (a name to change). */
+  value?: string;
 }
 
 /** A question to the user: a title, what is at stake, the fields to fill, the answer's word. */
@@ -56,7 +58,7 @@ export interface Ask {
               <textarea
                 rows="4"
                 [placeholder]="field.placeholder ?? ''"
-                [value]="values()[i]"
+                [value]="values()[i] ?? field.value ?? ''"
                 (input)="write(i, $any($event.target).value)"
                 (keydown.control.enter)="answer()"
               ></textarea>
@@ -64,7 +66,7 @@ export interface Ask {
               <input
                 [class.r-mono]="field.code"
                 [placeholder]="field.placeholder ?? ''"
-                [value]="values()[i]"
+                [value]="values()[i] ?? field.value ?? ''"
                 (input)="write(i, $any($event.target).value)"
                 spellcheck="false"
               />
@@ -143,10 +145,12 @@ export class AskDialog {
 
   constructor() {
     afterNextRender(() => {
-      this.values.set(this.ask().fields.map(() => ''));
-      this.host.nativeElement
-        .querySelector<HTMLElement>('input, textarea, button[type=submit]')
-        ?.focus();
+      this.values.set(this.ask().fields.map((f) => f.value ?? ''));
+      const first = this.host.nativeElement.querySelector<HTMLElement>(
+        'input, textarea, button[type=submit]',
+      );
+      first?.focus();
+      if (first instanceof HTMLInputElement) first.select();
     });
   }
 

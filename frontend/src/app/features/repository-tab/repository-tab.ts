@@ -1,17 +1,33 @@
-import { Component, DestroyRef, computed, effect, inject, input, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  computed,
+  effect,
+  inject,
+  input,
+  untracked,
+} from '@angular/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
+import { AskDialog } from '../../shared/ask-dialog';
+import { ContextMenu } from '../../shared/context-menu';
 import { Tab, TabsService } from '../../core/services/tabs.service';
 import { Toast } from '../../shell/toast/toast';
 import { Details } from '../details/details';
 import { DiffView } from '../diff/diff-view';
 import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
+import { RebaseDialog } from '../rebase/rebase-dialog';
 import { Sidebar } from '../sidebar/sidebar';
 import { StatusBar } from '../status-bar/status-bar';
 import { Toolbar } from '../toolbar/toolbar';
 import { Welcome } from '../welcome/welcome';
+import { MenusService } from './menus.service';
+import { SettingsService } from '../../core/services/settings.service';
+import { TPipe } from '../../core/i18n/t.pipe';
+import { follow } from '../../shared/drag';
 
 /** One tab: its repository with everything shown of it, or the welcome page. */
 @Component({
@@ -20,8 +36,13 @@ import { Welcome } from '../welcome/welcome';
     @if (repository.snapshot()) {
       <app-toolbar />
       <app-operation-banner />
-      <div class="workspace">
+      <div class="workspace" [style.grid-template-columns]="columns()">
         <app-sidebar />
+        <div
+          class="splitter"
+          (pointerdown)="resize($event, 'sidebar')"
+          [title]="'Drag to resize' | t"
+        ></div>
         <!-- the history stays beneath an open diff: closing it shows it back at once -->
         <div class="center">
           <app-history />
@@ -29,6 +50,11 @@ import { Welcome } from '../welcome/welcome';
             <app-diff-view />
           }
         </div>
+        <div
+          class="splitter"
+          (pointerdown)="resize($event, 'details')"
+          [title]="'Drag to resize' | t"
+        ></div>
         <app-details />
       </div>
     } @else {
@@ -36,6 +62,20 @@ import { Welcome } from '../welcome/welcome';
     }
     <app-status-bar />
     <app-toast />
+    @if (menus.menu(); as menu) {
+      <app-context-menu
+        [entries]="menu.entries"
+        [x]="menu.x"
+        [y]="menu.y"
+        (closed)="menus.menu.set(null)"
+      />
+    }
+    @if (menus.asking(); as asking) {
+      <app-ask-dialog [ask]="asking" (cancelled)="menus.asking.set(null)" />
+    }
+    @if (menus.rebasing(); as rebasing) {
+      <app-rebase-dialog [rebasing]="rebasing" (closed)="menus.rebasing.set(null)" />
+    }
   `,
   styles: `
     :host {
@@ -68,12 +108,27 @@ import { Welcome } from '../welcome/welcome';
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: 228px minmax(0, 1fr) 340px;
+    }
+    /* no room of its own: a grip over the border between two panels */
+    .splitter {
+      position: relative;
+      z-index: 2;
+      cursor: col-resize;
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0 -3px;
+      }
+      &:hover::before {
+        background: color-mix(in srgb, var(--r-accent) 50%, transparent);
+        inset: 0 -1px;
+      }
     }
   `,
-  providers: [RepositoryService],
+  providers: [RepositoryService, MenusService],
   host: { '[class.behind]': '!active()' },
   imports: [
+    TPipe,
     Toolbar,
     OperationBanner,
     Sidebar,
@@ -83,12 +138,21 @@ import { Welcome } from '../welcome/welcome';
     Welcome,
     StatusBar,
     Toast,
+    ContextMenu,
+    AskDialog,
+    RebaseDialog,
   ],
 })
 export class RepositoryTab {
   readonly tab = input.required<Tab>();
   readonly active = input(false);
   protected readonly repository = inject(RepositoryService);
+  protected readonly menus = inject(MenusService);
+  private readonly store = inject(SettingsService);
+  protected readonly columns = computed(() => {
+    const { sidebar, details } = this.store.layout();
+    return `${sidebar}px 0 minmax(0, 1fr) 0 ${details}px`;
+  });
   private readonly tabs = inject(TabsService);
   private readonly path = computed(() => this.tab().path);
 
@@ -119,6 +183,29 @@ export class RepositoryTab {
       if (focused && this.active()) this.repository.refresh();
     });
     inject(DestroyRef).onDestroy(() => unlisten.then((stop) => stop()));
+  }
+
+  /** Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes; text being typed keeps them for itself. */
+  @HostListener('document:keydown', ['$event'])
+  protected history(event: KeyboardEvent) {
+    if (!this.active() || !event.ctrlKey || event.altKey) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, select, .monaco-editor')) return;
+    const key = event.key.toLowerCase();
+    if (key === 'z' && !event.shiftKey) void this.repository.undo();
+    else if (key === 'y' || (key === 'z' && event.shiftKey)) void this.repository.redo();
+    else return;
+    event.preventDefault();
+  }
+
+  /** Drags the border of the sidebar or of the details panel: the width is kept. */
+  protected resize(event: PointerEvent, panel: 'sidebar' | 'details') {
+    const start = this.store.layout()[panel];
+    const [min, max] = panel === 'sidebar' ? [160, 520] : [260, 720];
+    follow(event, (dx) => {
+      const width = start + (panel === 'sidebar' ? dx : -dx);
+      this.store.setLayout({ [panel]: Math.round(Math.min(max, Math.max(min, width))) });
+    });
   }
 
   protected show(path: string) {

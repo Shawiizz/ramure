@@ -20,6 +20,8 @@ export interface MenuItem {
   disabled?: boolean;
   /** An action that throws something away. */
   danger?: boolean;
+  /** A setting that is on: a tick beside it. */
+  checked?: boolean;
 }
 
 /** A menu at the pointer, kept inside the window; it closes on a choice, Esc or a click away. */
@@ -39,7 +41,14 @@ export interface MenuItem {
             (mouseenter)="open.set(entry.children ? $index : null)"
             (click)="choose(entry)"
           >
-            <span>{{ entry.label }}</span>
+            <span class="label">
+              @if (entry.checked !== undefined) {
+                <svg class="tick" [class.on]="entry.checked" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M3 8.5l3 3 7-7" />
+                </svg>
+              }
+              {{ entry.label }}
+            </span>
             @if (entry.children) {
               <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 2l3.5 3L3 8" /></svg>
               @if (open() === $index) {
@@ -125,6 +134,23 @@ export interface MenuItem {
         fill: none;
         stroke: var(--r-text-3);
         stroke-width: 1.4;
+      }
+    }
+    .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tick {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: transparent;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      &.on {
+        stroke: var(--r-accent);
       }
     }
     .separator {

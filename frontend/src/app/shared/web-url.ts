@@ -9,6 +9,20 @@ export function commitUrl(remoteUrl: string, id: string): string | null {
   return `https://${site.host}/${site.path}/${commits}/${id}`;
 }
 
+/** A branch's page on the website hosting its remote; null for a remote that is a folder. */
+export function branchUrl(remoteUrl: string, branch: string): string | null {
+  const site = siteOf(remoteUrl.trim());
+  if (!site) return null;
+  const tree = site.host.includes('bitbucket') ? 'branch' : 'tree';
+  return `https://${site.host}/${site.path}/${tree}/${branch}`;
+}
+
+/** The remote's own page on its website; null for a remote that is a folder. */
+export function remoteUrl(url: string): string | null {
+  const site = siteOf(url.trim());
+  return site && `https://${site.host}/${site.path}`;
+}
+
 function siteOf(url: string): { host: string; path: string } | null {
   // git@github.com:owner/repo.git
   const scp = /^[\w.-]+@([\w.-]+):(?!\/)(.+)$/.exec(url);

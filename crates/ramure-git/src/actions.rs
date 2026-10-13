@@ -1,8 +1,8 @@
 //! What changes a repository or talks to its remotes, through the git command.
 
-use crate::cli::{git, git_answer, git_as};
+use crate::cli::{git, git_answer, git_as, git_with};
 use crate::{Error, Identity, Operation};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Stages `paths`: their changes go into the next commit.
@@ -189,6 +189,178 @@ pub fn abort(dir: &Path, operation: Operation) -> Result<(), Error> {
 /// Goes on with the operation under way, its conflicts resolved and staged.
 pub fn proceed(dir: &Path, operation: Operation, identity: Option<&Identity>) -> Result<(), Error> {
     git_as(dir, &[operation.command(), "--continue"], identity).map(drop)
+}
+
+/// Merges `from` into the branch `into`, switched to first when it is not the current one;
+/// a merge commit, when one is made, is signed by `identity`.
+pub fn merge(dir: &Path, from: &str, into: Option<&str>, identity: Option<&Identity>) -> Result<(), Error> {
+    if let Some(into) = into {
+        git(dir, &["switch", "-q", into])?;
+    }
+    git_as(dir, &["merge", "--no-edit", from], identity).map(drop)
+}
+
+/// Replays the commits of `branch` (switched to first) on top of `onto`.
+pub fn rebase_branch(dir: &Path, branch: &str, onto: &str, identity: Option<&Identity>) -> Result<(), Error> {
+    git_as(dir, &["rebase", onto, branch], identity).map(drop)
+}
+
+/// Deletes the local branch `name`; one whose commits are nowhere else only with `force`.
+pub fn delete_branch(dir: &Path, name: &str, force: bool) -> Result<(), Error> {
+    git(dir, &["branch", if force { "-D" } else { "-d" }, name]).map(drop)
+}
+
+/// Deletes the branch `name` (`origin/feature`) on its remote.
+pub fn delete_remote_branch(dir: &Path, name: &str) -> Result<(), Error> {
+    let (remote, branch) =
+        name.split_once('/').ok_or_else(|| Error::Command(format!("{name} is not a remote branch")))?;
+    git(dir, &["push", "-q", remote, "--delete", branch]).map(drop)
+}
+
+pub fn rename_branch(dir: &Path, name: &str, new_name: &str) -> Result<(), Error> {
+    git(dir, &["branch", "-m", name, new_name]).map(drop)
+}
+
+/// Makes the local branch `name` follow the remote branch `upstream` (`origin/feature`).
+pub fn set_upstream(dir: &Path, name: &str, upstream: &str) -> Result<(), Error> {
+    git(dir, &["branch", "-q", &format!("--set-upstream-to={upstream}"), name]).map(drop)
+}
+
+/// Sends the local branch `name` to its upstream; without one, to `origin`, which it then
+/// follows.
+pub fn push_branch(dir: &Path, name: &str) -> Result<(), Error> {
+    let remote = git_answer(dir, &["config", &format!("branch.{name}.remote")])?;
+    match remote.map(|r| String::from_utf8_lossy(&r).trim().to_owned()) {
+        Some(remote) => git(dir, &["push", &remote, name]).map(drop),
+        None => git(dir, &["push", "-u", "origin", name]).map(drop),
+    }
+}
+
+/// Fetches the remote `name`, dropping the branches it deleted.
+pub fn fetch_remote(dir: &Path, name: &str) -> Result<(), Error> {
+    git(dir, &["fetch", "--prune", name]).map(drop)
+}
+
+pub fn add_remote(dir: &Path, name: &str, url: &str) -> Result<(), Error> {
+    git(dir, &["remote", "add", name, url]).map(drop)
+}
+
+/// Renames the remote `name` and points it at `url`.
+pub fn edit_remote(dir: &Path, name: &str, new_name: &str, url: &str) -> Result<(), Error> {
+    if new_name != name {
+        git(dir, &["remote", "rename", name, new_name])?;
+    }
+    git(dir, &["remote", "set-url", new_name, url]).map(drop)
+}
+
+pub fn remove_remote(dir: &Path, name: &str) -> Result<(), Error> {
+    git(dir, &["remote", "remove", name]).map(drop)
+}
+
+pub fn delete_tag(dir: &Path, name: &str) -> Result<(), Error> {
+    git(dir, &["tag", "-d", name]).map(drop)
+}
+
+/// Sends the tag `name` to the remote `remote`.
+pub fn push_tag(dir: &Path, remote: &str, name: &str) -> Result<(), Error> {
+    git(dir, &["push", "-q", remote, &format!("refs/tags/{name}")]).map(drop)
+}
+
+/// A commit the current branch would replay in a rebase, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Planned {
+    pub id: String,
+    pub summary: String,
+    pub message: String,
+}
+
+/// The commits of the current branch since `onto`, as an interactive rebase would list
+/// them: oldest first, merges left out.
+pub fn rebase_plan(dir: &Path, onto: &str) -> Result<Vec<Planned>, Error> {
+    let range = format!("{onto}..HEAD");
+    let out = git(dir, &["log", "--reverse", "--no-merges", "--format=%H%x1f%s%x1f%B%x1e", &range])?;
+    let text = String::from_utf8_lossy(&out);
+    Ok(text
+        .split('\u{1e}')
+        .map(str::trim)
+        .filter(|record| !record.is_empty())
+        .filter_map(|record| {
+            let mut fields = record.splitn(3, '\u{1f}');
+            Some(Planned {
+                id: fields.next()?.to_owned(),
+                summary: fields.next()?.to_owned(),
+                message: fields.next().unwrap_or_default().trim().to_owned(),
+            })
+        })
+        .collect())
+}
+
+/// What an interactive rebase does with a commit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StepAction {
+    Pick,
+    /// Picked, with the step's message.
+    Reword,
+    /// Joined to the commit before, their messages put together.
+    Squash,
+    /// Joined to the commit before, its message dropped.
+    Fixup,
+    Drop,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Step {
+    pub id: String,
+    pub action: StepAction,
+    pub message: Option<String>,
+}
+
+/// Replays the current branch on top of `onto` as `steps` say, in their order. The new
+/// messages are kept in the repository's own folder: a rebase stopped on conflicts still
+/// finds them when it goes on.
+pub fn rebase_interactive(
+    dir: &Path,
+    onto: &str,
+    steps: &[Step],
+    identity: Option<&Identity>,
+) -> Result<(), Error> {
+    if let Some(first) = steps.iter().find(|s| s.action != StepAction::Drop) {
+        if matches!(first.action, StepAction::Squash | StepAction::Fixup) {
+            return Err(Error::Command(
+                "The first commit kept cannot be squashed into the one before it.".into(),
+            ));
+        }
+    }
+    let git_dir = String::from_utf8_lossy(&git(dir, &["rev-parse", "--absolute-git-dir"])?).trim().to_owned();
+    let work = Path::new(&git_dir).join("ramure-rebase");
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(&work).map_err(|e| Error::Command(format!("{}: {e}", work.display())))?;
+    let write = |name: &str, text: &str| {
+        let path = work.join(name);
+        std::fs::write(&path, text).map_err(|e| Error::Command(format!("{}: {e}", path.display())))?;
+        // the shell git runs the commands in reads forward slashes
+        Ok::<_, Error>(path.to_string_lossy().replace('\\', "/"))
+    };
+    let mut todo = String::new();
+    for (i, step) in steps.iter().enumerate() {
+        let word = match step.action {
+            StepAction::Pick | StepAction::Reword => "pick",
+            StepAction::Squash => "squash",
+            StepAction::Fixup => "fixup",
+            StepAction::Drop => "drop",
+        };
+        todo.push_str(&format!("{word} {}\n", step.id));
+        if let (StepAction::Reword, Some(message)) = (step.action, &step.message) {
+            let file = write(&format!("message-{i}"), message)?;
+            todo.push_str(&format!("exec git commit --amend --only --quiet -F \"{file}\"\n"));
+        }
+    }
+    let todo = write("todo", &todo)?;
+    let editor = format!("cp \"{todo}\"");
+    git_with(dir, &["rebase", "-i", onto], identity, &[("GIT_SEQUENCE_EDITOR", &editor)]).map(drop)
 }
 
 fn has_commits(dir: &Path) -> Result<bool, Error> {

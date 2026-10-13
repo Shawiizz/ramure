@@ -2,9 +2,12 @@
 //! Every command names the repository by its path; those that change it answer with its
 //! new state.
 
-use ramure_git::actions::Reset;
-use ramure_git::{actions, Change, FileDiff, Identity, Operation, Repository, Side, Snapshot};
+use ramure_git::actions::{Planned, Reset, Step};
+use ramure_git::{
+    actions, Change, FileDiff, Identity, Move, Operation, RefState, Repository, Side, Snapshot, View,
+};
 use serde::Deserialize;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
@@ -12,6 +15,8 @@ use tauri::{AppHandle, Manager, State};
 
 /// Commits read at once, as the settings say.
 static HISTORY_LIMIT: AtomicUsize = AtomicUsize::new(5000);
+/// The names each repository's history is drawn from, as its sidebar sets them.
+static VIEWS: Mutex<BTreeMap<PathBuf, View>> = Mutex::new(BTreeMap::new());
 
 #[derive(Debug, thiserror::Error)]
 enum CommandError {
@@ -30,7 +35,15 @@ impl serde::Serialize for CommandError {
 type Answer<T> = Result<T, CommandError>;
 
 fn snapshot(path: &Path) -> Answer<Snapshot> {
-    Ok(Repository::open(path)?.snapshot(HISTORY_LIMIT.load(Ordering::Relaxed))?)
+    let view = VIEWS.lock().unwrap_or_else(|e| e.into_inner()).get(path).cloned().unwrap_or_default();
+    Ok(Repository::open(path)?.snapshot_with(HISTORY_LIMIT.load(Ordering::Relaxed), &view)?)
+}
+
+/// The names the history of `path` is drawn from, from now on.
+#[tauri::command(async)]
+fn set_view(path: PathBuf, view: View) -> Answer<Snapshot> {
+    VIEWS.lock().unwrap_or_else(|e| e.into_inner()).insert(path.clone(), view);
+    snapshot(&path)
 }
 
 /// The repository holding `path`: its branches, tags, history and working tree.
@@ -230,6 +243,118 @@ fn proceed(path: PathBuf, operation: Operation, identity: Option<Identity>) -> A
     snapshot(&path)
 }
 
+#[tauri::command(async)]
+fn merge(path: PathBuf, from: String, into: Option<String>, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::merge(&path, &from, into.as_deref(), identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn rebase_branch(
+    path: PathBuf,
+    branch: String,
+    onto: String,
+    identity: Option<Identity>,
+) -> Answer<Snapshot> {
+    actions::rebase_branch(&path, &branch, &onto, identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn delete_branch(path: PathBuf, name: String, force: bool) -> Answer<Snapshot> {
+    actions::delete_branch(&path, &name, force)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn delete_remote_branch(path: PathBuf, name: String) -> Answer<Snapshot> {
+    actions::delete_remote_branch(&path, &name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn rename_branch(path: PathBuf, name: String, new_name: String) -> Answer<Snapshot> {
+    actions::rename_branch(&path, &name, &new_name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn set_upstream(path: PathBuf, name: String, upstream: String) -> Answer<Snapshot> {
+    actions::set_upstream(&path, &name, &upstream)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn push_branch(path: PathBuf, name: String) -> Answer<Snapshot> {
+    actions::push_branch(&path, &name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn fetch_remote(path: PathBuf, name: String) -> Answer<Snapshot> {
+    actions::fetch_remote(&path, &name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn add_remote(path: PathBuf, name: String, url: String) -> Answer<Snapshot> {
+    actions::add_remote(&path, &name, &url)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn edit_remote(path: PathBuf, name: String, new_name: String, url: String) -> Answer<Snapshot> {
+    actions::edit_remote(&path, &name, &new_name, &url)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn remove_remote(path: PathBuf, name: String) -> Answer<Snapshot> {
+    actions::remove_remote(&path, &name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn delete_tag(path: PathBuf, name: String) -> Answer<Snapshot> {
+    actions::delete_tag(&path, &name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn push_tag(path: PathBuf, remote: String, name: String) -> Answer<Snapshot> {
+    actions::push_tag(&path, &remote, &name)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn rebase_plan(path: PathBuf, onto: String) -> Answer<Vec<Planned>> {
+    Ok(actions::rebase_plan(&path, &onto)?)
+}
+
+#[tauri::command(async)]
+fn rebase_interactive(
+    path: PathBuf,
+    onto: String,
+    steps: Vec<Step>,
+    identity: Option<Identity>,
+) -> Answer<Snapshot> {
+    actions::rebase_interactive(&path, &onto, &steps, identity.as_ref())?;
+    snapshot(&path)
+}
+
+/// Where HEAD, the branches and the tags are: before and after an action, for undo.
+#[tauri::command(async)]
+fn ref_state(path: PathBuf) -> Answer<RefState> {
+    Ok(ramure_git::ref_state(&path)?)
+}
+
+/// Puts HEAD, the branches and the tags back as `to` has them, from `from`.
+#[tauri::command(async)]
+fn restore(path: PathBuf, to: RefState, from: RefState, how: Move) -> Answer<Snapshot> {
+    ramure_git::restore(&path, &to, &from, how)?;
+    snapshot(&path)
+}
+
 /// The identity git uses when no profile says otherwise.
 #[tauri::command(async)]
 fn global_identity() -> Answer<Identity> {
@@ -341,6 +466,24 @@ pub fn run() {
             tag,
             abort,
             proceed,
+            set_view,
+            merge,
+            rebase_branch,
+            delete_branch,
+            delete_remote_branch,
+            rename_branch,
+            set_upstream,
+            push_branch,
+            fetch_remote,
+            add_remote,
+            edit_remote,
+            remove_remote,
+            delete_tag,
+            push_tag,
+            rebase_plan,
+            rebase_interactive,
+            ref_state,
+            restore,
             global_identity,
             git_version,
             set_history_limit,

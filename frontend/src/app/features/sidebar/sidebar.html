@@ -16,60 +16,127 @@
     />
   </label>
 
+  @if (soloed().length) {
+    <div class="solo">
+      <span>{{
+        soloed().length === 1
+          ? ('Soloing 1 name' | t)
+          : ('Soloing {n} names' | t: { n: soloed().length })
+      }}</span>
+      <button class="r-btn r-btn--ghost" (click)="repository.solo([])">
+        {{ 'Stop soloing' | t }}
+      </button>
+    </div>
+  }
+
   <div class="sections">
     @for (section of shown(); track section.key) {
-      <section>
-        <button
-          class="heading"
-          [class.folded]="!unfolded(section.key)"
-          [attr.aria-expanded]="unfolded(section.key)"
-          (click)="toggle(section.key)"
+      <section [class.moving]="moving() === section.key">
+        <div
+          class="heading-row"
+          draggable="true"
+          (dragstart)="moving.set(section.key)"
+          (dragend)="moving.set(null)"
+          (dragover)="moving() && $event.preventDefault()"
+          (drop)="dropSection(section.key)"
         >
-          <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M3 2l3.5 3L3 8" />
-          </svg>
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
-            @switch (section.key) {
-              @case ('local') {
-                <rect x="2" y="3" width="12" height="8" rx="1" />
-                <path d="M5.5 13.5h5" />
+          <button
+            class="heading"
+            [class.folded]="!unfolded(section.key)"
+            [attr.aria-expanded]="unfolded(section.key)"
+            (click)="toggle(section.key)"
+            [title]="'Drag to move the section' | t"
+          >
+            <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
+              <path d="M3 2l3.5 3L3 8" />
+            </svg>
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+              @switch (section.key) {
+                @case ('local') {
+                  <rect x="2" y="3" width="12" height="8" rx="1" />
+                  <path d="M5.5 13.5h5" />
+                }
+                @case ('remote') {
+                  <path d="M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7 1A2.5 2.5 0 0 0 4.5 12.5z" />
+                }
+                @case ('tag') {
+                  <path d="M2.5 2.5h5l6 6-5 5-6-6z" />
+                  <circle cx="5.5" cy="5.5" r="1" />
+                }
+                @case ('stash') {
+                  <path d="M2.5 9.5v4h11v-4M2.5 9.5l2-6h7l2 6M2.5 9.5h3.5l1 1.5h2l1-1.5h3.5" />
+                }
               }
-              @case ('remote') {
-                <path d="M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7 1A2.5 2.5 0 0 0 4.5 12.5z" />
-              }
-              @case ('tag') {
-                <path d="M2.5 2.5h5l6 6-5 5-6-6z" />
-                <circle cx="5.5" cy="5.5" r="1" />
-              }
-              @case ('stash') {
-                <path d="M2.5 9.5v4h11v-4M2.5 9.5l2-6h7l2 6M2.5 9.5h3.5l1 1.5h2l1-1.5h3.5" />
-              }
-            }
-          </svg>
-          <span class="title">{{ section.title }}</span>
-          <span class="count">{{ section.count }}</span>
-        </button>
+            </svg>
+            <span class="title">{{ section.title }}</span>
+            <span class="count">{{ section.count }}</span>
+          </button>
+          @if (section.key === 'remote') {
+            <button
+              class="r-bar-btn small"
+              (click)="addRemote()"
+              [attr.aria-label]="'Add a remote' | t"
+              [title]="'Add a remote' | t"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+            </button>
+          }
+        </div>
         @if (unfolded(section.key)) {
-          <div class="items">
+          <div
+            #list
+            class="items"
+            [class.sized]="heights()[section.key]"
+            [style.height.px]="heights()[section.key]"
+          >
             @for (group of section.groups; track group.key) {
               @if (group.name !== null) {
-                <button
-                  class="group"
-                  [class.folded]="!unfolded(group.key)"
-                  [attr.aria-expanded]="unfolded(group.key)"
-                  (click)="toggle(group.key)"
-                >
-                  <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
-                    <path d="M3 2l3.5 3L3 8" />
-                  </svg>
-                  <span class="title">{{ group.name }}</span>
-                  <span class="count">{{ group.items.length }}</span>
-                </button>
+                <div class="row" (contextmenu)="menus.open($event, menus.forRemote(group.name))">
+                  <button
+                    class="group"
+                    [class.folded]="!unfolded(group.key)"
+                    [attr.aria-expanded]="unfolded(group.key)"
+                    (click)="toggle(group.key)"
+                  >
+                    <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true">
+                      <path d="M3 2l3.5 3L3 8" />
+                    </svg>
+                    <span class="title">{{ group.name }}</span>
+                    <span class="count">{{ group.items.length }}</span>
+                  </button>
+                  <button
+                    class="r-bar-btn small more"
+                    (click)="
+                      menus.openUnder($any($event.currentTarget), menus.forRemote(group.name))
+                    "
+                    [attr.aria-label]="'Actions on {name}' | t: { name: group.name }"
+                  >
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <circle cx="3.5" cy="8" r="1.2" />
+                      <circle cx="8" cy="8" r="1.2" />
+                      <circle cx="12.5" cy="8" r="1.2" />
+                    </svg>
+                  </button>
+                </div>
               }
               @if (group.name === null || unfolded(group.key)) {
                 <ul [class.nested]="group.name !== null">
                   @for (item of group.items; track item.name + item.target) {
-                    <li [class.stash]="section.key === 'stash'">
+                    @let key = keyOf(section.key, item.name);
+                    <li
+                      class="row"
+                      [class.stash]="section.key === 'stash'"
+                      [class.hidden-name]="key && hidden().has(key)"
+                      [class.drop-target]="
+                        section.key === 'local' && dragging() && dragging() !== item.name
+                      "
+                      [attr.draggable]="section.key === 'local'"
+                      (dragstart)="dragging.set(item.name)"
+                      (dragend)="dragging.set(null)"
+                      (dragover)="section.key === 'local' && dragging() && $event.preventDefault()"
+                      (drop)="dropBranch($event, item.name)"
+                      (contextmenu)="menus.open($event, entriesFor(section.key, item))"
+                    >
                       <button
                         class="item"
                         [class.head]="section.key === 'local' && item.name === head()"
@@ -82,8 +149,27 @@
                             : item.name
                         "
                       >
-                        <span class="dot"></span>
+                        @if (key && hidden().has(key)) {
+                          <svg class="eye" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M2 8s2.2-4 6-4 6 4 6 4-2.2 4-6 4-6-4-6-4zM3 13L13 3" />
+                          </svg>
+                        } @else {
+                          <span class="dot"></span>
+                        }
                         <span class="title">{{ item.label }}</span>
+                      </button>
+                      <button
+                        class="r-bar-btn small more"
+                        (click)="
+                          menus.openUnder($any($event.currentTarget), entriesFor(section.key, item))
+                        "
+                        [attr.aria-label]="'Actions on {name}' | t: { name: item.name }"
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                          <circle cx="3.5" cy="8" r="1.2" />
+                          <circle cx="8" cy="8" r="1.2" />
+                          <circle cx="12.5" cy="8" r="1.2" />
+                        </svg>
                       </button>
                     </li>
                   }
@@ -96,6 +182,12 @@
               <p class="none">{{ 'None' | t }}</p>
             }
           </div>
+          <div
+            class="grip"
+            (pointerdown)="resize($event, section.key, list)"
+            (dblclick)="unsize(section.key)"
+            [title]="'Drag to resize; double-click to fit the list' | t"
+          ></div>
         }
       </section>
     } @empty {

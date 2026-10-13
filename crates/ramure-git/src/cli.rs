@@ -12,7 +12,17 @@ pub(crate) fn git(dir: &Path, args: &[&str]) -> Result<Vec<u8>, Error> {
 
 /// Like [`git`], the commits it makes signed by `identity` rather than the configured one.
 pub(crate) fn git_as(dir: &Path, args: &[&str], identity: Option<&Identity>) -> Result<Vec<u8>, Error> {
-    let output = run(Some(dir), args, identity)?;
+    git_with(dir, args, identity, &[])
+}
+
+/// Like [`git_as`], with variables of its own in its environment.
+pub(crate) fn git_with(
+    dir: &Path,
+    args: &[&str],
+    identity: Option<&Identity>,
+    env: &[(&str, &str)],
+) -> Result<Vec<u8>, Error> {
+    let output = run(Some(dir), args, identity, env)?;
     if output.status.success() {
         Ok(output.stdout)
     } else {
@@ -31,11 +41,16 @@ pub(crate) fn git_global(args: &[&str]) -> Result<Option<Vec<u8>>, Error> {
 }
 
 fn answer(dir: Option<&Path>, args: &[&str]) -> Result<Option<Vec<u8>>, Error> {
-    let output = run(dir, args, None)?;
+    let output = run(dir, args, None, &[])?;
     Ok(output.status.success().then_some(output.stdout))
 }
 
-fn run(dir: Option<&Path>, args: &[&str], identity: Option<&Identity>) -> Result<Output, Error> {
+fn run(
+    dir: Option<&Path>,
+    args: &[&str],
+    identity: Option<&Identity>,
+    env: &[(&str, &str)],
+) -> Result<Output, Error> {
     let mut command = Command::new("git");
     command
         .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
@@ -47,6 +62,7 @@ fn run(dir: Option<&Path>, args: &[&str], identity: Option<&Identity>) -> Result
     if let Some(dir) = dir {
         command.current_dir(dir);
     }
+    command.envs(env.iter().copied());
     if let Some(identity) = identity {
         for role in ["AUTHOR", "COMMITTER"] {
             command

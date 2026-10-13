@@ -36,6 +36,25 @@ pub struct Snapshot {
     pub operation: Option<Operation>,
 }
 
+/// Which branches and tags the history is drawn from, by `kind:name` (`branch:main`,
+/// `remote:origin/main`, `tag:v1.0`): all but the hidden ones, or only the soloed ones.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct View {
+    pub hidden: Vec<String>,
+    pub solo: Vec<String>,
+}
+
+impl View {
+    pub fn shows(&self, key: &str) -> bool {
+        if self.solo.is_empty() {
+            !self.hidden.iter().any(|k| k == key)
+        } else {
+            self.solo.iter().any(|k| k == key)
+        }
+    }
+}
+
 /// A remote and where it fetches from.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,6 +128,11 @@ impl Repository {
 
     /// The repository's state, with its `limit` most recent commits.
     pub fn snapshot(&self, limit: usize) -> Result<Snapshot, Error> {
+        self.snapshot_with(limit, &View::default())
+    }
+
+    /// Like [`snapshot`](Self::snapshot), the history drawn from the names `view` shows.
+    pub fn snapshot_with(&self, limit: usize, view: &View) -> Result<Snapshot, Error> {
         let path = self.repo.workdir().unwrap_or_else(|| self.repo.git_dir()).to_owned();
         let name =
             path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
@@ -120,20 +144,32 @@ impl Repository {
         let tags = collect(refs.tags().map_err(Error::git)?)?;
 
         let head_id = self.repo.head_id().ok().map(|id| id.detach());
+        let head = self.head(head_id)?;
+        let shown = |kind: &str, list: &[Branch]| -> Vec<ObjectId> {
+            list.iter()
+                .filter(|b| view.shows(&format!("{kind}:{}", b.name)))
+                .filter_map(|b| ObjectId::from_hex(b.target.as_bytes()).ok())
+                .collect()
+        };
+        // HEAD's commits are drawn unless its branch is hidden, or others are soloed
+        let head_shown = match &head {
+            Head::Branch { name } => view.shows(&format!("branch:{name}")),
+            _ => view.solo.is_empty(),
+        };
         let tips: Vec<ObjectId> = head_id
+            .filter(|_| head_shown)
             .into_iter()
-            .chain(
-                branches
-                    .iter()
-                    .chain(&remote_branches)
-                    .chain(&tags)
-                    .filter_map(|b| ObjectId::from_hex(b.target.as_bytes()).ok()),
-            )
+            .chain(shown("branch", &branches))
+            .chain(shown("remote", &remote_branches))
+            .chain(shown("tag", &tags))
             .collect();
         let mut commits = self.history(&tips, limit)?;
         let (status, stashes) = if self.repo.workdir().is_some() {
             let (stashes, drawn) = stashes(&path)?;
-            commits.extend(drawn);
+            // a soloed history keeps to its own names
+            if view.solo.is_empty() {
+                commits.extend(drawn);
+            }
             (status(&path)?, stashes)
         } else {
             (Status::default(), Vec::new())
@@ -145,7 +181,7 @@ impl Repository {
         Ok(Snapshot {
             name,
             path,
-            head: self.head(head_id)?,
+            head,
             branches,
             remote_branches,
             tags,

@@ -1,11 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
-import { NO_SETTINGS, Settings, parseSettings } from '../models/settings';
+import { Layout, NO_SETTINGS, Settings, parseSettings } from '../models/settings';
 
 /** What Ramure remembers between runs, read once at startup and written on every change. */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   readonly settings = signal<Settings>(NO_SETTINGS);
+  readonly layout = computed(() => this.settings().layout);
   private writing: Promise<void> = Promise.resolve();
   private queued = false;
 
@@ -15,6 +16,11 @@ export class SettingsService {
     } catch (e) {
       console.error('settings not read', e);
     }
+  }
+
+  /** The panels' sizes and order, changed in part. */
+  setLayout(change: Partial<Layout>) {
+    this.update((s) => ({ ...s, layout: { ...s.layout, ...change } }));
   }
 
   update(change: (settings: Settings) => Settings) {

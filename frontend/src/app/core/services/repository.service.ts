@@ -1,17 +1,25 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
+import { t } from '../i18n/i18n';
 import {
+  ALL_SHOWN,
   Change,
   Commit,
   FileDiff,
+  Move,
+  Planned,
   RefLabel,
+  RefState,
   Reset,
   Snapshot,
   Stash,
+  Step,
+  View,
   Where,
 } from '../models/repository';
 import { PreferencesService } from './preferences.service';
 import { ProfilesService } from './profiles.service';
+import { SettingsService } from './settings.service';
 
 /** The selection standing for the working tree's changes, above the history. */
 export const WIP = 'wip';
@@ -26,6 +34,18 @@ export interface OpenDiff {
 /** An exchange with a remote, under way. */
 export type Exchange = 'fetch' | 'pull' | 'push';
 
+/** An action done, and how to take it back: where the names were before it and after. */
+export interface Undoable {
+  /** What was done, to complete "Undo …" and "Redo …". */
+  what: string;
+  before: RefState;
+  after: RefState;
+  how: Move;
+}
+
+/** Actions undone at most, back from the last. */
+const UNDO_DEPTH = 50;
+
 /** The commit or stash a diff is read in, null for the working tree. */
 function sourceOf(where: Where): string | null {
   return where.kind === 'commit' || where.kind === 'stash' ? where.id : null;
@@ -39,6 +59,10 @@ function sourceOf(where: Where): string | null {
 export class RepositoryService {
   private readonly profiles = inject(ProfilesService);
   private readonly preferences = inject(PreferencesService);
+  private readonly store = inject(SettingsService);
+  /** What can be undone, the last last; what was undone, to redo. */
+  readonly undoable = signal<Undoable[]>([]);
+  readonly redoable = signal<Undoable[]>([]);
   readonly snapshot = signal<Snapshot | null>(null);
   readonly loading = signal(false);
   /** The last failure, as git told it. */
@@ -59,6 +83,12 @@ export class RepositoryService {
   readonly selected = computed<Commit | null>(() => {
     const id = this.selectedId();
     return this.snapshot()?.commits.find((c) => c.id === id) ?? null;
+  });
+
+  /** The names hidden or soloed in this repository's history. */
+  readonly view = computed<View>(() => {
+    const path = this.snapshot()?.path;
+    return (path && this.store.settings().views[path]) || ALL_SHOWN;
   });
 
   /** The stashes by the id of the commit that holds each. */
@@ -94,8 +124,12 @@ export class RepositoryService {
     const labels = new Map<string, RefLabel[]>();
     if (!snapshot) return labels;
     const head = snapshot.head.kind === 'branch' ? snapshot.head.name : null;
-    const add = (target: string, label: RefLabel) =>
-      labels.set(target, [...(labels.get(target) ?? []), label]);
+    // a name hidden from the history leaves the graph too
+    const hidden = new Set(this.view().hidden);
+    const add = (target: string, label: RefLabel) => {
+      const key = `${label.kind === 'branch' ? 'branch' : label.kind}:${label.name}`;
+      if (!hidden.has(key)) labels.set(target, [...(labels.get(target) ?? []), label]);
+    };
     const local = new Map(snapshot.branches.map((b) => [b.name, b.target]));
     const merged = new Set<string>();
     for (const b of snapshot.remoteBranches) {
@@ -139,9 +173,15 @@ export class RepositoryService {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const snapshot = await invoke<Snapshot>('open_repository', { path });
+      let snapshot = await invoke<Snapshot>('open_repository', { path });
       this.diff.set(null);
       this.selectedId.set(null);
+      this.undoable.set([]);
+      this.redoable.set([]);
+      const view = this.store.settings().views[snapshot.path];
+      if (view && (view.hidden.length || view.solo.length)) {
+        snapshot = await invoke<Snapshot>('set_view', { path: snapshot.path, view });
+      }
       this.apply(snapshot);
       return true;
     } catch (e) {
@@ -187,7 +227,12 @@ export class RepositoryService {
     const summary = this.summary().trim();
     const description = this.description().trim();
     const message = description ? `${summary}\n\n${description}` : summary;
-    if (!(await this.change('commit', { message, identity: this.profiles.identity() }))) return;
+    const done = await this.change(
+      'commit',
+      { message, identity: this.profiles.identity() },
+      { what: t('the commit “{s}”', { s: summary }), how: 'soft' },
+    );
+    if (!done) return;
     this.summary.set('');
     this.description.set('');
     if (!this.changes()) this.select(this.headId() ?? WIP);
@@ -218,35 +263,183 @@ export class RepositoryService {
   }
 
   createBranchAt(name: string, start: string | null) {
-    return this.change('create_branch', { name, start });
+    return this.change(
+      'create_branch',
+      { name, start },
+      this.undoing(t('the new branch {name}', { name })),
+    );
   }
 
   /** HEAD on the commit `id`, on no branch. */
   checkoutCommit(id: string) {
-    return this.change('checkout_commit', { id });
+    const what = { id: id.slice(0, 7) };
+    return this.change('checkout_commit', { id }, this.undoing(t('the switch to {id}', what)));
   }
 
   cherryPick(id: string) {
-    return this.change('cherry_pick', { id, identity: this.profiles.identity() });
+    const what = this.undoing(t('the cherry-pick of {id}', { id: id.slice(0, 7) }));
+    return this.change('cherry_pick', { id, identity: this.profiles.identity() }, what);
   }
 
   revert(id: string) {
-    return this.change('revert', { id, identity: this.profiles.identity() });
+    const what = this.undoing(t('the revert of {id}', { id: id.slice(0, 7) }));
+    return this.change('revert', { id, identity: this.profiles.identity() }, what);
   }
 
   /** The current branch's own commits replayed on top of `onto`. */
   rebase(onto: string) {
-    return this.change('rebase', { onto, identity: this.profiles.identity() });
+    const what = this.undoing(t('the rebase onto {id}', { id: onto.slice(0, 7) }));
+    return this.change('rebase', { onto, identity: this.profiles.identity() }, what);
   }
 
   /** The current branch moved to the commit `id`. */
   reset(id: string, mode: Reset) {
-    return this.change('reset', { id, mode });
+    const what = t('the reset to {id}', { id: id.slice(0, 7) });
+    return this.change('reset', { id, mode }, { what, how: mode === 'hard' ? 'keep' : 'soft' });
   }
 
   /** A tag on the commit `id`; annotated with a message. */
   tag(name: string, id: string, message: string | null) {
-    return this.change('tag', { name, id, message, identity: this.profiles.identity() });
+    const args = { name, id, message, identity: this.profiles.identity() };
+    return this.change('tag', args, this.undoing(t('the tag {name}', { name })));
+  }
+
+  /** Merges `from` into `into` (switched to first), or into the current branch. */
+  merge(from: string, into: string | null) {
+    const args = { from, into, identity: this.profiles.identity() };
+    return this.change('merge', args, this.undoing(t('the merge of {name}', { name: from })));
+  }
+
+  /** Replays `branch` (switched to first) on top of `onto`. */
+  rebaseBranch(branch: string, onto: string) {
+    const args = { branch, onto, identity: this.profiles.identity() };
+    return this.change(
+      'rebase_branch',
+      args,
+      this.undoing(t('the rebase of {name}', { name: branch })),
+    );
+  }
+
+  deleteBranch(name: string, force: boolean) {
+    return this.change(
+      'delete_branch',
+      { name, force },
+      this.undoing(t('the deletion of {name}', { name })),
+    );
+  }
+
+  deleteRemoteBranch(name: string) {
+    return this.change('delete_remote_branch', { name });
+  }
+
+  renameBranch(name: string, newName: string) {
+    const what = this.undoing(t('the renaming of {name}', { name }));
+    return this.change('rename_branch', { name, newName }, what);
+  }
+
+  setUpstream(name: string, upstream: string) {
+    return this.change('set_upstream', { name, upstream });
+  }
+
+  pushBranch(name: string) {
+    return this.change('push_branch', { name });
+  }
+
+  fetchRemote(name: string) {
+    return this.change('fetch_remote', { name });
+  }
+
+  addRemote(name: string, url: string) {
+    return this.change('add_remote', { name, url });
+  }
+
+  editRemote(name: string, newName: string, url: string) {
+    return this.change('edit_remote', { name, newName, url });
+  }
+
+  removeRemote(name: string) {
+    return this.change('remove_remote', { name });
+  }
+
+  deleteTag(name: string) {
+    return this.change('delete_tag', { name }, this.undoing(t('the deletion of {name}', { name })));
+  }
+
+  pushTag(remote: string, name: string) {
+    return this.change('push_tag', { remote, name });
+  }
+
+  /** The commits an interactive rebase onto `onto` replays, oldest first. */
+  async rebasePlan(onto: string): Promise<Planned[]> {
+    const path = this.snapshot()?.path;
+    if (!path) return [];
+    try {
+      return await invoke<Planned[]>('rebase_plan', { path, onto });
+    } catch (e) {
+      this.error.set(String(e));
+      return [];
+    }
+  }
+
+  rebaseInteractive(onto: string, steps: Step[]) {
+    const args = { onto, steps, identity: this.profiles.identity() };
+    return this.change('rebase_interactive', args, this.undoing(t('the interactive rebase')));
+  }
+
+  /** Hides a name from the history, or shows it again. */
+  hide(key: string, hidden: boolean) {
+    const view = this.view();
+    const rest = view.hidden.filter((k) => k !== key);
+    return this.setView({ ...view, hidden: hidden ? [...rest, key] : rest });
+  }
+
+  /** Draws the history from these names only; none draws it from every name again. */
+  solo(keys: string[]) {
+    return this.setView({ ...this.view(), solo: keys });
+  }
+
+  private async setView(view: View) {
+    const path = this.snapshot()?.path;
+    if (!path) return;
+    this.store.update((s) => ({ ...s, views: { ...s.views, [path]: view } }));
+    try {
+      this.apply(await invoke<Snapshot>('set_view', { path, view }));
+    } catch (e) {
+      this.error.set(String(e));
+    }
+  }
+
+  /** Takes back the last action undoable. */
+  undo() {
+    const last = this.undoable().at(-1);
+    if (!last) return Promise.resolve(false);
+    return this.travel(last, last.before, last.after, this.undoable, this.redoable);
+  }
+
+  /** Does again the last action undone. */
+  redo() {
+    const last = this.redoable().at(-1);
+    if (!last) return Promise.resolve(false);
+    return this.travel(last, last.after, last.before, this.redoable, this.undoable);
+  }
+
+  private async travel(
+    entry: Undoable,
+    to: RefState,
+    from: RefState,
+    taken: typeof this.undoable,
+    given: typeof this.undoable,
+  ): Promise<boolean> {
+    const done = await this.change('restore', { to, from, how: entry.how });
+    // done or not (the repository moved on meanwhile), it is off this list
+    taken.update((list) => list.slice(0, -1));
+    if (done) given.update((list) => [...list, entry]);
+    return done;
+  }
+
+  /** An action undone by putting the names back, the files following. */
+  private undoing(what: string): { what: string; how: Move } {
+    return { what, how: 'keep' };
   }
 
   /** Gives up what git stopped in the middle of. */
@@ -263,7 +456,11 @@ export class RepositoryService {
   }
 
   checkout(name: string, remote: boolean) {
-    return this.change('checkout', { name, remote });
+    return this.change(
+      'checkout',
+      { name, remote },
+      this.undoing(t('the switch to {id}', { id: name })),
+    );
   }
 
   /** Switches to a branch beside its commit; a remote one gives a local one following it. */
@@ -286,7 +483,12 @@ export class RepositoryService {
   async exchangeWith(kind: Exchange): Promise<void> {
     this.exchange.set(kind);
     try {
-      await this.change(kind, kind === 'pull' ? { identity: this.profiles.identity() } : {});
+      if (kind === 'pull') {
+        const what = { what: t('the pull'), how: 'keep' as const };
+        await this.change(kind, { identity: this.profiles.identity() }, what);
+      } else {
+        await this.change(kind, {});
+      }
     } finally {
       this.exchange.set(null);
     }
@@ -334,15 +536,29 @@ export class RepositoryService {
    * Runs a command that changes the repository and takes its new state; false on failure,
    * after which the repository is read again: git may have stopped halfway, on conflicts.
    */
-  private async change(command: string, args: Record<string, unknown>): Promise<boolean> {
+  private async change(
+    command: string,
+    args: Record<string, unknown>,
+    undoable?: { what: string; how: Move },
+  ): Promise<boolean> {
     const path = this.snapshot()?.path;
     if (!path) return false;
     this.working.set(true);
     this.error.set(null);
     let done = false;
     try {
+      const before = undoable && (await invoke<RefState>('ref_state', { path }));
       this.apply(await invoke<Snapshot>(command, { path, ...args }));
       done = true;
+      if (undoable && before) {
+        const after = await invoke<RefState>('ref_state', { path });
+        if (JSON.stringify(after) !== JSON.stringify(before)) {
+          this.undoable.update((list) =>
+            [...list, { ...undoable, before, after }].slice(-UNDO_DEPTH),
+          );
+          this.redoable.set([]);
+        }
+      }
     } catch (e) {
       this.error.set(String(e));
     } finally {

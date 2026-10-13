@@ -26,6 +26,41 @@ export type Operation = 'rebase' | 'cherryPick' | 'revert' | 'merge';
 /** How far a reset goes besides moving the branch (`ramure_git::actions::Reset`). */
 export type Reset = 'soft' | 'mixed' | 'hard';
 
+/**
+ * Which names the history is drawn from, by `kind:name` (`branch:main`,
+ * `remote:origin/main`, `tag:v1.0`): all but the hidden ones, or only the soloed ones.
+ */
+export interface View {
+  hidden: string[];
+  solo: string[];
+}
+
+export const ALL_SHOWN: View = { hidden: [], solo: [] };
+
+/** Where HEAD and every branch and tag are (`ramure_git::RefState`), for undo and redo. */
+export interface RefState {
+  head: { kind: 'branch'; name: string } | { kind: 'detached'; id: string };
+  refs: Record<string, string>;
+}
+
+/** How the checked-out branch moves back: its files kept as they are, or following. */
+export type Move = 'soft' | 'keep';
+
+/** A commit an interactive rebase replays (`ramure_git::actions::Planned`). */
+export interface Planned {
+  id: string;
+  summary: string;
+  message: string;
+}
+
+export type StepAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop';
+
+export interface Step {
+  id: string;
+  action: StepAction;
+  message: string | null;
+}
+
 /** Work put aside (`ramure_git::Stash`). */
 export interface Stash {
   /** `stash@{index}`, 0 the newest. */

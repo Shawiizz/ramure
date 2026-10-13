@@ -15,6 +15,12 @@ tags at hand, the commit you pick in detail.
 - A commit's menu: check it out, branch or tag it (plain or annotated), cherry-pick or
   revert it, rebase or reset the current branch onto it, copy its id or its web link; a
   rebase, cherry-pick, revert or merge stopped on conflicts can be aborted or continued.
+- Menus (right click or ⋯) for branches, remote branches, remotes and tags: merge, rebase,
+  interactive rebase, rename, delete, push, set an upstream, hide from the history or solo;
+  a local branch dropped on another merges or rebases them.
+- Undo and redo (Ctrl+Z, Ctrl+Y) of commits, merges, rebases, resets, branches and tags.
+- A search through the commits (Ctrl+F); the history's columns shown, hidden and reordered;
+  the panels resized, the sidebar's sections reordered and resized.
 
 ## Stack
 

@@ -1,0 +1,134 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.dialog {
+  width: min(760px, calc(100vw - 48px));
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--r-line-strong);
+  border-radius: var(--r-radius-panel);
+  background: var(--r-base);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+}
+
+header {
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--r-line);
+  h2 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  p {
+    margin: 0;
+    color: var(--r-text-2);
+  }
+}
+
+.rows {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 8px;
+  border-radius: var(--r-radius);
+  cursor: grab;
+  &:hover {
+    background: var(--r-hover);
+  }
+  &.dragging {
+    opacity: 0.4;
+  }
+  &.joined {
+    margin-left: 28px;
+  }
+  &.dropped .summary,
+  &.dropped .sha {
+    color: var(--r-text-3);
+    text-decoration: line-through;
+  }
+}
+
+.grip {
+  flex: none;
+  color: var(--r-text-3);
+  letter-spacing: -3px;
+}
+
+select {
+  flex: none;
+  width: 200px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: var(--r-radius);
+  background: var(--r-raised);
+  color: var(--r-text);
+  font: inherit;
+  cursor: pointer;
+  &:focus {
+    outline: none;
+    border-color: var(--r-accent);
+  }
+}
+
+.sha {
+  flex: none;
+  color: var(--r-text-3);
+}
+
+.summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--r-accent);
+  border-radius: var(--r-radius);
+  background: var(--r-void);
+  color: var(--r-text);
+  font: inherit;
+  resize: vertical;
+  user-select: text;
+  cursor: text;
+  &:focus {
+    outline: none;
+  }
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--r-line);
+}
+
+.problem {
+  color: var(--r-lane-1);
+}
+
+.space {
+  flex: 1;
+}

@@ -12,6 +12,37 @@
     <div class="tools">
       <button
         class="tool"
+        (click)="repository.undo()"
+        [disabled]="repository.working() || !repository.undoable().length"
+        [title]="
+          repository.undoable().length
+            ? ('Undo {what} (Ctrl+Z)' | t: { what: repository.undoable().at(-1)!.what })
+            : ('Nothing to undo' | t)
+        "
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M5.5 3L2.5 6l3 3M2.5 6h7a4 4 0 0 1 0 8H7" />
+        </svg>
+        <span>{{ 'Undo' | t }}</span>
+      </button>
+      <button
+        class="tool"
+        (click)="repository.redo()"
+        [disabled]="repository.working() || !repository.redoable().length"
+        [title]="
+          repository.redoable().length
+            ? ('Redo {what} (Ctrl+Y)' | t: { what: repository.redoable().at(-1)!.what })
+            : ('Nothing to redo' | t)
+        "
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M10.5 3l3 3-3 3M13.5 6h-7a4 4 0 0 0 0 8H9" />
+        </svg>
+        <span>{{ 'Redo' | t }}</span>
+      </button>
+      <span class="divider"></span>
+      <button
+        class="tool"
         (click)="repository.exchangeWith('fetch')"
         [disabled]="repository.working()"
         [title]="'Fetch every remote' | t"

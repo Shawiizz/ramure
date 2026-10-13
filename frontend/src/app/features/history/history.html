@@ -1,182 +1,320 @@
 <div class="history">
-  <div class="columns" aria-hidden="true">
-    <span class="refs">{{ 'Branch / tag' | t }}</span>
-    <span class="graph" [style.width.px]="graphWidth()">
-      {{ 'Graph' | t }}
+  @if (searching()) {
+    <div class="search" role="search">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.5" />
+        <path d="M10.5 10.5l3 3" />
+      </svg>
+      <input
+        #search
+        [value]="query()"
+        (input)="query.set($any($event.target).value); at.set(0); go(0)"
+        (keydown.enter)="go($any($event).shiftKey ? -1 : 1)"
+        (keydown.escape)="closeSearch(); $event.stopPropagation()"
+        [placeholder]="'Search the commits: message, author, id' | t"
+        [attr.aria-label]="'Search the commits' | t"
+        spellcheck="false"
+      />
+      <span class="found r-mono">
+        @if (query().trim()) {
+          {{ matches().length ? at() + 1 + ' / ' + matches().length : ('None' | t) }}
+        }
+      </span>
+      <button
+        class="r-bar-btn icon"
+        [disabled]="!matches().length"
+        (click)="go(-1)"
+        [attr.aria-label]="'Previous match' | t"
+        [title]="'Previous match (Shift+Enter)' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
+      </button>
+      <button
+        class="r-bar-btn icon"
+        [disabled]="!matches().length"
+        (click)="go(1)"
+        [attr.aria-label]="'Next match' | t"
+        [title]="'Next match (Enter)' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4" /></svg>
+      </button>
+      <button
+        class="r-bar-btn icon"
+        (click)="closeSearch()"
+        [attr.aria-label]="'Close the search (Esc)' | t"
+        [title]="'Close the search (Esc)' | t"
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+      </button>
+    </div>
+  }
+
+  <div class="columns">
+    @for (column of columns(); track column) {
       <span
-        class="resize"
-        (pointerdown)="resize($event)"
-        [title]="'Drag to show more lanes' | t"
-      ></span>
-    </span>
-    <span class="message">{{ 'Commit message' | t }}</span>
-    <span class="author">{{ 'Author' | t }}</span>
-    <span class="date">{{ 'Date' | t }}</span>
-    <span class="sha">SHA</span>
+        class="head"
+        [class]="column"
+        [class.dragging]="moving() === column"
+        [class.tie-left]="column === 'refs' && tie() === 'left'"
+        [class.after-graph]="column === 'refs' && tie() === 'right'"
+        [style.width.px]="column === 'graph' ? graphWidth() : null"
+        draggable="true"
+        (dragstart)="moving.set(column)"
+        (dragend)="moving.set(null)"
+        (dragover)="$event.preventDefault()"
+        (drop)="$event.preventDefault(); dropColumn(column)"
+        [title]="'Drag to move the column' | t"
+      >
+        {{ titles()[column] }}
+        @if (column === 'graph') {
+          <span
+            class="resize"
+            draggable="false"
+            (dragstart)="$event.preventDefault()"
+            (pointerdown)="resize($event)"
+            [title]="'Drag to show more lanes' | t"
+          ></span>
+        }
+      </span>
+    }
+    <button
+      #settings
+      class="r-bar-btn icon settings"
+      (click)="columnsMenu(settings)"
+      [attr.aria-label]="'What the history shows' | t"
+      [title]="'What the history shows' | t"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M9.8 4.9L10.3 2.3L13.7 2.3L14.2 4.9L15.5 5.5L17.7 3.9L20.1 6.3L18.5 8.5L19.1 9.8L21.7 10.3L21.7 13.7L19.1 14.2L18.5 15.5L20.1 17.7L17.7 20.1L15.5 18.5L14.2 19.1L13.7 21.7L10.3 21.7L9.8 19.1L8.5 18.5L6.3 20.1L3.9 17.7L5.5 15.5L4.9 14.2L2.3 13.7L2.3 10.3L4.9 9.8L5.5 8.5L3.9 6.3L6.3 3.9L8.5 5.5Z"
+        />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
   </div>
+
   @if (lines().length || wip()) {
     <div #rows class="rows" role="listbox" [attr.aria-label]="'History' | t">
       @if (wip(); as wip) {
-        <button
+        <div
           role="option"
+          tabindex="0"
           class="row wip"
           [class.selected]="repository.selectedId() === wipId"
           [attr.aria-selected]="repository.selectedId() === wipId"
           (click)="repository.select(wipId)"
+          (keydown.enter)="repository.select(wipId)"
         >
-          <span class="refs"></span>
-          <svg class="graph" [attr.width]="graphWidth()" [attr.height]="row" aria-hidden="true">
-            @if (wip.linked) {
-              <path
-                class="wip-link"
-                [attr.d]="'M' + wip.x + ' ' + (row / 2 + node) + 'V' + row"
-                [style.stroke]="wip.color"
-              />
+          @for (column of columns(); track column) {
+            @switch (column) {
+              @case ('graph') {
+                <svg
+                  class="graph"
+                  [attr.width]="graphWidth()"
+                  [attr.height]="row"
+                  aria-hidden="true"
+                >
+                  @if (wip.linked) {
+                    <path
+                      class="wip-link"
+                      [attr.d]="'M' + wip.x + ' ' + (row / 2 + node) + 'V' + row"
+                      [style.stroke]="wip.color"
+                    />
+                  }
+                  <circle class="wip-dot" [attr.cx]="wip.x" [attr.cy]="row / 2" [attr.r]="node" />
+                </svg>
+              }
+              @case ('message') {
+                <span class="message">
+                  <span class="wip-tag">WIP</span>
+                  <span class="summary">{{
+                    repository.changes() === 1
+                      ? ('1 changed file' | t)
+                      : ('{n} changed files' | t: { n: repository.changes() })
+                  }}</span>
+                </span>
+              }
+              @default {
+                <span [class]="column"></span>
+              }
             }
-            <circle class="wip-dot" [attr.cx]="wip.x" [attr.cy]="row / 2" [attr.r]="node" />
-          </svg>
-          <span class="message">
-            <span class="wip-tag">WIP</span>
-            <span class="summary">{{
-              repository.changes() === 1
-                ? ('1 changed file' | t)
-                : ('{n} changed files' | t: { n: repository.changes() })
-            }}</span>
-          </span>
-          <span class="author"></span>
-          <span class="date"></span>
-          <span class="sha"></span>
-        </button>
+          }
+          <span class="actions"></span>
+        </div>
       }
       <div [style.height.px]="range().start * row"></div>
       @for (line of shown(); track line.commit.id) {
         @let selected = line.commit.id === repository.selectedId();
         @let s = line.shape;
-        <button
+        <div
           role="option"
+          tabindex="0"
           class="row"
           [class.selected]="selected"
+          [class.match]="matching().has(line.commit.id)"
           [attr.aria-selected]="selected"
           (contextmenu)="openMenu($event, line.commit)"
           (click)="repository.select(line.commit.id)"
+          (keydown.enter)="repository.select(line.commit.id)"
         >
-          <span class="refs" (mouseenter)="unfold($event, line)">
-            @if (line.labels.length) {
-              <app-ref-pill
-                [label]="line.labels[0]"
-                [color]="s.color"
-                (dblclick)="repository.switchTo(line.labels[0])"
-              />
-              @if (line.labels.length > 1) {
-                <span class="more" [style.--lane]="s.color">+{{ line.labels.length - 1 }}</span>
+          @for (column of columns(); track column) {
+            @switch (column) {
+              @case ('refs') {
+                <span
+                  class="refs"
+                  [class.tie-left]="tie() === 'left'"
+                  [class.after-graph]="tie() === 'right'"
+                  (mouseenter)="unfold($event, line)"
+                >
+                  @if (line.labels.length) {
+                    @if (tie() === 'right') {
+                      <span class="tie" [style.background]="s.color"></span>
+                    }
+                    <app-ref-pill
+                      [label]="line.labels[0]"
+                      [color]="s.color"
+                      (dblclick)="repository.switchTo(line.labels[0])"
+                      (contextmenu)="openLabelMenu($event, line.labels[0])"
+                    />
+                    @if (line.labels.length > 1) {
+                      <span class="more" [style.--lane]="s.color"
+                        >+{{ line.labels.length - 1 }}</span
+                      >
+                    }
+                    @if (tie() === 'left') {
+                      <span class="tie" [style.background]="s.color"></span>
+                    }
+                  }
+                </span>
               }
-              <span class="tie" [style.background]="s.color"></span>
-            }
-          </span>
-          <svg class="graph" [attr.width]="graphWidth()" [attr.height]="row" aria-hidden="true">
-            <rect
-              class="band"
-              [attr.x]="s.cx"
-              y="3"
-              [attr.width]="graphWidth() - s.cx"
-              [attr.height]="row - 6"
-              [style.fill]="s.color"
-            />
-            @if (line.labels.length) {
-              <path
-                class="tie-line"
-                [attr.d]="'M0 ' + row / 2 + 'H' + s.cx"
-                [style.stroke]="s.color"
-              />
-            }
-            @for (p of s.paths; track $index) {
-              <path [attr.d]="p.d" [style.stroke]="p.color" />
-            }
-            @if (range().start + $index === 0 && wip()?.linked) {
-              <path
-                class="from-wip"
-                [attr.d]="'M' + s.cx + ' 0V' + row / 2"
-                [style.stroke]="s.color"
-              />
-            }
-            @switch (s.node) {
-              @case ('stash') {
-                <rect
-                  class="stash-box"
-                  [attr.x]="s.cx - stashSide / 2"
-                  [attr.y]="row / 2 - stashSide / 2"
-                  [attr.width]="stashSide"
-                  [attr.height]="stashSide"
-                  rx="4"
-                  [style.stroke]="s.color"
-                />
-              }
-              @case ('merge') {
-                <circle
-                  class="merge"
-                  [attr.cx]="s.cx"
-                  [attr.cy]="row / 2"
-                  [attr.r]="mergeR"
-                  [style.stroke]="s.color"
-                />
-              }
-              @default {
-                <circle
-                  [attr.cx]="s.cx"
-                  [attr.cy]="row / 2"
-                  [attr.r]="node"
-                  [style.fill]="s.color"
-                />
-                @if (gravatar.url(line.commit.email); as picture) {
-                  <clipPath [attr.id]="clip + line.commit.id">
-                    <circle [attr.cx]="s.cx" [attr.cy]="row / 2" [attr.r]="pictureR" />
-                  </clipPath>
-                  <image
-                    [attr.href]="picture"
-                    [attr.x]="s.cx - pictureR"
-                    [attr.y]="row / 2 - pictureR"
-                    [attr.width]="pictureR * 2"
-                    [attr.height]="pictureR * 2"
-                    [attr.clip-path]="'url(#' + clip + line.commit.id + ')'"
-                    preserveAspectRatio="xMidYMid slice"
-                    (error)="gravatar.notFound(line.commit.email)"
+              @case ('graph') {
+                <svg
+                  class="graph"
+                  [attr.width]="graphWidth()"
+                  [attr.height]="row"
+                  aria-hidden="true"
+                >
+                  <rect
+                    class="band"
+                    [attr.x]="s.cx"
+                    y="3"
+                    [attr.width]="graphWidth() - s.cx"
+                    [attr.height]="row - 6"
+                    [style.fill]="s.color"
                   />
-                } @else {
-                  <text [attr.x]="s.cx" [attr.y]="row / 2">{{ line.initials }}</text>
-                }
+                  @if (line.labels.length && tie()) {
+                    <path
+                      class="tie-line"
+                      [attr.d]="
+                        tie() === 'left'
+                          ? 'M0 ' + row / 2 + 'H' + s.cx
+                          : 'M' + s.cx + ' ' + row / 2 + 'H' + graphWidth()
+                      "
+                      [style.stroke]="s.color"
+                    />
+                  }
+                  @for (p of s.paths; track $index) {
+                    <path [attr.d]="p.d" [style.stroke]="p.color" />
+                  }
+                  @if (range().start + $index === 0 && wip()?.linked) {
+                    <path
+                      class="from-wip"
+                      [attr.d]="'M' + s.cx + ' 0V' + row / 2"
+                      [style.stroke]="s.color"
+                    />
+                  }
+                  @switch (s.node) {
+                    @case ('stash') {
+                      <rect
+                        class="stash-box"
+                        [attr.x]="s.cx - stashSide / 2"
+                        [attr.y]="row / 2 - stashSide / 2"
+                        [attr.width]="stashSide"
+                        [attr.height]="stashSide"
+                        rx="4"
+                        [style.stroke]="s.color"
+                      />
+                    }
+                    @case ('merge') {
+                      <circle
+                        class="merge"
+                        [attr.cx]="s.cx"
+                        [attr.cy]="row / 2"
+                        [attr.r]="mergeR"
+                        [style.stroke]="s.color"
+                      />
+                    }
+                    @default {
+                      <circle
+                        [attr.cx]="s.cx"
+                        [attr.cy]="row / 2"
+                        [attr.r]="node"
+                        [style.fill]="s.color"
+                      />
+                      @if (pictures() && gravatar.url(line.commit.email); as picture) {
+                        <clipPath [attr.id]="clip + line.commit.id">
+                          <circle [attr.cx]="s.cx" [attr.cy]="row / 2" [attr.r]="pictureR" />
+                        </clipPath>
+                        <image
+                          [attr.href]="picture"
+                          [attr.x]="s.cx - pictureR"
+                          [attr.y]="row / 2 - pictureR"
+                          [attr.width]="pictureR * 2"
+                          [attr.height]="pictureR * 2"
+                          [attr.clip-path]="'url(#' + clip + line.commit.id + ')'"
+                          preserveAspectRatio="xMidYMid slice"
+                          (error)="gravatar.notFound(line.commit.email)"
+                        />
+                      } @else {
+                        <text [attr.x]="s.cx" [attr.y]="row / 2">{{ line.initials }}</text>
+                      }
+                    }
+                  }
+                </svg>
+              }
+              @case ('message') {
+                <span class="message" [class.stashed]="s.node === 'stash'">
+                  @if (s.node === 'stash') {
+                    <span class="stash-tag">stash</span>
+                  }
+                  <span class="summary">{{ line.commit.summary }}</span>
+                  @if (line.detail && descriptions()) {
+                    <span class="detail">{{ line.detail }}</span>
+                  }
+                </span>
+              }
+              @case ('author') {
+                <span class="author" [title]="line.commit.email">{{ line.commit.author }}</span>
+              }
+              @case ('date') {
+                <span class="date" [title]="line.fullDate">{{ line.date }}</span>
+              }
+              @case ('sha') {
+                <span class="sha r-mono">{{ line.commit.id.slice(0, 7) }}</span>
               }
             }
-          </svg>
-          <span class="message" [class.stashed]="s.node === 'stash'">
-            @if (s.node === 'stash') {
-              <span class="stash-tag">stash</span>
-            }
-            <span class="summary">{{ line.commit.summary }}</span>
-            @if (line.detail) {
-              <span class="detail">{{ line.detail }}</span>
-            }
+          }
+          <span class="actions">
+            <button
+              class="r-bar-btn icon"
+              (click)="
+                $event.stopPropagation(); openMenuUnder($any($event.currentTarget), line.commit)
+              "
+              [attr.aria-label]="'Actions on {id}' | t: { id: line.commit.id.slice(0, 7) }"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="3.5" cy="8" r="1.2" />
+                <circle cx="8" cy="8" r="1.2" />
+                <circle cx="12.5" cy="8" r="1.2" />
+              </svg>
+            </button>
           </span>
-          <span class="author" [title]="line.commit.email">{{ line.commit.author }}</span>
-          <span class="date" [title]="line.fullDate">{{ line.date }}</span>
-          <span class="sha r-mono">{{ line.commit.id.slice(0, 7) }}</span>
-        </button>
+        </div>
       }
       <div [style.height.px]="(lines().length - range().end) * row"></div>
     </div>
   } @else {
     <p class="empty">{{ 'No commit yet on this branch.' | t }}</p>
-  }
-
-  @if (menu(); as menu) {
-    <app-context-menu
-      [entries]="menu.entries"
-      [x]="menu.x"
-      [y]="menu.y"
-      (closed)="this.menu.set(null)"
-    />
-  }
-  @if (asking(); as asking) {
-    <app-ask-dialog [ask]="asking" (cancelled)="this.asking.set(null)" />
   }
 
   @if (unfolded(); as unfolded) {
@@ -193,6 +331,7 @@
           [label]="label"
           [color]="unfolded.color"
           (dblclick)="repository.switchTo(label)"
+          (contextmenu)="openLabelMenu($event, label)"
         />
       }
     </div>

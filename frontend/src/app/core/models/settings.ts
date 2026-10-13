@@ -19,6 +19,23 @@ export interface Workspace {
 }
 
 export type Theme = 'dark' | 'light' | 'system';
+/** A column of the history. */
+export type ColumnId = 'refs' | 'graph' | 'message' | 'author' | 'date' | 'sha';
+
+export interface Column {
+  id: ColumnId;
+  shown: boolean;
+}
+
+export const DEFAULT_COLUMNS: readonly Column[] = [
+  { id: 'refs', shown: true },
+  { id: 'graph', shown: true },
+  { id: 'message', shown: true },
+  { id: 'author', shown: true },
+  { id: 'date', shown: true },
+  { id: 'sha', shown: true },
+];
+
 /** The whole file with its changes marked, or the changes themselves. */
 export type DiffMode = 'file' | 'diff';
 /** The changes alone with a little context, inline with the whole file, or side by side. */
@@ -45,6 +62,12 @@ export interface Preferences {
   scrollSpeed: number;
   /** The whole interface's scale, 1 as designed. */
   zoom: number;
+  /** The history's columns, in their order; the message always shows. */
+  columns: Column[];
+  /** The first line of a commit's description after its summary, in the history. */
+  descriptions: boolean;
+  /** Authors' pictures on the graph, their initials otherwise. */
+  pictures: boolean;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -68,6 +91,29 @@ export const DEFAULT_PREFERENCES: Preferences = {
   wordWrap: false,
   scrollSpeed: 1.5,
   zoom: 1,
+  columns: [...DEFAULT_COLUMNS],
+  descriptions: true,
+  pictures: true,
+};
+
+/** Where the panels are and how big: dragged by the user, kept from run to run. */
+export interface Layout {
+  /** The sidebar's width and the details panel's, in px. */
+  sidebar: number;
+  details: number;
+  /** The sidebar's sections, in their order, by key. */
+  sections: string[];
+  /** The height given to a section's list, by its key; a section left out is as tall as its list. */
+  heights: Record<string, number>;
+}
+
+export const SECTIONS: readonly string[] = ['local', 'remote', 'tag', 'stash'];
+
+export const DEFAULT_LAYOUT: Layout = {
+  sidebar: 228,
+  details: 340,
+  sections: [...SECTIONS],
+  heights: {},
 };
 
 /** What Ramure remembers from one run to the next. */
@@ -81,6 +127,9 @@ export interface Settings {
   recent: string[];
   /** The sidebar's sections and groups folded away, by key. */
   collapsed: string[];
+  /** The names hidden or soloed in each repository's history, by its path. */
+  views: Record<string, { hidden: string[]; solo: string[] }>;
+  layout: Layout;
   preferences: Preferences;
 }
 
@@ -92,6 +141,8 @@ export const NO_SETTINGS: Settings = {
   activeTab: 0,
   recent: [],
   collapsed: [],
+  views: {},
+  layout: DEFAULT_LAYOUT,
   preferences: DEFAULT_PREFERENCES,
 };
 
@@ -131,6 +182,12 @@ export function parseSettings(value: unknown): Settings {
     activeTab: typeof activeTab === 'number' && Number.isInteger(activeTab) ? activeTab : 0,
     recent: strings(value['recent']),
     collapsed: strings(value['collapsed']),
+    views: Object.fromEntries(
+      Object.entries(isRecord(value['views']) ? value['views'] : {}).flatMap(([path, v]) =>
+        isRecord(v) ? [[path, { hidden: strings(v['hidden']), solo: strings(v['solo']) }]] : [],
+      ),
+    ),
+    layout: parseLayout(value['layout']),
     preferences: parsePreferences(value['preferences']),
   };
 }
@@ -156,7 +213,43 @@ function parsePreferences(value: unknown): Preferences {
     wordWrap: flag('wordWrap', d.wordWrap),
     scrollSpeed: among('scrollSpeed', SCROLL_SPEEDS, d.scrollSpeed),
     zoom: among('zoom', ZOOMS, d.zoom),
+    columns: parseColumns(saved['columns']),
+    descriptions: flag('descriptions', d.descriptions),
+    pictures: flag('pictures', d.pictures),
   };
+}
+
+function parseLayout(value: unknown): Layout {
+  const saved = isRecord(value) ? value : {};
+  const width = (key: string, fallback: number) => {
+    const v = saved[key];
+    return typeof v === 'number' && v >= 120 && v <= 1200 ? v : fallback;
+  };
+  const order = (Array.isArray(saved['sections']) ? saved['sections'] : []).filter(
+    (k, i, all): k is string => SECTIONS.includes(k as string) && all.indexOf(k) === i,
+  );
+  const heights = isRecord(saved['heights']) ? saved['heights'] : {};
+  return {
+    sidebar: width('sidebar', DEFAULT_LAYOUT.sidebar),
+    details: width('details', DEFAULT_LAYOUT.details),
+    sections: [...order, ...SECTIONS.filter((k) => !order.includes(k))],
+    heights: Object.fromEntries(
+      Object.entries(heights).filter(
+        ([k, v]) => SECTIONS.includes(k) && typeof v === 'number' && v > 0,
+      ),
+    ) as Record<string, number>,
+  };
+}
+
+/** Saved columns: each known one once, the missing ones added at the end. */
+function parseColumns(value: unknown): Column[] {
+  const saved = (Array.isArray(value) ? value : []).flatMap((c): Column[] =>
+    isRecord(c) && DEFAULT_COLUMNS.some((d) => d.id === c['id'])
+      ? [{ id: c['id'] as ColumnId, shown: c['shown'] !== false }]
+      : [],
+  );
+  const unique = saved.filter((c, i) => saved.findIndex((o) => o.id === c.id) === i);
+  return [...unique, ...DEFAULT_COLUMNS.filter((d) => !unique.some((c) => c.id === d.id))];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

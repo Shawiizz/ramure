@@ -10,14 +10,16 @@ mod identity;
 mod repository;
 mod stash;
 mod status;
+mod undo;
 
 pub use diff::{commit_files, file_diff, file_versions, FileDiff, Hunk, Line, LineKind, Side, Versions};
 pub use graph::{layout, Row};
 pub use identity::{git_version, global_identity, Identity};
-pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot};
+pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};
 pub use stash::{stash_files, Stash};
 pub use status::{status, Change, ChangeKind, Status, Upstream};
 use std::path::PathBuf;
+pub use undo::{ref_state, restore, HeadAt, Move, RefState};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  HostListener,
   computed,
   effect,
   inject,
@@ -8,17 +9,13 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { GravatarService } from '../../core/services/gravatar.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
-import { Ask, AskDialog } from '../../shared/ask-dialog';
 import { initials } from '../../shared/avatar';
-import { ContextMenu, MenuEntry } from '../../shared/context-menu';
 import { speedUpWheel } from '../../shared/wheel';
-import { commitUrl } from '../../shared/web-url';
 import { fullDate, shortDate, when } from '../../shared/when';
 import {
   MERGE,
@@ -32,6 +29,10 @@ import {
   laneX,
   shape,
 } from './graph';
+import { MenusService } from '../repository-tab/menus.service';
+import { t } from '../../core/i18n/i18n';
+import { ColumnId, DEFAULT_COLUMNS } from '../../core/models/settings';
+import { MenuEntry } from '../../shared/context-menu';
 import { RefPill } from './ref-pill';
 
 /** Lanes the graph column shows at first; more once it is widened. */
@@ -76,10 +77,11 @@ interface Unfolded {
   selector: 'app-history',
   templateUrl: './history.html',
   styleUrl: './history.scss',
-  imports: [TPipe, RefPill, ContextMenu, AskDialog],
+  imports: [TPipe, RefPill],
 })
 export class History {
   protected readonly repository = inject(RepositoryService);
+  protected readonly menus = inject(MenusService);
   protected readonly gravatar = inject(GravatarService);
   private readonly preferences = inject(PreferencesService);
   protected readonly wipId = WIP;
@@ -90,13 +92,56 @@ export class History {
   protected readonly stashSide = STASH;
   protected readonly clip = `history-${++histories}-`;
   protected readonly unfolded = signal<Unfolded | null>(null);
-  /** A commit's menu, open where it was asked for. */
-  protected readonly menu = signal<{ x: number; y: number; entries: MenuEntry[] } | null>(null);
-  /** A question asked before an action: a name to give, a yes to say. */
-  protected readonly asking = signal<Ask | null>(null);
   /** The graph's width as the user dragged it, null until then. */
   private readonly dragged = signal<number | null>(null);
   private readonly rows = viewChild<ElementRef<HTMLElement>>('rows');
+  private readonly searchBox = viewChild<ElementRef<HTMLInputElement>>('search');
+  /** The column whose heading is being dragged. */
+  protected readonly moving = signal<ColumnId | null>(null);
+  protected readonly searching = signal(false);
+  protected readonly query = signal('');
+  /** The match in front, by its index among the matches. */
+  protected readonly at = signal(0);
+
+  /** The columns shown, in their order. */
+  protected readonly columns = computed(() =>
+    this.preferences
+      .preferences()
+      .columns.filter((c) => c.shown || c.id === 'message')
+      .map((c) => c.id),
+  );
+  protected readonly titles = computed<Record<ColumnId, string>>(() => ({
+    refs: t('Branch / tag'),
+    graph: t('Graph'),
+    message: t('Commit message'),
+    author: t('Author'),
+    date: t('Date'),
+    sha: 'SHA',
+  }));
+  /** Where the names meet the graph: their column just before it, or just after. */
+  protected readonly tie = computed<'left' | 'right' | null>(() => {
+    const columns = this.columns();
+    const refs = columns.indexOf('refs');
+    const graph = columns.indexOf('graph');
+    if (refs < 0 || graph < 0) return null;
+    return refs === graph - 1 ? 'left' : refs === graph + 1 ? 'right' : null;
+  });
+  protected readonly descriptions = computed(() => this.preferences.preferences().descriptions);
+  protected readonly pictures = computed(() => this.preferences.preferences().pictures);
+
+  /** The commits the search finds, by id, newest first. */
+  protected readonly matches = computed(() => {
+    const words = this.query().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return [];
+    return this.lines()
+      .filter(({ commit }) => {
+        const text =
+          `${commit.summary}\n${commit.body}\n${commit.author}\n${commit.email}`.toLowerCase();
+        return words.every((w) => text.includes(w) || commit.id.startsWith(w));
+      })
+      .map((line) => line.commit.id);
+  });
+  protected readonly matching = computed(() => new Set(this.matches()));
   private readonly scrollTop = signal(0);
   private readonly viewHeight = signal(0);
 
@@ -223,135 +268,105 @@ export class History {
 
   /** A commit's menu, the commit selected. */
   protected openMenu(event: MouseEvent, commit: Commit) {
-    event.preventDefault();
     this.repository.select(commit.id);
-    this.menu.set({ x: event.clientX, y: event.clientY, entries: this.entriesFor(commit) });
+    this.menus.open(event, this.menus.forCommit(commit));
   }
 
-  private ask(question: Ask) {
-    this.asking.set({
-      ...question,
-      answered: (values) => {
-        this.asking.set(null);
-        question.answered(values);
-      },
-    });
+  /** A commit's menu from its ⋯ button. */
+  protected openMenuUnder(button: HTMLElement, commit: Commit) {
+    this.repository.select(commit.id);
+    this.menus.openUnder(button, this.menus.forCommit(commit));
   }
 
-  /** What can be done from a commit, or from a stash. */
-  private entriesFor(commit: Commit): MenuEntry[] {
-    const r = this.repository;
-    const stash = r.stashes().get(commit.id);
-    if (stash) {
-      return [
-        { label: t('Pop this stash'), run: () => r.restore(stash, true) },
-        { label: t('Apply this stash'), run: () => r.restore(stash, false) },
-        null,
-        {
-          label: t('Delete this stash…'),
-          danger: true,
-          run: () =>
-            this.ask({
-              title: t('Delete this stash?'),
-              text: stash.message,
-              fields: [],
-              confirm: t('Delete'),
-              danger: true,
-              answered: () => r.dropStash(stash),
-            }),
-        },
-      ];
-    }
-    const snapshot = r.snapshot()!;
-    const branch = snapshot.head.kind === 'branch' ? snapshot.head.name : null;
-    const isHead = commit.id === r.headId();
-    const id = commit.id.slice(0, 7);
-    const remote = snapshot.remotes.find((x) => x.name === 'origin') ?? snapshot.remotes[0];
-    const link = remote && commitUrl(remote.url, commit.id);
-    const tagName = { label: t('Tag name'), placeholder: 'v1.0.0', code: true };
-    return [
+  /** A branch's, remote branch's or tag's menu, from its label on the graph. */
+  protected openLabelMenu(event: MouseEvent, label: RefLabel) {
+    const m = this.menus;
+    const entries =
+      label.kind === 'branch'
+        ? m.forBranch(label.name)
+        : label.kind === 'remote'
+          ? m.forRemoteBranch(label.name)
+          : m.forTag(label.name);
+    m.open(event, entries);
+  }
+
+  /** The column dragged lands where `target` is. */
+  protected dropColumn(target: ColumnId) {
+    const moved = this.moving();
+    this.moving.set(null);
+    if (!moved || moved === target) return;
+    const columns = [...this.preferences.preferences().columns];
+    const from = columns.findIndex((c) => c.id === moved);
+    const to = columns.findIndex((c) => c.id === target);
+    // taken out then put at the target's place: after it going right, before it going left
+    const [column] = columns.splice(from, 1);
+    columns.splice(to, 0, column);
+    this.preferences.set('columns', columns);
+  }
+
+  /** What the history shows: its columns, the descriptions, the pictures. */
+  protected columnsMenu(button: HTMLElement) {
+    const p = this.preferences;
+    const prefs = p.preferences();
+    const toggle = (id: ColumnId): MenuEntry => {
+      const shown = prefs.columns.find((c) => c.id === id)?.shown ?? true;
+      return {
+        label: this.titles()[id],
+        checked: shown,
+        run: () =>
+          p.set(
+            'columns',
+            prefs.columns.map((c) => (c.id === id ? { ...c, shown: !shown } : c)),
+          ),
+      };
+    };
+    this.menus.openUnder(button, [
+      toggle('refs'),
+      toggle('graph'),
+      toggle('author'),
+      toggle('date'),
+      toggle('sha'),
+      null,
       {
-        label: t('Check out this commit'),
-        disabled: isHead && !branch,
-        run: () => r.checkoutCommit(commit.id),
+        label: t('Descriptions after the summaries'),
+        checked: prefs.descriptions,
+        run: () => p.set('descriptions', !prefs.descriptions),
+      },
+      {
+        label: t('Authors’ pictures on the graph'),
+        checked: prefs.pictures,
+        run: () => p.set('pictures', !prefs.pictures),
       },
       null,
       {
-        label: t('Create a branch here…'),
-        run: () =>
-          this.ask({
-            title: t('A new branch at {id}', { id }),
-            fields: [{ label: t('Branch name'), code: true }],
-            confirm: t('Create and switch'),
-            answered: ([name]) => r.createBranchAt(name, commit.id),
-          }),
+        label: t('Put the columns back as they were'),
+        run: () => p.set('columns', [...DEFAULT_COLUMNS]),
       },
-      { label: t('Cherry-pick this commit'), disabled: isHead, run: () => r.cherryPick(commit.id) },
-      {
-        label: branch
-          ? t('Rebase {branch} onto this commit', { branch })
-          : t('Rebase onto this commit'),
-        disabled: !branch || isHead,
-        run: () => r.rebase(commit.id),
-      },
-      {
-        label: branch ? t('Reset {branch} to this commit', { branch }) : t('Reset to this commit'),
-        disabled: !branch,
-        children: [
-          { label: t('Soft: keep every change, staged'), run: () => r.reset(commit.id, 'soft') },
-          { label: t('Mixed: keep the changes, unstaged'), run: () => r.reset(commit.id, 'mixed') },
-          {
-            label: t('Hard: throw every change away…'),
-            danger: true,
-            run: () =>
-              this.ask({
-                title: t('Reset {branch} hard?', { branch: branch ?? '' }),
-                text: t(
-                  'The branch goes back to {id}: its later commits and every change in the working tree are thrown away.',
-                  { id },
-                ),
-                fields: [],
-                confirm: t('Reset hard'),
-                danger: true,
-                answered: () => r.reset(commit.id, 'hard'),
-              }),
-          },
-        ],
-      },
-      { label: t('Revert this commit'), run: () => r.revert(commit.id) },
-      null,
-      { label: t('Copy the commit’s id'), run: () => navigator.clipboard.writeText(commit.id) },
-      ...(remote && link
-        ? [
-            {
-              label: t('Copy the link to this commit on {remote}', { remote: remote.name }),
-              run: () => navigator.clipboard.writeText(link),
-            },
-          ]
-        : []),
-      null,
-      {
-        label: t('Create a tag here…'),
-        run: () =>
-          this.ask({
-            title: t('A new tag at {id}', { id }),
-            fields: [tagName],
-            confirm: t('Create the tag'),
-            answered: ([name]) => r.tag(name, commit.id, null),
-          }),
-      },
-      {
-        label: t('Create an annotated tag here…'),
-        run: () =>
-          this.ask({
-            title: t('A new annotated tag at {id}', { id }),
-            text: t('It keeps who made it, when, and a message: the usual kind for a release.'),
-            fields: [tagName, { label: t('Message'), multiline: true }],
-            confirm: t('Create the tag'),
-            answered: ([name, message]) => r.tag(name, commit.id, message || name),
-          }),
-      },
-    ];
+    ]);
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected find(event: KeyboardEvent) {
+    if (!this.repository.active() || !event.ctrlKey || event.key.toLowerCase() !== 'f') return;
+    // the diff's editor has a search of its own
+    if ((event.target as HTMLElement).closest('.monaco-editor')) return;
+    event.preventDefault();
+    this.searching.set(true);
+    requestAnimationFrame(() => this.searchBox()?.nativeElement.select());
+  }
+
+  /** Brings the next match forward, or the previous one; the one in front again with 0. */
+  protected go(step: number) {
+    const matches = this.matches();
+    if (!matches.length) return;
+    const at = (this.at() + step + matches.length) % matches.length;
+    this.at.set(at);
+    this.repository.select(matches[at]);
+  }
+
+  protected closeSearch() {
+    this.searching.set(false);
+    this.query.set('');
   }
 
   /** Several names on a commit: all of them, over the rows below, under the pointer. */
