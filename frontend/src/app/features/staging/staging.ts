@@ -29,7 +29,7 @@ export class Staging {
   );
 
   protected show(change: Change, staged: boolean) {
-    this.repository.showDiff(change, { kind: staged ? 'staged' : 'unstaged' });
+    this.repository.toggleDiff(change, { kind: staged ? 'staged' : 'unstaged' });
   }
 
   protected stageAll() {

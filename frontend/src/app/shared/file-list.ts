@@ -2,7 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { t } from '../core/i18n/i18n';
 import { Change, ChangeKind } from '../core/models/repository';
 
-const KIND: Record<ChangeKind, { letter: string; title: string; color: string }> = {
+export const KIND: Record<ChangeKind, { letter: string; title: string; color: string }> = {
   added: { letter: 'A', title: t('Added'), color: 'var(--r-lane-0)' },
   untracked: { letter: '?', title: t('New, not followed yet'), color: 'var(--r-lane-0)' },
   modified: { letter: 'M', title: t('Modified'), color: 'var(--r-lane-1)' },
@@ -13,7 +13,10 @@ const KIND: Record<ChangeKind, { letter: string; title: string; color: string }>
   conflicted: { letter: '!', title: t('In conflict'), color: 'var(--r-lane-3)' },
 };
 
-/** Changed files: a click opens one; an optional action button on each (stage, unstage). */
+/**
+ * Changed files: a click opens one (again, closes it); an optional action button on each
+ * (stage, unstage). The rows reach the list's edges, their text inset by `--inset`.
+ */
 @Component({
   selector: 'app-file-list',
   template: `
@@ -41,10 +44,12 @@ const KIND: Record<ChangeKind, { letter: string; title: string; color: string }>
     li {
       display: flex;
       align-items: center;
-      border-radius: 4px;
-      &:hover,
-      &.open {
+      &:hover {
         background: var(--r-hover);
+      }
+      &.open {
+        background: var(--r-raised);
+        box-shadow: inset 2px 0 var(--r-accent);
       }
       &:hover .act {
         visibility: visible;
@@ -57,7 +62,7 @@ const KIND: Record<ChangeKind, { letter: string; title: string; color: string }>
       align-items: baseline;
       gap: 8px;
       height: 28px;
-      padding: 0 8px;
+      padding: 0 8px 0 var(--inset, 8px);
       border: 0;
       background: transparent;
       text-align: left;
@@ -88,7 +93,7 @@ const KIND: Record<ChangeKind, { letter: string; title: string; color: string }>
       visibility: hidden;
       flex: none;
       height: 22px;
-      margin-right: 4px;
+      margin-right: calc(var(--inset, 8px) - 4px);
       padding: 0 8px;
       border: 1px solid var(--r-line-strong);
       border-radius: 4px;

@@ -66,7 +66,7 @@
     </section>
 
     <form class="commit" (submit)="$event.preventDefault(); commit()">
-      <label class="field">
+      <label class="r-field">
         <span>{{ 'Summary' | t }}</span>
         <input
           [value]="summary()"
@@ -75,7 +75,7 @@
           maxlength="200"
         />
       </label>
-      <label class="field">
+      <label class="r-field">
         <span>{{ 'Description' | t }}</span>
         <textarea
           rows="3"

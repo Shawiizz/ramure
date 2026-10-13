@@ -26,6 +26,8 @@ export interface Commit {
   id: string;
   parents: string[];
   summary: string;
+  /** The message after its summary, empty when there is none. */
+  body: string;
   author: string;
   email: string;
   /** Seconds since 1970. */
@@ -46,6 +48,8 @@ export interface RefLabel {
   name: string;
   kind: 'branch' | 'remote' | 'tag';
   head: boolean;
+  /** A local branch on the same commit as its remote counterpart: one label for both. */
+  synced: boolean;
 }
 
 export interface Status {

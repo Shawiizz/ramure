@@ -2,9 +2,11 @@
 //! Every command names the repository by its path; those that change it answer with its
 //! new state.
 
-use ramure_git::{actions, Change, FileDiff, Repository, Side, Snapshot};
+use ramure_git::{actions, Change, FileDiff, Identity, Repository, Side, Snapshot};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use tauri::{AppHandle, Manager, State};
 
 /// Commits read at once.
 const HISTORY_LIMIT: usize = 5000;
@@ -13,6 +15,8 @@ const HISTORY_LIMIT: usize = 5000;
 enum CommandError {
     #[error(transparent)]
     Git(#[from] ramure_git::Error),
+    #[error("The settings could not be saved: {0}")]
+    Settings(String),
 }
 
 impl serde::Serialize for CommandError {
@@ -70,8 +74,8 @@ fn unstage(path: PathBuf, files: Vec<String>) -> Answer<Snapshot> {
 }
 
 #[tauri::command(async)]
-fn commit(path: PathBuf, message: String) -> Answer<Snapshot> {
-    actions::commit(&path, &message)?;
+fn commit(path: PathBuf, message: String, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::commit(&path, &message, identity.as_ref())?;
     snapshot(&path)
 }
 
@@ -94,8 +98,8 @@ fn fetch(path: PathBuf) -> Answer<Snapshot> {
 }
 
 #[tauri::command(async)]
-fn pull(path: PathBuf) -> Answer<Snapshot> {
-    actions::pull(&path)?;
+fn pull(path: PathBuf, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::pull(&path, identity.as_ref())?;
     snapshot(&path)
 }
 
@@ -105,10 +109,59 @@ fn push(path: PathBuf) -> Answer<Snapshot> {
     snapshot(&path)
 }
 
+/// The identity git uses when no profile says otherwise.
+#[tauri::command(async)]
+fn global_identity() -> Answer<Identity> {
+    Ok(ramure_git::global_identity()?)
+}
+
+/// Guards the settings file: one write at a time.
+#[derive(Default)]
+struct SettingsFile(Mutex<()>);
+
+fn settings_path(app: &AppHandle) -> Answer<PathBuf> {
+    let dir = app.path().app_config_dir().map_err(|e| CommandError::Settings(e.to_string()))?;
+    Ok(dir.join("settings.json"))
+}
+
+/// The interface's settings (profiles, tabs, workspaces) as it last saved them; none on
+/// the first run, or when the file cannot be read.
+#[tauri::command(async)]
+fn load_settings(app: AppHandle, file: State<'_, SettingsFile>) -> Answer<Option<serde_json::Value>> {
+    let _guard = file.0.lock().unwrap_or_else(|e| e.into_inner());
+    let path = settings_path(&app)?;
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Ok(None);
+    };
+    match serde_json::from_str(&text) {
+        Ok(settings) => Ok(Some(settings)),
+        Err(e) => {
+            tracing::warn!("{} is not valid JSON, starting afresh: {e}", path.display());
+            Ok(None)
+        }
+    }
+}
+
+/// Replaces the settings, written aside first so that a crash never leaves half a file.
+#[tauri::command(async)]
+fn save_settings(app: AppHandle, file: State<'_, SettingsFile>, settings: serde_json::Value) -> Answer<()> {
+    let _guard = file.0.lock().unwrap_or_else(|e| e.into_inner());
+    let path = settings_path(&app)?;
+    let fail = |e: std::io::Error| CommandError::Settings(e.to_string());
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(fail)?;
+    }
+    let text = serde_json::to_string_pretty(&settings).map_err(|e| CommandError::Settings(e.to_string()))?;
+    let aside = path.with_extension("json.tmp");
+    std::fs::write(&aside, text).map_err(fail)?;
+    std::fs::rename(&aside, &path).map_err(fail)
+}
+
 pub fn run() {
     tracing_subscriber::fmt().init();
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(SettingsFile::default())
         .invoke_handler(tauri::generate_handler![
             open_repository,
             file_diff,
@@ -121,6 +174,9 @@ pub fn run() {
             fetch,
             pull,
             push,
+            global_identity,
+            load_settings,
+            save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("Ramure could not start");

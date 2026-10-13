@@ -65,6 +65,55 @@ button {
   font-size: 12px;
 }
 
+/* a small panel over the page, under the button that opened it */
+.r-popover {
+  position: absolute;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: 8px;
+  background: var(--r-raised);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  .r-btn {
+    justify-content: center;
+  }
+}
+
+.r-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  > span {
+    color: var(--r-text-3);
+    font-size: 12px;
+  }
+  input,
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--r-line-strong);
+    border-radius: var(--r-radius);
+    background: var(--r-void);
+    color: var(--r-text);
+    font: inherit;
+    resize: vertical;
+    user-select: text;
+    &::placeholder {
+      color: var(--r-text-3);
+    }
+    &:focus {
+      outline: none;
+      border-color: var(--r-accent);
+    }
+  }
+  .r-mono {
+    font-family: var(--r-mono);
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

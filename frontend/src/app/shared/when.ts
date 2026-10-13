@@ -3,6 +3,7 @@ import { LOCALE } from '../core/i18n/i18n';
 const relative = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
 const date = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 const full = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'full', timeStyle: 'short' });
+const short = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'short', timeStyle: 'short' });
 
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['minute', 60],
@@ -20,6 +21,11 @@ export function when(seconds: number, now = Date.now() / 1000): string {
     return relative.format(-Math.floor(ago / size), unit);
   }
   return date.format(seconds * 1000);
+}
+
+/** The date and time in figures. */
+export function shortDate(seconds: number): string {
+  return short.format(seconds * 1000);
 }
 
 /** The full date and time. */

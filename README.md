@@ -3,6 +3,12 @@
 A free and open source Git client: the history as a graph of branches, the branches and
 tags at hand, the commit you pick in detail.
 
+- Repositories in tabs, and workspaces that reopen several of them at once.
+- Profiles: the name and email Ramure signs commits with, switched from the title bar
+  (the git configuration stays as it is).
+- The working tree: stage, unstage and commit; diffs of any file or commit.
+- Branches created and switched to; fetch, pull and push.
+
 ## Stack
 
 - `crates/ramure-git`: reads repositories with [gitoxide](https://github.com/GitoxideLabs/gitoxide)

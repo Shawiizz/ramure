@@ -1,27 +1,42 @@
-import { Component, inject } from '@angular/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { RepositoryService } from './core/services/repository.service';
-import { Details } from './features/details/details';
-import { DiffView } from './features/diff/diff-view';
-import { History } from './features/history/history';
-import { Sidebar } from './features/sidebar/sidebar';
-import { Welcome } from './features/welcome/welcome';
+import { Component, HostListener, inject } from '@angular/core';
+import { TabsService } from './core/services/tabs.service';
+import { RepositoryTab } from './features/repository-tab/repository-tab';
 import { Titlebar } from './shell/titlebar/titlebar';
-import { Toast } from './shell/toast/toast';
 
 @Component({
   selector: 'app-root',
-  templateUrl: './app.html',
-  styleUrl: './app.scss',
-  imports: [Titlebar, Welcome, Sidebar, History, DiffView, Details, Toast],
+  template: `
+    <app-titlebar />
+    <main>
+      @for (tab of tabs.tabs(); track tab.id) {
+        <app-repository-tab [tab]="tab" [active]="tab.id === tabs.activeId()" />
+      }
+    </main>
+  `,
+  styles: `
+    :host {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    main {
+      flex: 1;
+      min-height: 0;
+    }
+  `,
+  imports: [Titlebar, RepositoryTab],
 })
 export class App {
-  protected readonly repository = inject(RepositoryService);
+  protected readonly tabs = inject(TabsService);
 
-  constructor() {
-    // back from an editor or a terminal: the repository may have changed meanwhile
-    getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-      if (focused) this.repository.refresh();
-    });
+  @HostListener('document:keydown', ['$event'])
+  protected shortcut(event: KeyboardEvent) {
+    if (!event.ctrlKey || event.altKey) return;
+    const key = event.key.toLowerCase();
+    if (key === 't') this.tabs.add();
+    else if (key === 'w') this.tabs.close(this.tabs.activeId());
+    else if (key === 'tab') this.tabs.cycle(event.shiftKey ? -1 : 1);
+    else return;
+    event.preventDefault();
   }
 }

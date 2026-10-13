@@ -1,8 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, output } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
+import { TabsService, splitPath } from '../../core/services/tabs.service';
+import { pickRepository } from '../../shared/pick';
 
-/** Before a repository is open: open one, or one of the last ones. */
+/** A tab without a repository yet: open one, one of the last ones, or a workspace. */
 @Component({
   selector: 'app-welcome',
   templateUrl: './welcome.html',
@@ -11,10 +13,12 @@ import { RepositoryService } from '../../core/services/repository.service';
 })
 export class Welcome {
   protected readonly repository = inject(RepositoryService);
+  protected readonly tabs = inject(TabsService);
+  protected readonly split = splitPath;
+  readonly chose = output<string>();
 
-  /** The folder's name, and where it is. */
-  split(path: string): { name: string; parent: string } {
-    const cut = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
-    return { name: path.slice(cut + 1), parent: path.slice(0, cut) };
+  protected async pick() {
+    const path = await pickRepository();
+    if (path) this.chose.emit(path);
   }
 }

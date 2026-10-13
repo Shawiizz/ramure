@@ -1,50 +1,37 @@
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { RepositoryService } from '../../core/services/repository.service';
+import { TabsService, splitPath } from '../../core/services/tabs.service';
+import { ProfileMenu } from '../profile-menu/profile-menu';
+import { WorkspaceMenu } from '../workspace-menu/workspace-menu';
 
-/**
- * Custom title bar: the logo, the open repository and its branch, the exchanges with the
- * remotes, a new branch, the window buttons.
- */
+/** Custom title bar: the logo, the tabs, the workspaces, the profile, the window buttons. */
 @Component({
   selector: 'app-titlebar',
   templateUrl: './titlebar.html',
   styleUrl: './titlebar.scss',
-  imports: [TPipe],
+  imports: [TPipe, WorkspaceMenu, ProfileMenu],
 })
 export class Titlebar {
-  protected readonly repository = inject(RepositoryService);
-  protected readonly branching = signal(false);
-  protected readonly branchName = signal('');
-  protected readonly upstream = computed(() => this.repository.snapshot()?.status.upstream);
-  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('name');
-  protected readonly head = computed(() => {
-    const head = this.repository.snapshot()?.head;
-    if (!head) return null;
-    return head.kind === 'detached' ? head.id.slice(0, 7) : head.name;
-  });
+  protected readonly tabs = inject(TabsService);
+  protected readonly split = splitPath;
 
-  constructor() {
-    effect(() => this.nameInput()?.nativeElement.focus());
+  /** A middle click closes a tab, as in a browser. */
+  protected auxClick(event: MouseEvent, id: string) {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    this.tabs.close(id);
   }
 
-  async createBranch() {
-    if (await this.repository.createBranch(this.branchName().trim())) {
-      this.branching.set(false);
-      this.branchName.set('');
-    }
-  }
-
-  minimize() {
+  protected minimize() {
     getCurrentWindow().minimize();
   }
 
-  toggleMaximize() {
+  protected toggleMaximize() {
     getCurrentWindow().toggleMaximize();
   }
 
-  close() {
+  protected close() {
     getCurrentWindow().close();
   }
 }

@@ -2,59 +2,81 @@
   @if (repository.selectedId() === wip) {
     <app-staging />
   } @else if (repository.selected(); as commit) {
-    <div class="commit">
-      <h2>{{ commit.summary }}</h2>
-      @if (labels().length) {
-        <div class="labels">
-          @for (label of labels(); track label.kind + label.name) {
-            <span class="label" [class.head]="label.head">{{ label.name }}</span>
-          }
+    <header class="bar">
+      <button
+        class="sha"
+        (click)="copy(commit.id)"
+        [title]="copied() ? ('Copied' | t) : ('Copy the full id' | t)"
+      >
+        <span class="caption">commit</span>
+        <span class="r-mono">{{ commit.id.slice(0, 7) }}</span>
+        @if (copied()) {
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" /></svg>
+        } @else {
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="5" y="5" width="8.5" height="8.5" rx="1.5" />
+            <path d="M3 10.5V3.5A1 1 0 0 1 4 2.5h6.5" />
+          </svg>
+        }
+      </button>
+    </header>
+
+    <div class="scroll">
+      <section class="message">
+        <h2>{{ commit.summary }}</h2>
+        @if (commit.body) {
+          <p class="body">{{ commit.body }}</p>
+        }
+      </section>
+
+      <div class="meta">
+        <app-avatar [name]="commit.author" [key]="commit.email" [size]="34" />
+        <div class="who">
+          <span class="author" [title]="commit.email">{{ commit.author }}</span>
+          <span class="date" [title]="fullDate(commit.time)">{{
+            'authored {date}' | t: { date: shortDate(commit.time) }
+          }}</span>
         </div>
-      }
-      <dl>
-        <dt>{{ 'Author' | t }}</dt>
-        <dd>
-          {{ commit.author }}
-          <span class="email">{{ commit.email }}</span>
-        </dd>
-        <dt>{{ 'Date' | t }}</dt>
-        <dd>{{ fullDate(commit.time) }}</dd>
-        <dt>SHA</dt>
-        <dd class="sha">
-          <span class="r-mono">{{ commit.id }}</span>
-          <button class="r-btn r-btn--ghost copy" (click)="copy(commit.id)">
-            {{ copied() ? ('Copied' | t) : ('Copy' | t) }}
-          </button>
-        </dd>
-        <dt>{{ 'Parents' | t }}</dt>
-        <dd>
+        <div class="parents">
+          <span class="caption">{{
+            commit.parents.length > 1 ? ('parents' | t) : ('parent' | t)
+          }}</span>
           @for (parent of commit.parents; track parent) {
             <button class="parent r-mono" (click)="repository.select(parent)">
               {{ parent.slice(0, 7) }}
             </button>
           } @empty {
-            <span class="none">{{ 'None: the first commit' | t }}</span>
+            <span class="none">{{ 'none' | t }}</span>
           }
-        </dd>
-      </dl>
+        </div>
+      </div>
 
-      <h3>
-        {{ 'Changed files' | t }}
-        @if (files(); as files) {
-          <span>{{ files.length }}</span>
-        }
-      </h3>
       @if (files(); as files) {
+        <div class="files-head">
+          <span class="total">{{
+            files.length === 1
+              ? ('1 changed file' | t)
+              : ('{n} changed files' | t: { n: files.length })
+          }}</span>
+          <span class="kinds">
+            @for (kind of kinds(); track kind.letter) {
+              <span class="kind" [style.color]="kind.color" [title]="kind.title">
+                <b>{{ kind.letter }}</b
+                >{{ kind.count }}
+              </span>
+            }
+          </span>
+        </div>
         <app-file-list
           [changes]="files"
           [openPath]="openPath()"
-          (opened)="repository.showDiff($event, { kind: 'commit', id: commit.id })"
+          (opened)="repository.toggleDiff($event, { kind: 'commit', id: commit.id })"
         />
       } @else {
         <p class="none">{{ 'Reading…' | t }}</p>
       }
     </div>
   } @else {
-    <p class="none">{{ 'Select a commit.' | t }}</p>
+    <p class="none empty">{{ 'Select a commit.' | t }}</p>
   }
 </aside>

@@ -2,10 +2,13 @@ import { Component, computed, input } from '@angular/core';
 import { GraphRow } from '../../core/models/repository';
 
 /** Row height and lane spacing of the graph, in px. */
-export const ROW = 30;
-export const LANE = 14;
-const PAD = 10;
+export const ROW = 32;
+export const LANE = 22;
+const PAD = 14;
 const LANE_COLORS = 8;
+/** A commit's disc, wide enough for its author's initials. */
+export const NODE = 10;
+const MERGE = 4.5;
 
 export function laneColor(lane: number): string {
   return `var(--r-lane-${lane % LANE_COLORS})`;
@@ -26,22 +29,43 @@ interface Line {
   color: string;
 }
 
-/** One row of the commit graph: the lines crossing it and the commit's dot. */
+/**
+ * One row of the commit graph: the lines crossing it, a band of the commit's colour from
+ * it to the message, and the commit: its author's initials, or a small dot for a merge.
+ */
 @Component({
   selector: 'app-graph-cell',
   template: `
     <svg [attr.width]="width()" [attr.height]="height" aria-hidden="true">
+      <rect
+        class="band"
+        [attr.x]="cx()"
+        y="3"
+        [attr.width]="width() - cx()"
+        [attr.height]="height - 6"
+        [style.fill]="color()"
+      />
+      @if (labeled()) {
+        <path class="tie" [attr.d]="'M0 ' + height / 2 + 'H' + cx()" [style.stroke]="color()" />
+      }
       @for (line of lines(); track $index) {
         <path [attr.d]="line.d" [style.stroke]="line.color" />
       }
       @if (fromWip()) {
-        <path
-          class="wip"
-          [attr.d]="'M' + x(row().lane) + ' 0V' + height / 2"
+        <path class="wip" [attr.d]="'M' + cx() + ' 0V' + height / 2" [style.stroke]="color()" />
+      }
+      @if (merge()) {
+        <circle
+          class="merge"
+          [attr.cx]="cx()"
+          [attr.cy]="height / 2"
+          [attr.r]="mergeR"
           [style.stroke]="color()"
         />
+      } @else {
+        <circle [attr.cx]="cx()" [attr.cy]="height / 2" [attr.r]="nodeR" [style.fill]="color()" />
+        <text [attr.x]="cx()" [attr.y]="height / 2">{{ initials() }}</text>
       }
-      <circle [attr.cx]="x(row().lane)" [attr.cy]="height / 2" r="4.5" [style.stroke]="color()" />
     </svg>
   `,
   styles: `
@@ -55,46 +79,67 @@ interface Line {
       fill: none;
       stroke-width: 2;
     }
-    circle {
-      fill: var(--r-commit);
-      stroke-width: 2;
+    .band {
+      opacity: 0.1;
+    }
+    :host(.selected) .band {
+      opacity: 0.24;
+    }
+    .tie {
+      stroke-width: 1;
+      opacity: 0.6;
     }
     .wip {
       stroke-dasharray: 3 3;
+    }
+    .merge {
+      fill: var(--r-base);
+      stroke-width: 2.5;
+    }
+    text {
+      fill: var(--r-on-accent);
+      font: 700 8.5px var(--r-font);
+      text-anchor: middle;
+      dominant-baseline: central;
     }
   `,
 })
 export class GraphCell {
   readonly row = input.required<GraphRow>();
   readonly width = input.required<number>();
+  readonly initials = input('');
+  /** A merge commit: a dot, the branches it joins tell the story. */
+  readonly merge = input(false);
+  /** Names point at this commit: a thin line ties them to it. */
+  readonly labeled = input(false);
   /** The working tree's changes sit above this commit (HEAD): a dashed line from them. */
   readonly fromWip = input(false);
   protected readonly height = ROW;
+  protected readonly nodeR = NODE;
+  protected readonly mergeR = MERGE;
   protected readonly color = computed(() => laneColor(this.row().lane));
+  protected readonly cx = computed(() => laneX(this.row().lane));
 
   protected readonly lines = computed<Line[]>(() => {
     const { lane, through, into, out } = this.row();
     const h = ROW;
-    const x = (l: number) => this.x(l);
+    const r = this.merge() ? MERGE : NODE;
+    const x = laneX;
     const lines: Line[] = through.map((l) => ({ d: `M${x(l)} 0V${h}`, color: laneColor(l) }));
     for (const j of into) {
       const d =
         j === lane
-          ? `M${x(j)} 0V${h / 2}`
+          ? `M${x(j)} 0V${h / 2 - r}`
           : `M${x(j)} 0C${x(j)} ${h * 0.35} ${x(lane)} ${h * 0.15} ${x(lane)} ${h / 2}`;
       lines.push({ d, color: laneColor(j) });
     }
     for (const k of out) {
       const d =
         k === lane
-          ? `M${x(lane)} ${h / 2}V${h}`
+          ? `M${x(lane)} ${h / 2 + r}V${h}`
           : `M${x(lane)} ${h / 2}C${x(lane)} ${h * 0.85} ${x(k)} ${h * 0.65} ${x(k)} ${h}`;
       lines.push({ d, color: laneColor(k) });
     }
     return lines;
   });
-
-  protected x(lane: number): number {
-    return laneX(lane);
-  }
 }

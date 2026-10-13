@@ -1,7 +1,7 @@
 //! What changes a repository or talks to its remotes, through the git command.
 
-use crate::cli::{git, git_answer};
-use crate::Error;
+use crate::cli::{git, git_answer, git_as};
+use crate::{Error, Identity};
 use std::path::Path;
 
 /// Stages `paths`: their changes go into the next commit.
@@ -19,12 +19,13 @@ pub fn unstage(dir: &Path, paths: &[String]) -> Result<(), Error> {
     }
 }
 
-/// Commits what is staged with `message`; returns the new commit's id.
-pub fn commit(dir: &Path, message: &str) -> Result<String, Error> {
+/// Commits what is staged with `message`, signed by `identity` (the configured one when
+/// `None`); returns the new commit's id.
+pub fn commit(dir: &Path, message: &str, identity: Option<&Identity>) -> Result<String, Error> {
     if message.trim().is_empty() {
         return Err(Error::Command("A commit needs a message.".into()));
     }
-    git(dir, &["commit", "-q", "-m", message])?;
+    git_as(dir, &["commit", "-q", "-m", message], identity)?;
     let id = git(dir, &["rev-parse", "HEAD"])?;
     Ok(String::from_utf8_lossy(&id).trim().to_owned())
 }
@@ -57,9 +58,10 @@ pub fn fetch(dir: &Path) -> Result<(), Error> {
     git(dir, &["fetch", "--all", "--prune"]).map(drop)
 }
 
-/// Brings the upstream's commits into the current branch, as the user's settings say.
-pub fn pull(dir: &Path) -> Result<(), Error> {
-    git(dir, &["pull"]).map(drop)
+/// Brings the upstream's commits into the current branch, as the user's settings say; a
+/// merge commit it makes is signed by `identity`.
+pub fn pull(dir: &Path, identity: Option<&Identity>) -> Result<(), Error> {
+    git_as(dir, &["pull"], identity).map(drop)
 }
 
 /// Sends the current branch to its upstream; without one, to `origin`, which it then

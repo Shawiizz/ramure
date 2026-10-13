@@ -2,30 +2,46 @@
   <img src="logo.svg" class="logo" alt="" />
   <h1>ramure</h1>
   <p class="lead">{{ 'Open a Git repository to see its branches and its history.' | t }}</p>
-  <button
-    class="r-btn r-btn--primary"
-    (click)="repository.pick()"
-    [disabled]="repository.loading()"
-  >
+  <button class="r-btn r-btn--primary" (click)="pick()" [disabled]="repository.loading()">
     {{ repository.loading() ? ('Opening…' | t) : ('Open a repository' | t) }}
   </button>
   @if (repository.error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
 
-  @if (repository.recent().length) {
-    <div class="recent">
+  @if (tabs.workspaces().length) {
+    <div class="list">
+      <h2>{{ 'Workspaces' | t }}</h2>
+      <ul>
+        @for (workspace of tabs.workspaces(); track workspace.id) {
+          <li>
+            <button class="open" (click)="tabs.openWorkspace(workspace.id)">
+              <span class="name">{{ workspace.name }}</span>
+              <span class="where">{{
+                workspace.paths.length === 1
+                  ? ('1 repository' | t)
+                  : ('{n} repositories' | t: { n: workspace.paths.length })
+              }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (tabs.recent().length) {
+    <div class="list">
       <h2>{{ 'Recent' | t }}</h2>
       <ul>
-        @for (path of repository.recent(); track path) {
+        @for (path of tabs.recent(); track path) {
           <li>
-            <button class="open" (click)="repository.open(path)" [title]="path">
+            <button class="open" (click)="chose.emit(path)" [title]="path">
               <span class="name">{{ split(path).name }}</span>
               <span class="where">{{ split(path).parent }}</span>
             </button>
             <button
               class="forget"
-              (click)="repository.forget(path)"
+              (click)="tabs.forget(path)"
               [attr.aria-label]="'Remove from the list' | t"
               [title]="'Remove from the list' | t"
             >

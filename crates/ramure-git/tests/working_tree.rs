@@ -4,7 +4,7 @@ mod common;
 
 use common::{commit, git, init, repository, write};
 use ramure_git::{
-    actions, commit_files, file_diff, status, Change, ChangeKind, Head, LineKind, Repository, Side,
+    actions, commit_files, file_diff, status, Change, ChangeKind, Head, Identity, LineKind, Repository, Side,
 };
 
 fn change(path: &str, kind: ChangeKind) -> Change {
@@ -50,7 +50,7 @@ fn a_change_goes_from_the_working_tree_to_the_index_to_a_commit() {
     assert_eq!(staged, [change("a.txt", ChangeKind::Modified)]);
     assert_eq!(unstaged, [change("notes/new.md", ChangeKind::Untracked)]);
 
-    let id = actions::commit(d, "Change a").unwrap();
+    let id = actions::commit(d, "Change a", None).unwrap();
     let (staged, _) = staged_and_unstaged(d);
     assert!(staged.is_empty());
     assert_eq!(commit_files(d, &id).unwrap(), [change("a.txt", ChangeKind::Modified)]);
@@ -67,7 +67,7 @@ fn the_first_commit_shows_its_files_and_can_be_unstaged_before() {
     actions::unstage(d, &["first.txt".into()]).unwrap();
     assert_eq!(staged_and_unstaged(d).1, [change("first.txt", ChangeKind::Untracked)]);
     actions::stage(d, &["first.txt".into()]).unwrap();
-    let id = actions::commit(d, "First").unwrap();
+    let id = actions::commit(d, "First", None).unwrap();
     assert_eq!(commit_files(d, &id).unwrap(), [change("first.txt", ChangeKind::Added)]);
 }
 
@@ -77,12 +77,12 @@ fn a_rename_is_one_change_with_where_it_came_from() {
     let d = dir.path();
     write(d, "old.txt", "same content\nover several lines\n");
     actions::stage(d, &["old.txt".into()]).unwrap();
-    let first = actions::commit(d, "Add").unwrap();
+    let first = actions::commit(d, "Add", None).unwrap();
     git(d, &["mv", "old.txt", "new.txt"]);
     let staged = status(d).unwrap().staged;
     assert_eq!(staged[0].kind, ChangeKind::Renamed);
     assert_eq!(staged[0].old_path.as_deref(), Some("old.txt"));
-    let id = actions::commit(d, "Rename").unwrap();
+    let id = actions::commit(d, "Rename", None).unwrap();
     let files = commit_files(d, &id).unwrap();
     assert_eq!(
         (files[0].kind, files[0].old_path.as_deref(), files[0].path.as_str()),
@@ -94,7 +94,7 @@ fn a_rename_is_one_change_with_where_it_came_from() {
 #[test]
 fn an_empty_message_does_not_commit() {
     let dir = repository();
-    assert!(actions::commit(dir.path(), "  ").is_err());
+    assert!(actions::commit(dir.path(), "  ", None).is_err());
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     git(mine.path(), &["remote", "add", "origin", url]);
     write(mine.path(), "a.txt", "a\n");
     actions::stage(mine.path(), &["a.txt".into()]).unwrap();
-    actions::commit(mine.path(), "First").unwrap();
+    actions::commit(mine.path(), "First", None).unwrap();
     // no upstream yet: the push sets it
     actions::push(mine.path()).unwrap();
     let upstream = status(mine.path()).unwrap().upstream.unwrap();
@@ -132,12 +132,12 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     init(theirs.path());
     write(theirs.path(), "b.txt", "b\n");
     actions::stage(theirs.path(), &["b.txt".into()]).unwrap();
-    actions::commit(theirs.path(), "Second").unwrap();
+    actions::commit(theirs.path(), "Second", None).unwrap();
     actions::push(theirs.path()).unwrap();
 
     actions::fetch(mine.path()).unwrap();
     assert_eq!(status(mine.path()).unwrap().upstream.unwrap().behind, 1);
-    actions::pull(mine.path()).unwrap();
+    actions::pull(mine.path(), None).unwrap();
     assert!(mine.path().join("b.txt").exists());
     assert_eq!(status(mine.path()).unwrap().upstream.unwrap().behind, 0);
 
@@ -164,4 +164,19 @@ fn a_failing_command_leaves_out_the_hints() {
     let error = actions::create_branch(dir.path(), "bad name..", None).unwrap_err().to_string();
     assert!(error.contains("not a valid branch name"), "{error}");
     assert!(!error.contains("hint:"), "{error}");
+}
+
+#[test]
+fn a_profile_signs_the_commit_instead_of_the_configured_identity() {
+    let dir = repository();
+    let d = dir.path();
+    write(d, "a.txt", "a\n");
+    actions::stage(d, &["a.txt".into()]).unwrap();
+    let grace = Identity { name: "Grace".into(), email: "grace@example.com".into() };
+    actions::commit(d, "Signed", Some(&grace)).unwrap();
+    let snapshot = Repository::open(d).unwrap().snapshot(10).unwrap();
+    assert_eq!(
+        (snapshot.commits[0].author.as_str(), snapshot.commits[0].email.as_str()),
+        ("Grace", "grace@example.com")
+    );
 }

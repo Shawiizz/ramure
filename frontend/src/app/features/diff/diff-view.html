@@ -29,7 +29,9 @@
       } @else if (open.diff.binary) {
         <p class="note">{{ 'A binary file: no lines to show.' | t }}</p>
       } @else if (!open.diff.hunks.length) {
-        <p class="note">{{ 'No change in its content (its mode or its name only).' | t }}</p>
+        <p class="note">
+          {{ 'No change in its lines: only its mode, its name or its line endings differ.' | t }}
+        </p>
       } @else {
         <div class="hunks r-mono">
           @for (hunk of open.diff.hunks; track $index) {

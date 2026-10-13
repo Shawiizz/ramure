@@ -15,21 +15,46 @@
 
 .columns {
   flex: none;
-  height: 32px;
+  height: 30px;
+  overflow: hidden;
   border-bottom: 1px solid var(--r-line);
   color: var(--r-text-3);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+  .refs {
+    padding-left: 12px;
+  }
   .graph {
-    padding-left: 10px;
+    position: relative;
+    padding-left: 6px;
+  }
+}
+
+.resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  border-right: 1px solid var(--r-line);
+  cursor: col-resize;
+  &:hover {
+    border-right: 2px solid var(--r-accent);
   }
 }
 
 .rows {
   flex: 1;
   overflow: auto;
+}
+
+/* the same room on both sides of the scroll bar, so that the columns line up */
+.columns,
+.rows {
+  scrollbar-gutter: stable;
 }
 
 .row {
@@ -50,62 +75,86 @@
   }
 }
 
+/* the names on the commit, tied to it by a line of its colour */
+.refs {
+  flex: none;
+  width: 170px;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  margin-right: -12px;
+  app-ref-pill {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+}
+
+.more {
+  flex: none;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--lane) 20%, var(--r-base));
+  color: var(--lane);
+  font: 600 11px/22px var(--r-mono);
+}
+
+.tie {
+  flex: 1 0 6px;
+  height: 1px;
+  opacity: 0.6;
+}
+
+.unfolded {
+  position: fixed;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 4px 10px 6px 8px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: 6px;
+  background: var(--r-raised);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.5);
+  cursor: pointer;
+}
+
 .graph {
   flex: none;
   overflow: hidden;
 }
 
 .message {
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 0;
+  min-width: 220px;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  gap: 10px;
   overflow: hidden;
+  white-space: nowrap;
 }
 
 .summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.label {
   flex: none;
-  max-width: 220px;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: 4px;
+  max-width: 100%;
   overflow: hidden;
-  font: 500 11px/20px var(--r-mono);
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.label--branch {
-  background: color-mix(in srgb, var(--lane) 22%, transparent);
-  color: var(--lane);
-  &.head {
-    background: var(--lane);
-    color: var(--r-on-accent);
-    font-weight: 700;
-  }
-}
-
-.label--remote {
-  border: 1px solid color-mix(in srgb, var(--lane) 55%, transparent);
-  color: var(--lane);
-  line-height: 18px;
-}
-
-.label--tag {
-  background: var(--r-raised);
-  color: var(--r-text-2);
+.detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--r-text-3);
+  text-overflow: ellipsis;
 }
 
 .author {
-  flex: none;
-  width: 150px;
+  flex: 0 1 130px;
+  min-width: 60px;
   overflow: hidden;
   color: var(--r-text-2);
   text-overflow: ellipsis;
@@ -113,8 +162,10 @@
 }
 
 .date {
-  flex: none;
-  width: 130px;
+  flex: 0 1 120px;
+  min-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--r-text-3);
   white-space: nowrap;
 }
@@ -131,6 +182,9 @@
 }
 
 .wip {
+  .message {
+    align-items: center;
+  }
   .summary {
     color: var(--r-text-2);
     font-style: italic;

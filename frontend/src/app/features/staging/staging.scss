@@ -15,7 +15,9 @@ section {
   }
   app-file-list {
     display: block;
+    margin: 0 -10px 0 -12px;
     overflow-y: auto;
+    --inset: 20px;
   }
 }
 
@@ -67,34 +69,5 @@ h3 {
   .r-btn {
     justify-content: center;
     height: 36px;
-  }
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  span {
-    color: var(--r-text-3);
-    font-size: 12px;
-  }
-  input,
-  textarea {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--r-line-strong);
-    border-radius: var(--r-radius);
-    background: var(--r-void);
-    color: var(--r-text);
-    font: inherit;
-    resize: vertical;
-    user-select: text;
-    &::placeholder {
-      color: var(--r-text-3);
-    }
-    &:focus {
-      outline: none;
-      border-color: var(--r-accent);
-    }
   }
 }

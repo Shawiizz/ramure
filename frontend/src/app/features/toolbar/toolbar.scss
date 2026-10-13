@@ -1,0 +1,122 @@
+.toolbar {
+  height: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--r-line);
+  background: var(--r-base);
+}
+
+.where {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.place {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.caption {
+  color: var(--r-text-3);
+  font-size: 11px;
+}
+
+.value {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: none;
+  width: 8px;
+  height: 12px;
+  margin-top: 14px;
+  fill: none;
+  stroke: var(--r-text-3);
+  stroke-width: 1.5;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tool {
+  position: relative;
+  min-width: 64px;
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-radius);
+  background: transparent;
+  color: var(--r-text-2);
+  font-size: 12px;
+  cursor: pointer;
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    circle {
+      fill: currentColor;
+      stroke: none;
+    }
+  }
+  &:hover:not(:disabled) {
+    background: var(--r-hover);
+    color: var(--r-text);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.count {
+  position: absolute;
+  top: 3px;
+  left: calc(50% + 8px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--r-accent);
+  color: var(--r-on-accent);
+  font: 700 10px/16px var(--r-mono);
+  text-align: center;
+}
+
+.branching {
+  position: relative;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.r-popover {
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+}

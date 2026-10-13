@@ -32,7 +32,11 @@ export class DiffView {
   });
 
   @HostListener('document:keydown.escape')
-  close() {
+  protected escape() {
+    if (this.repository.active()) this.close();
+  }
+
+  protected close() {
     this.repository.diff.set(null);
   }
 }

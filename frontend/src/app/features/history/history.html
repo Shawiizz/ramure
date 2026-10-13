@@ -1,13 +1,26 @@
 <div class="history">
   <div class="columns" aria-hidden="true">
-    <span class="graph" [style.width.px]="graphWidth()">{{ 'Graph' | t }}</span>
+    <span class="refs">{{ 'Branch / tag' | t }}</span>
+    <span class="graph" [style.width.px]="graphWidth()">
+      {{ 'Graph' | t }}
+      <span
+        class="resize"
+        (pointerdown)="resize($event)"
+        [title]="'Drag to show more lanes' | t"
+      ></span>
+    </span>
     <span class="message">{{ 'Commit message' | t }}</span>
     <span class="author">{{ 'Author' | t }}</span>
     <span class="date">{{ 'Date' | t }}</span>
     <span class="sha">SHA</span>
   </div>
   @if (lines().length || wip()) {
-    <div class="rows" role="listbox" [attr.aria-label]="'History' | t">
+    <div
+      class="rows"
+      role="listbox"
+      [attr.aria-label]="'History' | t"
+      (scroll)="unfolded.set(null)"
+    >
       @if (wip(); as wip) {
         <button
           role="option"
@@ -17,15 +30,16 @@
           [attr.aria-selected]="repository.selectedId() === wipId"
           (click)="repository.select(wipId)"
         >
+          <span class="refs"></span>
           <svg class="graph" [attr.width]="graphWidth()" [attr.height]="row" aria-hidden="true">
             @if (wip.linked) {
               <path
                 class="wip-link"
-                [attr.d]="'M' + wip.x + ' ' + (row / 2 + 5) + 'V' + row"
+                [attr.d]="'M' + wip.x + ' ' + (row / 2 + node) + 'V' + row"
                 [style.stroke]="wip.color"
               />
             }
-            <circle class="wip-dot" [attr.cx]="wip.x" [attr.cy]="row / 2" r="5" />
+            <circle class="wip-dot" [attr.cx]="wip.x" [attr.cy]="row / 2" [attr.r]="node" />
           </svg>
           <span class="message">
             <span class="wip-tag">WIP</span>
@@ -35,6 +49,9 @@
                 : ('{n} changed files' | t: { n: repository.changes() })
             }}</span>
           </span>
+          <span class="author"></span>
+          <span class="date"></span>
+          <span class="sha"></span>
         </button>
       }
       @for (line of lines(); track line.commit.id) {
@@ -46,28 +63,36 @@
           [attr.aria-selected]="line.commit.id === repository.selectedId()"
           (click)="repository.select(line.commit.id)"
         >
+          <span class="refs" (mouseenter)="unfold($event, line)">
+            @if (line.labels.length) {
+              <app-ref-pill
+                [label]="line.labels[0]"
+                [color]="line.color"
+                (dblclick)="repository.switchTo(line.labels[0])"
+              />
+              @if (line.labels.length > 1) {
+                <span class="more" [style.--lane]="line.color">+{{ line.labels.length - 1 }}</span>
+              }
+              <span class="tie" [style.background]="line.color"></span>
+            }
+          </span>
           <app-graph-cell
             class="graph"
+            [class.selected]="line.commit.id === repository.selectedId()"
             [row]="line.row"
             [width]="graphWidth()"
+            [initials]="line.initials"
+            [merge]="line.commit.parents.length > 1"
+            [labeled]="line.labels.length > 0"
             [fromWip]="$first && !!wip()?.linked"
           />
           <span class="message">
-            @for (
-              label of repository.labels().get(line.commit.id) ?? [];
-              track label.kind + label.name
-            ) {
-              <span
-                class="label"
-                [class]="'label--' + label.kind"
-                [class.head]="label.head"
-                [style.--lane]="line.color"
-                >{{ label.name }}</span
-              >
-            }
             <span class="summary">{{ line.commit.summary }}</span>
+            @if (line.detail) {
+              <span class="detail">{{ line.detail }}</span>
+            }
           </span>
-          <span class="author">{{ line.commit.author }}</span>
+          <span class="author" [title]="line.commit.email">{{ line.commit.author }}</span>
           <span class="date">{{ when(line.commit.time) }}</span>
           <span class="sha r-mono">{{ line.commit.id.slice(0, 7) }}</span>
         </button>
@@ -75,5 +100,24 @@
     </div>
   } @else {
     <p class="empty">{{ 'No commit yet on this branch.' | t }}</p>
+  }
+
+  @if (unfolded(); as unfolded) {
+    <div
+      class="unfolded"
+      [style.top.px]="unfolded.top"
+      [style.left.px]="unfolded.left"
+      [style.min-width.px]="unfolded.width"
+      (mouseleave)="this.unfolded.set(null)"
+      (click)="repository.select(unfolded.id)"
+    >
+      @for (label of unfolded.labels; track label.kind + label.name) {
+        <app-ref-pill
+          [label]="label"
+          [color]="unfolded.color"
+          (dblclick)="repository.switchTo(label)"
+        />
+      }
+    </div>
   }
 </div>

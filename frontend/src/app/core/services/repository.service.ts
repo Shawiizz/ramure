@@ -1,11 +1,7 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
-import { t } from '../i18n/i18n';
 import { Change, Commit, FileDiff, RefLabel, Snapshot, Where } from '../models/repository';
-
-const RECENT_KEY = 'ramure.recent';
-const RECENT_MAX = 8;
+import { ProfilesService } from './profiles.service';
 
 /** The selection standing for the working tree's changes, above the history. */
 export const WIP = 'wip';
@@ -21,21 +17,23 @@ export interface OpenDiff {
 export type Exchange = 'fetch' | 'pull' | 'push';
 
 /**
- * The open repository and what is done with it: the selection (a commit, or the working
+ * One tab's repository and what is done with it: the selection (a commit, or the working
  * tree), the diff on screen, the commands that change the repository.
  */
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class RepositoryService {
+  private readonly profiles = inject(ProfilesService);
   readonly snapshot = signal<Snapshot | null>(null);
   readonly loading = signal(false);
   /** The last failure, as git told it. */
   readonly error = signal<string | null>(null);
+  /** Whether this repository's tab is in front. */
+  readonly active = signal(false);
   /** A commit's id, or [`WIP`]. */
   readonly selectedId = signal<string | null>(null);
   readonly exchange = signal<Exchange | null>(null);
   readonly working = signal(false);
   readonly diff = signal<OpenDiff | null>(null);
-  readonly recent = signal<string[]>(readRecent());
   /** The files of the selected commit, once read. */
   readonly commitFiles = signal<{ id: string; files: Change[] } | null>(null);
 
@@ -58,7 +56,11 @@ export class RepositoryService {
     return snapshot.branches.find((b) => b.name === head.name)?.target ?? null;
   });
 
-  /** The branch and tag names pointing at each commit. */
+  /**
+   * The names pointing at each commit, HEAD's branch first, then the local branches, the
+   * remote ones and the tags. A local branch and its remote counterpart on the same commit
+   * make one label.
+   */
   readonly labels = computed(() => {
     const snapshot = this.snapshot();
     const labels = new Map<string, RefLabel[]>();
@@ -66,21 +68,35 @@ export class RepositoryService {
     const head = snapshot.head.kind === 'branch' ? snapshot.head.name : null;
     const add = (target: string, label: RefLabel) =>
       labels.set(target, [...(labels.get(target) ?? []), label]);
-    for (const b of snapshot.branches)
-      add(b.target, { name: b.name, kind: 'branch', head: b.name === head });
-    for (const b of snapshot.remoteBranches)
-      add(b.target, { name: b.name, kind: 'remote', head: false });
-    for (const b of snapshot.tags) add(b.target, { name: b.name, kind: 'tag', head: false });
+    const local = new Map(snapshot.branches.map((b) => [b.name, b.target]));
+    const merged = new Set<string>();
+    for (const b of snapshot.remoteBranches) {
+      const name = b.name.slice(b.name.indexOf('/') + 1);
+      if (local.get(name) === b.target) merged.add(name);
+    }
+    const sorted = [...snapshot.branches].sort((a, b) => +(b.name === head) - +(a.name === head));
+    for (const b of sorted) {
+      add(b.target, {
+        name: b.name,
+        kind: 'branch',
+        head: b.name === head,
+        synced: merged.has(b.name),
+      });
+    }
+    for (const b of snapshot.remoteBranches) {
+      const name = b.name.slice(b.name.indexOf('/') + 1);
+      if (!(merged.has(name) && local.get(name) === b.target)) {
+        add(b.target, { name: b.name, kind: 'remote', head: false, synced: false });
+      }
+    }
+    for (const b of snapshot.tags) {
+      add(b.target, { name: b.name, kind: 'tag', head: false, synced: false });
+    }
     return labels;
   });
 
-  /** Asks for a folder and opens the repository holding it. */
-  async pick(): Promise<void> {
-    const path = await open({ directory: true, title: t('Open a repository') });
-    if (typeof path === 'string') await this.open(path);
-  }
-
-  async open(path: string): Promise<void> {
+  /** Opens the repository holding `path`; false when it cannot. */
+  async open(path: string): Promise<boolean> {
     this.loading.set(true);
     this.error.set(null);
     try {
@@ -88,9 +104,10 @@ export class RepositoryService {
       this.diff.set(null);
       this.selectedId.set(null);
       this.apply(snapshot);
-      this.remember(snapshot.path);
+      return true;
     } catch (e) {
       this.error.set(String(e));
+      return false;
     } finally {
       this.loading.set(false);
     }
@@ -126,9 +143,11 @@ export class RepositoryService {
     return this.change('unstage', { files });
   }
 
-  /** Commits what is staged; true when it is done. */
+  /** Commits what is staged, as the profile in use; true when it is done. */
   async commit(message: string): Promise<boolean> {
-    if (!(await this.change('commit', { message }))) return false;
+    if (!(await this.change('commit', { message, identity: this.profiles.identity() }))) {
+      return false;
+    }
     if (!this.changes()) this.select(this.headId() ?? WIP);
     return true;
   }
@@ -143,13 +162,35 @@ export class RepositoryService {
     return this.change('checkout', { name, remote });
   }
 
+  /** Switches to a branch beside its commit; a remote one gives a local one following it. */
+  async switchTo(label: RefLabel): Promise<void> {
+    if (label.kind !== 'tag' && !label.head)
+      await this.checkout(label.name, label.kind === 'remote');
+  }
+
   async exchangeWith(kind: Exchange): Promise<void> {
     this.exchange.set(kind);
     try {
-      await this.change(kind, {});
+      await this.change(kind, kind === 'pull' ? { identity: this.profiles.identity() } : {});
     } finally {
       this.exchange.set(null);
     }
+  }
+
+  /** Opens a file's diff, or closes it when it is the one on screen. */
+  toggleDiff(change: Change, where: Where) {
+    if (this.isOpen(change, where)) this.diff.set(null);
+    else this.showDiff(change, where);
+  }
+
+  isOpen(change: Change, where: Where): boolean {
+    const open = this.diff();
+    return (
+      !!open &&
+      open.change.path === change.path &&
+      open.where.kind === where.kind &&
+      (open.where.kind !== 'commit' || (where.kind === 'commit' && open.where.id === where.id))
+    );
   }
 
   async showDiff(change: Change, where: Where): Promise<void> {
@@ -157,7 +198,7 @@ export class RepositoryService {
     if (!path) return;
     // the same file read again keeps its lines on screen meanwhile
     const before = this.diff();
-    const same = before?.change.path === change.path && before.where.kind === where.kind;
+    const same = before && this.isOpen(change, where);
     this.diff.set({ change, where, diff: same ? before.diff : null });
     try {
       const diff = await invoke<FileDiff>('file_diff', { path, change, side: where });
@@ -166,10 +207,6 @@ export class RepositoryService {
       this.error.set(String(e));
       this.diff.set(null);
     }
-  }
-
-  forget(path: string) {
-    this.saveRecent(this.recent().filter((p) => p !== path));
   }
 
   /** Runs a command that changes the repository and takes its new state; false on failure. */
@@ -226,27 +263,5 @@ export class RepositoryService {
     } catch (e) {
       this.error.set(String(e));
     }
-  }
-
-  private remember(path: string) {
-    this.saveRecent([path, ...this.recent().filter((p) => p !== path)].slice(0, RECENT_MAX));
-  }
-
-  private saveRecent(paths: string[]) {
-    this.recent.set(paths);
-    try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(paths));
-    } catch {
-      // storage unavailable: the list lasts for this run
-    }
-  }
-}
-
-function readRecent(): string[] {
-  try {
-    const saved: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(saved) ? saved.filter((p): p is string => typeof p === 'string') : [];
-  } catch {
-    return [];
   }
 }

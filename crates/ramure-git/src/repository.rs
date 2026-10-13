@@ -55,6 +55,8 @@ pub struct Commit {
     pub id: String,
     pub parents: Vec<String>,
     pub summary: String,
+    /// The message after its summary, empty when there is none.
+    pub body: String,
     pub author: String,
     pub email: String,
     /// Seconds since 1970.
@@ -134,10 +136,12 @@ impl Repository {
             let info = info.map_err(Error::git)?;
             let commit = info.object().map_err(Error::git)?;
             let author = commit.author().map_err(Error::git)?;
+            let message = commit.message().map_err(Error::git)?;
             commits.push(Commit {
                 id: info.id.to_string(),
                 parents: info.parent_ids().map(|p| p.to_string()).collect(),
-                summary: commit.message().map_err(Error::git)?.summary().to_str_lossy().into_owned(),
+                summary: message.summary().to_str_lossy().into_owned(),
+                body: message.body.map(|b| b.to_str_lossy().trim().to_owned()).unwrap_or_default(),
                 author: author.name.to_str_lossy().into_owned(),
                 email: author.email.to_str_lossy().into_owned(),
                 time: author.time().map_err(Error::git)?.seconds,

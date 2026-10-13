@@ -69,3 +69,38 @@ fn a_folder_inside_the_repository_opens_it_and_another_folder_does_not() {
     let outside = tempfile::tempdir().unwrap();
     assert!(Repository::open(outside.path()).is_err());
 }
+
+#[test]
+fn a_commit_keeps_its_description_apart_from_its_summary() {
+    let dir = repository();
+    let d = dir.path();
+    git(
+        d,
+        &[
+            "commit",
+            "--allow-empty",
+            "-q",
+            "-m",
+            "Summary",
+            "-m",
+            "Why it was done.
+
+And how.",
+        ],
+    );
+    git(d, &["commit", "--allow-empty", "-q", "-m", "No description"]);
+    let snapshot = Repository::open(d).unwrap().snapshot(10).unwrap();
+    let messages: Vec<_> = snapshot.commits.iter().map(|c| (c.summary.as_str(), c.body.as_str())).collect();
+    assert_eq!(
+        messages,
+        [
+            ("No description", ""),
+            (
+                "Summary",
+                "Why it was done.
+
+And how."
+            )
+        ]
+    );
+}
