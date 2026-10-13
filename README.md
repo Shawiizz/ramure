@@ -45,3 +45,11 @@ cd frontend && pnpm exec prettier --check src && pnpm test --watch=false
 ## Licence
 
 GPL-3.0-or-later.
+
+## Releasing
+
+Set the version in `Cargo.toml` (`[workspace.package]`), commit, and push a tag of the same
+version (`git tag 0.2.0 && git push origin 0.2.0`). The Release workflow builds the
+installer, signs the update with the key kept in the repository's secrets, and attaches
+both to a draft release: publishing the draft offers the update to every installed copy,
+from the button in the status bar.

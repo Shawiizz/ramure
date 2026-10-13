@@ -81,6 +81,10 @@ export const FR: Record<string, string> = {
   'Diff view': 'Vue diff',
   Dismiss: 'Fermer',
   'Double-click to switch to it': 'Double-cliquez pour basculer dessus',
+  'Download version {v}, install it and start Ramure again':
+    'Télécharger la version {v}, l’installer et relancer Ramure',
+  'Downloading…': 'Téléchargement…',
+  'Downloading… {p} %': 'Téléchargement… {p} %',
   'Drag to show more lanes': 'Faites glisser pour voir plus de branches',
   Edit: 'Modifier',
   'Edit the profile': 'Modifier le profil',
@@ -145,7 +149,6 @@ export const FR: Record<string, string> = {
   'Open a Git repository to see its branches and its history.':
     'Ouvrez un dépôt Git pour voir ses branches et son historique.',
   'Open a repository': 'Ouvrir un dépôt',
-  'Open the page of version {v}': 'Ouvrir la page de la version {v}',
   'Opening…': 'Ouverture…',
   parent: 'parent',
   parents: 'parents',
@@ -214,6 +217,7 @@ export const FR: Record<string, string> = {
   'The changes alone, with a little context': 'Les changements seuls, avec un peu de contexte',
   'the identity git is set up with': 'l’identité configurée dans git',
   'The texts, the dates and the numbers.': 'Les textes, les dates et les nombres.',
+  'The update failed': 'La mise à jour a échoué',
   'The whole file, changes inline': 'Le fichier entier, changements en ligne',
   Theme: 'Thème',
   'Then send it to the upstream': 'Puis l’envoyer sur la branche distante',

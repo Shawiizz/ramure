@@ -1,0 +1,43 @@
+name: Release
+
+# A version tag (1.2.3) builds the signed installer and the update manifest and attaches
+# them to a draft release: publishing it offers the update to the installed copies.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: The tag is the app version
+        shell: pwsh
+        run: |
+          $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages.Where({ $_.name -eq 'ramure-desktop' }).version
+          if ($version -ne '${{ github.ref_name }}') { throw "tag ${{ github.ref_name }}, app version $version" }
+      # tauri-action attaches to this draft rather than creating the release itself
+      - name: Draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --draft --verify-tag --title "Ramure $TAG" --notes ""
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/ramure-desktop
+          tauriScript: npx --yes @tauri-apps/cli@2.12.2
+          tagName: ${{ github.ref_name }}
+          releaseName: Ramure ${{ github.ref_name }}
+          releaseDraft: true
+          includeUpdaterJson: true
+          # signed update packages: only here, where the signing key is
+          args: --config tauri.release.conf.json

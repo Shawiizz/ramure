@@ -1,0 +1,22 @@
+name: Setup
+description: Rust, Node and pnpm, and the frontend packages
+
+runs:
+  using: composite
+  steps:
+    - name: Rust (the version of rust-toolchain.toml)
+      shell: pwsh
+      run: rustup toolchain install
+    - uses: Swatinem/rust-cache@v2
+    - uses: pnpm/action-setup@v4
+      with:
+        package_json_file: frontend/package.json
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+        cache: pnpm
+        cache-dependency-path: frontend/pnpm-lock.yaml
+    - name: Frontend packages
+      shell: pwsh
+      working-directory: frontend
+      run: pnpm install --frozen-lockfile

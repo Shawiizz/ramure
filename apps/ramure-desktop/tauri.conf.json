@@ -22,6 +22,13 @@
     ],
     "security": { "csp": null }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFBREQ3QUFBNDRGQ0Y4MUEKUldRYStQeEVxbnJkcWxzQmVrbCtrQnJTQ01SU0xlMUdEcS9mZ1l4YVNhamswM3Rqcm81NXo5bDkK",
+      "endpoints": ["https://github.com/Shawiizz/ramure/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis"],

@@ -1,5 +1,4 @@
 import { Component, computed, inject } from '@angular/core';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Operation } from '../../core/models/repository';
@@ -61,7 +60,7 @@ export class StatusBar {
     this.repository.select(WIP);
   }
 
-  protected openRelease(url: string) {
-    void openUrl(url);
+  protected percent(share: number): number {
+    return Math.round(share * 100);
   }
 }

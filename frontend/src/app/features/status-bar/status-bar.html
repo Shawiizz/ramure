@@ -51,14 +51,26 @@
     </button>
     <button class="item" (click)="preferences.zoom(1)" [attr.aria-label]="'Zoom in' | t">+</button>
   </span>
+  @if (update.failure(); as failure) {
+    <span class="item warn" [title]="failure">{{ 'The update failed' | t }}</span>
+  }
   @if (update.available(); as release) {
     <button
       class="item update"
-      (click)="openRelease(release.url)"
-      [title]="'Open the page of version {v}' | t: { v: release.version }"
+      [disabled]="update.progress() !== null"
+      (click)="update.install()"
+      [title]="
+        'Download version {v}, install it and start Ramure again' | t: { v: release.version }
+      "
     >
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
-      {{ 'Update to {v}' | t: { v: release.version } }}
+      @if (update.progress(); as progress) {
+        {{ 'Downloading… {p} %' | t: { p: percent(progress) } }}
+      } @else if (update.progress() === 0) {
+        {{ 'Downloading…' | t }}
+      } @else {
+        {{ 'Update to {v}' | t: { v: release.version } }}
+      }
     </button>
   }
   <span class="item version r-mono">ramure {{ update.version() }}</span>
