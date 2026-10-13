@@ -7,7 +7,7 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
   selector: 'app-workspace-menu',
   template: `
     <button
-      class="trigger"
+      class="r-bar-btn"
       [class.open]="open()"
       (click)="open.set(!open())"
       [title]="'Repositories opened together' | t"
@@ -78,30 +78,6 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
     :host {
       position: relative;
     }
-    .trigger {
-      height: 28px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 0 10px;
-      border: 0;
-      border-radius: var(--r-radius);
-      background: transparent;
-      color: var(--r-text-2);
-      cursor: pointer;
-      svg {
-        width: 14px;
-        height: 14px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 1.3;
-      }
-      &:hover,
-      &.open {
-        background: var(--r-hover);
-        color: var(--r-text);
-      }
-    }
     .backdrop {
       position: fixed;
       inset: 0;
@@ -120,7 +96,7 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
     li {
       display: flex;
       align-items: center;
-      border-radius: 4px;
+      border-radius: var(--r-radius);
       &:hover {
         background: var(--r-hover);
       }
@@ -159,7 +135,7 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
       display: grid;
       place-items: center;
       border: 0;
-      border-radius: 4px;
+      border-radius: var(--r-radius);
       background: transparent;
       color: var(--r-text-3);
       cursor: pointer;

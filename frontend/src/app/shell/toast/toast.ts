@@ -28,7 +28,7 @@ import { RepositoryService } from '../../core/services/repository.service';
       gap: 12px;
       padding: 12px 12px 12px 16px;
       border: 1px solid color-mix(in srgb, var(--r-danger) 50%, transparent);
-      border-radius: 8px;
+      border-radius: var(--r-radius-panel);
       background: var(--r-raised);
       box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
     }

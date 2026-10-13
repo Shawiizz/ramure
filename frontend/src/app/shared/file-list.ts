@@ -96,7 +96,7 @@ export const KIND: Record<ChangeKind, { letter: string; title: string; color: st
       margin-right: calc(var(--inset, 8px) - 4px);
       padding: 0 8px;
       border: 1px solid var(--r-line-strong);
-      border-radius: 4px;
+      border-radius: var(--r-radius);
       background: var(--r-raised);
       font-size: 12px;
       cursor: pointer;

@@ -160,7 +160,7 @@ interface Choice {
       gap: 8px;
       padding: 0 8px;
       border: 0;
-      border-radius: 4px;
+      border-radius: var(--r-radius);
       background: transparent;
       color: var(--r-text-2);
       text-align: left;

@@ -11,7 +11,7 @@ import { Avatar } from '../../shared/avatar';
   template: `
     @if (profiles.active(); as active) {
       <button
-        class="trigger"
+        class="r-bar-btn trigger"
         [class.open]="open()"
         (click)="toggle()"
         [title]="'Commits are signed by {name}' | t: { name: signer() }"
@@ -114,21 +114,7 @@ import { Avatar } from '../../shared/avatar';
       position: relative;
     }
     .trigger {
-      height: 30px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 8px 0 4px;
-      border: 0;
-      border-radius: 15px;
-      background: transparent;
-      color: var(--r-text-2);
-      cursor: pointer;
-      &:hover,
-      &.open {
-        background: var(--r-hover);
-        color: var(--r-text);
-      }
+      padding-left: 4px;
     }
     .label {
       max-width: 160px;
@@ -137,12 +123,9 @@ import { Avatar } from '../../shared/avatar';
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .caret {
+    .trigger .caret {
       width: 10px;
       height: 6px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 1.4;
     }
     .backdrop {
       position: fixed;
@@ -167,7 +150,7 @@ import { Avatar } from '../../shared/avatar';
     li {
       display: flex;
       align-items: center;
-      border-radius: 6px;
+      border-radius: var(--r-radius);
       &:hover {
         background: var(--r-hover);
       }
@@ -248,7 +231,7 @@ import { Avatar } from '../../shared/avatar';
       margin-right: 6px;
       padding: 0 8px;
       border: 1px solid var(--r-line-strong);
-      border-radius: 4px;
+      border-radius: var(--r-radius);
       background: var(--r-raised);
       font-size: 12px;
       cursor: pointer;

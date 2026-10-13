@@ -47,7 +47,7 @@ import { RefLabel } from '../../core/models/repository';
       gap: 5px;
       padding: 0 7px;
       border: 1px solid color-mix(in srgb, var(--lane) 45%, transparent);
-      border-radius: 5px;
+      border-radius: var(--r-radius);
       background: color-mix(in srgb, var(--lane) 20%, var(--r-base));
       color: var(--lane);
       font: 500 12px var(--r-font);

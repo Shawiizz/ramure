@@ -64,6 +64,37 @@ button {
   background: transparent;
 }
 
+/* the frameless buttons of the bars: one shape, one hover */
+.r-bar-btn {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-radius);
+  background: transparent;
+  color: var(--r-text-2);
+  cursor: pointer;
+  transition:
+    background var(--r-fast),
+    color var(--r-fast);
+  svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+  }
+  &:hover:not(:disabled),
+  &.open {
+    background: var(--r-hover);
+    color: var(--r-text);
+  }
+}
+
 .r-mono {
   font-family: var(--r-mono);
   font-size: 12px;
@@ -78,7 +109,7 @@ button {
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--r-line-strong);
-  border-radius: 8px;
+  border-radius: var(--r-radius-panel);
   background: var(--r-raised);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
   .r-btn {
@@ -125,6 +156,6 @@ button {
 ::-webkit-scrollbar-thumb {
   background: var(--r-line-strong);
   border: 3px solid transparent;
-  border-radius: 6px;
+  border-radius: 999px;
   background-clip: padding-box;
 }

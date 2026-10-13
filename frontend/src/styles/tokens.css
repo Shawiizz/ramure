@@ -35,6 +35,8 @@
 
   --r-titlebar: 44px;
   --r-row: 32px;
+  /* everything clicked on, and the panels floating over the page */
   --r-radius: 6px;
+  --r-radius-panel: 8px;
   --r-fast: 120ms;
 }
