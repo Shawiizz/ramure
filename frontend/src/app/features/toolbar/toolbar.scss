@@ -1,5 +1,5 @@
 .toolbar {
-  height: 56px;
+  height: 50px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
@@ -48,28 +48,28 @@
 .tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 1px;
 }
 
 .tool {
   position: relative;
-  min-width: 64px;
-  height: 46px;
+  min-width: 46px;
+  height: 42px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0 10px;
+  gap: 3px;
+  padding: 0 8px;
   border: 0;
   border-radius: var(--r-radius);
   background: transparent;
   color: var(--r-text-2);
-  font-size: 12px;
+  font-size: 11.5px;
   cursor: pointer;
   svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.5;
@@ -90,30 +90,40 @@
   }
 }
 
+/* Pull and the caret choosing what it does: one button to the eye, lit as one */
 .split {
   display: flex;
+  border-radius: var(--r-radius);
+  transition: background var(--r-fast);
+  &:hover {
+    background: var(--r-hover);
+  }
+  .tool:hover:not(:disabled) {
+    background: transparent;
+  }
   .tool:first-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    min-width: 0;
+    padding: 0 1px 0 10px;
   }
 }
 
+/* beside the word Pull, not the icon */
 .caret {
   min-width: 0;
-  width: 16px;
-  padding: 0;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  width: 14px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0 0 8px;
   svg {
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
   }
 }
 
 .count {
   position: absolute;
-  top: 3px;
-  left: calc(50% + 8px);
+  top: 2px;
+  left: calc(50% + 6px);
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -143,7 +153,7 @@
 
 .divider {
   width: 1px;
-  height: 30px;
-  margin: 0 6px;
+  height: 26px;
+  margin: 0 5px;
   background: var(--r-line);
 }

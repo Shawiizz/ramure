@@ -280,7 +280,7 @@ fn a_stash_puts_work_aside_and_brings_it_back() {
     write(d, "a.txt", "two\n");
     write(d, "b.txt", "new\n");
 
-    actions::stash(d, Some("Put aside"), None).unwrap();
+    actions::stash(d, Some("Put aside"), &[], None).unwrap();
     assert!(status(d).unwrap().unstaged.is_empty());
     let snapshot = Repository::open(d).unwrap().snapshot(10).unwrap();
     let stash = &snapshot.stashes[0];
@@ -304,7 +304,7 @@ fn a_stash_puts_work_aside_and_brings_it_back() {
     actions::stash_drop(d, 0, &stash.id).unwrap();
     assert!(Repository::open(d).unwrap().snapshot(10).unwrap().stashes.is_empty());
 
-    actions::stash(d, None, None).unwrap();
+    actions::stash(d, None, &[], None).unwrap();
     let id = Repository::open(d).unwrap().snapshot(10).unwrap().stashes[0].id.clone();
     assert!(actions::stash_pop(d, 0, &stash.id).is_err(), "an old id no longer names stash@{{0}}");
     actions::stash_pop(d, 0, &id).unwrap();

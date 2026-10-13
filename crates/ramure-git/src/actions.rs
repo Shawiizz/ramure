@@ -101,14 +101,54 @@ fn has_upstream(dir: &Path) -> Result<bool, Error> {
     Ok(git_answer(dir, &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])?.is_some())
 }
 
-/// Puts every change aside, new files included, under `message` (git's own when `None`),
-/// leaving the working tree as HEAD has it. The stash's commits are signed by `identity`.
-pub fn stash(dir: &Path, message: Option<&str>, identity: Option<&Identity>) -> Result<(), Error> {
+/// Puts the changes of `paths` aside (every change without any), new files included, under
+/// `message` (git's own when `None`), leaving them as HEAD has them. The stash's commits
+/// are signed by `identity`.
+pub fn stash(
+    dir: &Path,
+    message: Option<&str>,
+    paths: &[String],
+    identity: Option<&Identity>,
+) -> Result<(), Error> {
     let mut args = vec!["stash", "push", "--include-untracked"];
     if let Some(message) = message {
         args.extend(["-m", message]);
     }
+    if !paths.is_empty() {
+        args.push("--");
+        args.extend(paths.iter().map(String::as_str));
+    }
     git_as(dir, &args, identity).map(drop)
+}
+
+/// Throws away the changes of `paths`, staged ones too when `staged`: followed files go
+/// back to what is staged (to HEAD), new files are deleted.
+pub fn discard(dir: &Path, paths: &[String], staged: bool) -> Result<(), Error> {
+    if staged {
+        unstage(dir, paths)?;
+    }
+    let mut args = vec!["ls-files", "-z", "--others", "--exclude-standard", "--"];
+    args.extend(paths.iter().map(String::as_str));
+    let out = git(dir, &args)?;
+    let untracked: Vec<String> = out
+        .split(|&b| b == 0)
+        .filter(|p| !p.is_empty())
+        .map(|p| String::from_utf8_lossy(p).into_owned())
+        .collect();
+    let followed: Vec<String> = paths.iter().filter(|p| !untracked.contains(p)).cloned().collect();
+    with_paths(dir, &["restore"], &followed)?;
+    with_paths(dir, &["clean", "-f", "-q"], &untracked)
+}
+
+/// Throws away every change, staged or not, new files included: the working tree as HEAD
+/// has it.
+pub fn discard_all(dir: &Path) -> Result<(), Error> {
+    if has_commits(dir)? {
+        git(dir, &["reset", "-q", "--hard"])?;
+    } else {
+        git(dir, &["rm", "-r", "-q", "--cached", "--ignore-unmatch", "."])?;
+    }
+    git(dir, &["clean", "-f", "-d", "-q"]).map(drop)
 }
 
 /// Brings back the changes of the stash `id`, kept in the list.

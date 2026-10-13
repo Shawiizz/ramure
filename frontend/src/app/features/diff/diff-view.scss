@@ -107,31 +107,6 @@
 }
 
 /* a choice between two: the chosen one lit */
-.seg {
-  display: flex;
-  padding: 3px;
-  border-radius: var(--r-radius);
-  background: var(--r-void);
-  button {
-    height: 26px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: calc(var(--r-radius) - 2px);
-    background: transparent;
-    color: var(--r-text-2);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    &:hover {
-      color: var(--r-text);
-    }
-    &[aria-checked='true'] {
-      background: var(--r-hover);
-      color: var(--r-text);
-    }
-  }
-}
-
 .body {
   position: relative;
   flex: 1;

@@ -31,6 +31,14 @@ export interface OpenDiff {
   diff: FileDiff | null;
 }
 
+/** A file looked at on its own in the middle of the window: its history, its blame (as
+ * the working tree has it, or as the commit `at` had it), or itself, edited. */
+export interface FilePanel {
+  mode: 'history' | 'blame' | 'edit';
+  path: string;
+  at?: string;
+}
+
 /** An exchange with a remote, under way. */
 export type Exchange = 'fetch' | 'pull' | 'push';
 
@@ -74,6 +82,7 @@ export class RepositoryService {
   readonly exchange = signal<Exchange | null>(null);
   readonly working = signal(false);
   readonly diff = signal<OpenDiff | null>(null);
+  readonly filePanel = signal<FilePanel | null>(null);
   /** The files of the selected commit, once read. */
   readonly commitFiles = signal<{ id: string; files: Change[] } | null>(null);
   /** The commit message being written, kept while other commits are looked at. */
@@ -242,8 +251,55 @@ export class RepositoryService {
   /** Puts every change aside, under the summary being written when there is one. */
   async stash(): Promise<void> {
     const message = this.summary().trim() || null;
-    if (await this.change('stash', { message, identity: this.profiles.identity() })) {
+    const identity = this.profiles.identity();
+    if (await this.change('stash', { message, files: [], identity })) {
       if (message) this.summary.set('');
+    }
+  }
+
+  /** Puts the changes of some files aside, the others staying. */
+  stashFiles(files: string[]) {
+    return this.change('stash', { message: null, files, identity: this.profiles.identity() });
+  }
+
+  /** Throws away the changes of some files, their staged ones too when `staged`. */
+  discard(files: string[], staged: boolean) {
+    return this.change('discard', { files, staged });
+  }
+
+  /** Throws away every change of the working tree, new files included. */
+  discardAll() {
+    return this.change('discard_all', {});
+  }
+
+  /** Adds a pattern to the repository's .gitignore. */
+  ignore(pattern: string) {
+    return this.change('ignore', { pattern });
+  }
+
+  deleteFile(file: string) {
+    return this.change('delete_file', { file });
+  }
+
+  /** Writes a file of the working tree; its changes show at once. */
+  writeFile(file: string, text: string) {
+    return this.change('write_file', { file, text });
+  }
+
+  /** A file's history, blame or editor, in place of any diff. */
+  openFile(panel: FilePanel) {
+    this.diff.set(null);
+    this.filePanel.set(panel);
+  }
+
+  /** Runs a command about one file of the working tree, telling a failure. */
+  async onFile(command: 'open_file' | 'reveal_file', file: string): Promise<void> {
+    const path = this.snapshot()?.path;
+    if (!path) return;
+    try {
+      await invoke(command, { path, file });
+    } catch (e) {
+      this.error.set(String(e));
     }
   }
 
@@ -497,6 +553,7 @@ export class RepositoryService {
 
   /** Opens a file's diff, or closes it when it is the one on screen. */
   toggleDiff(change: Change, where: Where) {
+    this.filePanel.set(null);
     if (this.isOpen(change, where)) this.diff.set(null);
     else this.showDiff(change, where);
   }

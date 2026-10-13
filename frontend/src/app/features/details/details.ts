@@ -1,14 +1,17 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { ChangeKind, Stash } from '../../core/models/repository';
+import { Stash } from '../../core/models/repository';
 import { DEFAULT_LAYOUT, MIN_MESSAGE } from '../../core/models/settings';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { Avatar } from '../../shared/avatar';
 import { splitCoAuthors } from '../../shared/co-authors';
 import { follow } from '../../shared/drag';
-import { FileList, KIND } from '../../shared/file-list';
+import { FileList, countKinds } from '../../shared/file-list';
+import { TreeSwitch } from '../../shared/tree-switch';
 import { fullDate, shortDate } from '../../shared/when';
+import { MenusService } from '../repository-tab/menus.service';
 import { Staging } from '../staging/staging';
 
 /** The right panel: the selected commit and its files, or the working tree to commit. */
@@ -16,11 +19,14 @@ import { Staging } from '../staging/staging';
   selector: 'app-details',
   templateUrl: './details.html',
   styleUrl: './details.scss',
-  imports: [TPipe, FileList, Staging, Avatar],
+  imports: [TPipe, FileList, Staging, Avatar, TreeSwitch],
 })
 export class Details {
   protected readonly repository = inject(RepositoryService);
+  protected readonly menus = inject(MenusService);
   private readonly store = inject(SettingsService);
+  private readonly preferences = inject(PreferencesService);
+  protected readonly tree = computed(() => this.preferences.preferences().fileTree);
   protected readonly wip = WIP;
   protected readonly messageHeight = computed(() => this.store.layout().message);
   protected readonly fullDate = fullDate;
@@ -46,13 +52,7 @@ export class Details {
     return loaded && loaded.id === this.repository.selectedId() ? loaded.files : null;
   });
   /** How many files of each kind, in the order of the list's letters. */
-  protected readonly kinds = computed(() => {
-    const counts = new Map<ChangeKind, number>();
-    for (const file of this.files() ?? []) counts.set(file.kind, (counts.get(file.kind) ?? 0) + 1);
-    return (Object.keys(KIND) as ChangeKind[])
-      .filter((kind) => counts.has(kind))
-      .map((kind) => ({ ...KIND[kind], count: counts.get(kind)! }));
-  });
+  protected readonly kinds = computed(() => countKinds(this.files() ?? []));
   protected readonly openPath = computed(() => {
     const diff = this.repository.diff();
     const where = diff?.where;

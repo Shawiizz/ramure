@@ -5,6 +5,7 @@
 pub mod actions;
 mod cli;
 mod diff;
+mod files;
 mod graph;
 mod identity;
 mod repository;
@@ -13,6 +14,10 @@ mod status;
 mod undo;
 
 pub use diff::{commit_files, file_diff, file_versions, FileDiff, Hunk, Line, LineKind, Side, Versions};
+pub use files::{
+    blame, delete_file, file_history, full_path, ignore, read_file, write_file, Blame, BlameCommit,
+    FileCommit,
+};
 pub use graph::{layout, Row};
 pub use identity::{git_version, global_identity, Identity};
 pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};

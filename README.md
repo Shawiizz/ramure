@@ -6,12 +6,15 @@ tags at hand, the commit you pick in detail.
 - Repositories in tabs, and workspaces that reopen several of them at once.
 - Profiles: the name and email Ramure signs commits with, switched from the title bar
   (the git configuration stays as it is).
-- The working tree: stage, unstage, commit (and push at once).
+- The working tree: stage, unstage, commit (and push at once); throw changes away, one file
+  or all of them; ignore a file, its kind or its folder; stash one file. Changed files as
+  paths or in their folders.
+- A file on its own: its history, its blame, or the file itself edited.
 - Diffs of any file, commit or stash: the file view or the changes (alone, inline or side by
   side), spaces at the ends of lines ignored or not, long lines wrapped or not, the bytes
   read in the encoding of your choice.
 - Stashes, drawn in the history on the commit they were made on: stash, pop, apply, delete.
-- Branches created and switched to; fetch, pull and push.
+- Branches created and switched to; fetch, pull (merge, fast-forward only or rebase) and push.
 - A commit's menu: check it out, branch or tag it (plain or annotated), cherry-pick or
   revert it, rebase or reset the current branch onto it, copy its id or its web link; a
   rebase, cherry-pick, revert or merge stopped on conflicts can be aborted or continued.

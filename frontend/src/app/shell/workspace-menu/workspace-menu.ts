@@ -7,7 +7,7 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
   selector: 'app-workspace-menu',
   template: `
     <button
-      class="r-bar-btn"
+      class="r-bar-btn trigger"
       [class.open]="open()"
       (click)="open.set(!open())"
       [title]="'Repositories opened together' | t"
@@ -18,7 +18,7 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
         <rect x="2" y="9.5" width="5" height="5" rx="1" />
         <rect x="9" y="9.5" width="5" height="5" rx="1" />
       </svg>
-      {{ 'Workspaces' | t }}
+      <span>{{ 'Workspaces' | t }}</span>
     </button>
     @if (open()) {
       <div class="backdrop" (click)="open.set(false)"></div>
@@ -77,6 +77,13 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
   styles: `
     :host {
       position: relative;
+      display: flex;
+    }
+    .trigger {
+      height: 28px;
+      gap: 6px;
+      padding: 0 8px;
+      line-height: 1;
     }
     .backdrop {
       position: fixed;

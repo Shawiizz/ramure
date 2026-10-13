@@ -64,6 +64,44 @@ button {
   background: transparent;
 }
 
+/* a choice among a few, side by side: the one made lit */
+.r-seg {
+  display: flex;
+  padding: 3px;
+  border-radius: var(--r-radius);
+  background: var(--r-void);
+  button {
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: calc(var(--r-radius) - 2px);
+    background: transparent;
+    color: var(--r-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    svg {
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    &:hover {
+      color: var(--r-text);
+    }
+    &[aria-checked='true'] {
+      background: var(--r-hover);
+      color: var(--r-text);
+    }
+  }
+}
+
 /* the frameless buttons of the bars: one shape, one hover */
 .r-bar-btn {
   height: 30px;
@@ -160,8 +198,22 @@ button {
   background-clip: padding-box;
 }
 
-/* the diff's file view, in Monaco: added lines tinted, a notch where lines went */
+/* the diff's file view, in Monaco: added lines tinted, a notch where lines went; a
+   file's blame, before its lines */
 .monaco-editor {
+  .r-blame {
+    color: transparent;
+    background: var(--r-base);
+    font-size: 12px;
+  }
+  .r-blame-first {
+    box-shadow: inset 0 1px var(--r-line);
+    color: var(--r-text-3);
+    cursor: pointer;
+    &:hover {
+      color: var(--r-accent);
+    }
+  }
   .r-line-added {
     background: rgb(var(--r-added-rgb) / 0.3);
   }

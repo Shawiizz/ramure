@@ -17,6 +17,7 @@ import { Tab, TabsService } from '../../core/services/tabs.service';
 import { Toast } from '../../shell/toast/toast';
 import { Details } from '../details/details';
 import { DiffView } from '../diff/diff-view';
+import { FilePanel } from '../file/file-panel';
 import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
 import { RebaseDialog } from '../rebase/rebase-dialog';
@@ -43,10 +44,12 @@ import { follow } from '../../shared/drag';
           (pointerdown)="resize($event, 'sidebar')"
           [title]="'Drag to resize' | t"
         ></div>
-        <!-- the history stays beneath an open diff: closing it shows it back at once -->
+        <!-- the history stays beneath a diff or a file: closing them shows it back at once -->
         <div class="center">
           <app-history />
-          @if (repository.diff()) {
+          @if (repository.filePanel()) {
+            <app-file-panel />
+          } @else if (repository.diff()) {
             <app-diff-view />
           }
         </div>
@@ -99,7 +102,8 @@ import { follow } from '../../shared/drag';
       display: block;
       height: 100%;
     }
-    app-diff-view {
+    app-diff-view,
+    app-file-panel {
       position: absolute;
       inset: 0;
       background: var(--r-void);
@@ -134,6 +138,7 @@ import { follow } from '../../shared/drag';
     Sidebar,
     History,
     DiffView,
+    FilePanel,
     Details,
     Welcome,
     StatusBar,

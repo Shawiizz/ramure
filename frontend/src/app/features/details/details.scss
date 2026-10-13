@@ -205,8 +205,7 @@ h2 {
 .files-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   padding: 14px 2px 6px;
 }
 
@@ -216,6 +215,7 @@ h2 {
 }
 
 .kinds {
+  margin-left: auto;
   display: flex;
   gap: 10px;
   font: 500 12px var(--r-mono);

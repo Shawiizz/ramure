@@ -19,7 +19,7 @@ import { Avatar } from '../../shared/avatar';
         <app-avatar
           [name]="active.identity.name || active.name"
           [email]="active.identity.email"
-          [size]="22"
+          [size]="20"
         />
         <span class="label">{{ active.name }}</span>
         <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
@@ -112,9 +112,13 @@ import { Avatar } from '../../shared/avatar';
   styles: `
     :host {
       position: relative;
+      display: flex;
     }
     .trigger {
-      padding-left: 4px;
+      height: 28px;
+      gap: 6px;
+      padding: 0 8px 0 4px;
+      line-height: 1;
     }
     .label {
       max-width: 160px;

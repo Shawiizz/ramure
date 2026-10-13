@@ -133,13 +133,15 @@
               </span>
             }
           </span>
+          <app-tree-switch />
         </div>
+        @let where = { kind: stash ? 'stash' : 'commit', id: commit.id };
         <app-file-list
           [changes]="files"
+          [tree]="tree()"
           [openPath]="openPath()"
-          (opened)="
-            repository.toggleDiff($event, { kind: stash ? 'stash' : 'commit', id: commit.id })
-          "
+          (opened)="repository.toggleDiff($event, $any(where))"
+          (menu)="menus.open($event.event, menus.forFile($event.change, $any(where)))"
         />
       } @else {
         <p class="none">{{ 'Reading…' | t }}</p>

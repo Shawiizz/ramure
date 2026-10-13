@@ -1,5 +1,31 @@
 @if (status(); as status) {
   <div class="staging">
+    <header class="top">
+      <button
+        class="r-bar-btn icon discard"
+        [disabled]="!repository.changes() || repository.working()"
+        (click)="menus.discardAll()"
+        [attr.aria-label]="'Discard every change…' | t"
+        [title]="'Discard every change…' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M7 7v3.5M9 7v3.5" />
+        </svg>
+      </button>
+      <span class="summary">
+        {{
+          repository.changes() === 1
+            ? ('1 file change' | t)
+            : ('{n} file changes' | t: { n: repository.changes() })
+        }}
+        @if (branch(); as branch) {
+          <span class="on">{{ 'on' | t }}</span>
+          <span class="branch r-mono">{{ branch }}</span>
+        }
+      </span>
+      <app-tree-switch />
+    </header>
+
     @if (status.conflicted.length) {
       <section class="conflicts">
         <header>
@@ -9,10 +35,12 @@
         </header>
         <app-file-list
           [changes]="status.conflicted"
+          [tree]="tree()"
           [action]="stageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, false)"
-          (acted)="repository.stage([$event.path])"
+          (acted)="repository.stage(paths($event))"
+          (menu)="menus.open($event.event, menus.forFile($event.change, { kind: 'unstaged' }))"
         />
       </section>
     }
@@ -31,10 +59,12 @@
       @if (status.unstaged.length) {
         <app-file-list
           [changes]="status.unstaged"
+          [tree]="tree()"
           [action]="stageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, false)"
-          (acted)="repository.stage([$event.path])"
+          (acted)="repository.stage(paths($event))"
+          (menu)="menus.open($event.event, menus.forFile($event.change, { kind: 'unstaged' }))"
         />
       } @else {
         <p class="none">{{ 'Nothing changed.' | t }}</p>
@@ -55,10 +85,12 @@
       @if (status.staged.length) {
         <app-file-list
           [changes]="status.staged"
+          [tree]="tree()"
           [action]="unstageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, true)"
-          (acted)="repository.unstage([$event.path])"
+          (acted)="repository.unstage(paths($event))"
+          (menu)="menus.open($event.event, menus.forFile($event.change, { kind: 'staged' }))"
         />
       } @else {
         <p class="none">{{ 'Stage files to commit them.' | t }}</p>

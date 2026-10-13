@@ -3,17 +3,27 @@ import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Change } from '../../core/models/repository';
 import { RepositoryService } from '../../core/services/repository.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { FileList } from '../../shared/file-list';
+import { TreeSwitch } from '../../shared/tree-switch';
+import { MenusService } from '../repository-tab/menus.service';
 
 /** The working tree's changes: stage them, unstage them, commit what is staged. */
 @Component({
   selector: 'app-staging',
   templateUrl: './staging.html',
   styleUrl: './staging.scss',
-  imports: [TPipe, FileList],
+  imports: [TPipe, FileList, TreeSwitch],
 })
 export class Staging {
   protected readonly repository = inject(RepositoryService);
+  protected readonly menus = inject(MenusService);
+  private readonly preferences = inject(PreferencesService);
+  protected readonly tree = computed(() => this.preferences.preferences().fileTree);
+  protected readonly branch = computed(() => {
+    const head = this.repository.snapshot()?.head;
+    return head?.kind === 'branch' ? head.name : null;
+  });
   protected readonly stageLabel = computed(() => t('Stage'));
   protected readonly unstageLabel = computed(() => t('Unstage'));
 
@@ -32,6 +42,10 @@ export class Staging {
 
   protected show(change: Change, staged: boolean) {
     this.repository.toggleDiff(change, { kind: staged ? 'staged' : 'unstaged' });
+  }
+
+  protected paths(changes: Change[]): string[] {
+    return changes.map((c) => c.path);
   }
 
   protected stageAll() {

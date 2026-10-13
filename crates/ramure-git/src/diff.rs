@@ -165,21 +165,25 @@ pub fn commit_files(dir: &Path, id: &str) -> Result<Vec<Change>, Error> {
         out.split(|&b| b == 0).filter(|f| !f.is_empty()).map(|f| String::from_utf8_lossy(f).into_owned());
     let mut changes = Vec::new();
     while let Some(status) = fields.next() {
-        let code = status.as_bytes().first().copied().unwrap_or(b'M');
-        let kind = match code {
-            b'A' => ChangeKind::Added,
-            b'D' => ChangeKind::Deleted,
-            b'R' => ChangeKind::Renamed,
-            b'C' => ChangeKind::Copied,
-            b'T' => ChangeKind::TypeChanged,
-            _ => ChangeKind::Modified,
-        };
+        let kind = kind_of(status.as_bytes().first().copied().unwrap_or(b'M'));
         let old_path =
             if matches!(kind, ChangeKind::Renamed | ChangeKind::Copied) { fields.next() } else { None };
         let Some(path) = fields.next() else { break };
         changes.push(Change { path, old_path, kind });
     }
     Ok(changes)
+}
+
+/// The kind of change a `--name-status` letter names.
+pub(crate) fn kind_of(code: u8) -> ChangeKind {
+    match code {
+        b'A' => ChangeKind::Added,
+        b'D' => ChangeKind::Deleted,
+        b'R' => ChangeKind::Renamed,
+        b'C' => ChangeKind::Copied,
+        b'T' => ChangeKind::TypeChanged,
+        _ => ChangeKind::Modified,
+    }
 }
 
 /// A file git does not follow yet: all of it is new.

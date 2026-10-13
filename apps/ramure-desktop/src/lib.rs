@@ -4,7 +4,8 @@
 
 use ramure_git::actions::{Planned, Pull, Reset, Step};
 use ramure_git::{
-    actions, Change, FileDiff, Identity, Move, Operation, RefState, Repository, Side, Snapshot, View,
+    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, RefState, Repository, Side,
+    Snapshot, View,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -24,6 +25,8 @@ enum CommandError {
     Git(#[from] ramure_git::Error),
     #[error("The settings could not be saved: {0}")]
     Settings(String),
+    #[error("{0}")]
+    System(String),
 }
 
 impl serde::Serialize for CommandError {
@@ -107,9 +110,74 @@ fn stash_files(path: PathBuf, id: String) -> Answer<Vec<Change>> {
 }
 
 #[tauri::command(async)]
-fn stash(path: PathBuf, message: Option<String>, identity: Option<Identity>) -> Answer<Snapshot> {
-    actions::stash(&path, message.as_deref(), identity.as_ref())?;
+fn stash(
+    path: PathBuf,
+    message: Option<String>,
+    files: Vec<String>,
+    identity: Option<Identity>,
+) -> Answer<Snapshot> {
+    actions::stash(&path, message.as_deref(), &files, identity.as_ref())?;
     snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn discard(path: PathBuf, files: Vec<String>, staged: bool) -> Answer<Snapshot> {
+    actions::discard(&path, &files, staged)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn discard_all(path: PathBuf) -> Answer<Snapshot> {
+    actions::discard_all(&path)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn ignore(path: PathBuf, pattern: String) -> Answer<Snapshot> {
+    ramure_git::ignore(&path, &pattern)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn delete_file(path: PathBuf, file: String) -> Answer<Snapshot> {
+    ramure_git::delete_file(&path, &file)?;
+    snapshot(&path)
+}
+
+/// The working tree's `file`, as raw bytes.
+#[tauri::command(async)]
+fn read_file(path: PathBuf, file: String) -> Answer<tauri::ipc::Response> {
+    Ok(tauri::ipc::Response::new(ramure_git::read_file(&path, &file)?))
+}
+
+#[tauri::command(async)]
+fn write_file(path: PathBuf, file: String, text: String) -> Answer<Snapshot> {
+    ramure_git::write_file(&path, &file, text.as_bytes())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn file_history(path: PathBuf, file: String) -> Answer<Vec<FileCommit>> {
+    Ok(ramure_git::file_history(&path, &file)?)
+}
+
+#[tauri::command(async)]
+fn blame(path: PathBuf, file: String, at: Option<String>) -> Answer<Blame> {
+    Ok(ramure_git::blame(&path, &file, at.as_deref())?)
+}
+
+/// Opens the working tree's `file` in the program the system gives its kind.
+#[tauri::command(async)]
+fn open_file(path: PathBuf, file: String) -> Answer<()> {
+    let full = ramure_git::full_path(&path, &file)?;
+    tauri_plugin_opener::open_path(full, None::<&str>).map_err(|e| CommandError::System(e.to_string()))
+}
+
+/// Shows the working tree's `file` selected in its folder.
+#[tauri::command(async)]
+fn reveal_file(path: PathBuf, file: String) -> Answer<()> {
+    let full = ramure_git::full_path(&path, &file)?;
+    tauri_plugin_opener::reveal_item_in_dir(full).map_err(|e| CommandError::System(e.to_string()))
 }
 
 #[tauri::command(async)]
@@ -458,6 +526,16 @@ pub fn run() {
             stash_apply,
             stash_pop,
             stash_drop,
+            discard,
+            discard_all,
+            ignore,
+            delete_file,
+            read_file,
+            write_file,
+            file_history,
+            blame,
+            open_file,
+            reveal_file,
             checkout_commit,
             cherry_pick,
             revert,

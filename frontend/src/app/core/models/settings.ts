@@ -73,6 +73,8 @@ export interface Preferences {
   pictures: boolean;
   /** What the Pull button does. */
   pull: PullMode;
+  /** Changed files in their folders, rather than one list of paths. */
+  fileTree: boolean;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -101,6 +103,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   descriptions: true,
   pictures: true,
   pull: 'merge',
+  fileTree: false,
 };
 
 /** Where the panels are and how big: dragged by the user, kept from run to run. */
@@ -230,6 +233,7 @@ function parsePreferences(value: unknown): Preferences {
     descriptions: flag('descriptions', d.descriptions),
     pictures: flag('pictures', d.pictures),
     pull: among('pull', PULL_MODES, d.pull),
+    fileTree: flag('fileTree', d.fileTree),
   };
 }
 

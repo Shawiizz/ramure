@@ -19,7 +19,7 @@ import { DiffLayout, DiffMode, Preferences } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { ENCODINGS, Encoding, decode, guessEncoding } from '../../shared/encoding';
-import { MonacoApi, applyTheme, languageOf, loadMonaco } from '../../shared/monaco';
+import { MonacoApi, editorOptions, injectMonaco, languageOf } from '../../shared/monaco';
 
 /** The file a diff is about: a change, and where it lies. */
 interface Target {
@@ -81,9 +81,11 @@ export class DiffView {
   protected readonly encodings = ENCODINGS;
   /** The encoding picked for this file; guessed until then. */
   protected readonly picked = signal<Encoding | null>(null);
-  protected readonly failure = signal<string | null>(null);
+  private readonly loaded = injectMonaco();
+  private readonly monaco = this.loaded.monaco;
+  private readonly readFailure = signal<string | null>(null);
+  protected readonly failure = computed(() => this.loaded.failure() ?? this.readFailure());
   private readonly versions = signal<Versions | null>(null);
-  private readonly monaco = signal<MonacoApi | null>(null);
   private readonly host = viewChild<ElementRef<HTMLElement>>('editor');
   private shown: Shown | null = null;
   /** The diff still on screen while the one replacing it is computed. */
@@ -134,19 +136,9 @@ export class DiffView {
   });
 
   constructor() {
-    loadMonaco().then(
-      (monaco) => this.monaco.set(monaco),
-      (e) => this.failure.set(String(e)),
-    );
     effect(() => {
       const target = this.target();
       untracked(() => this.read(target));
-    });
-    effect(() => {
-      const monaco = this.monaco();
-      const light = this.preferences.theme() === 'light';
-      // once the page wears the theme's colours, which Monaco's theme copies
-      if (monaco) requestAnimationFrame(() => applyTheme(monaco, light));
     });
     effect(() => {
       const monaco = this.monaco();
@@ -163,7 +155,10 @@ export class DiffView {
   protected escape(event: Event) {
     // Escape in the editor's search closes the search first
     if ((event.target as HTMLElement).closest('.find-widget')) return;
-    if (this.repository.active()) this.close();
+    if (!this.repository.active()) return;
+    // the file panel this diff may sit in stays
+    event.preventDefault();
+    this.close();
   }
 
   protected close() {
@@ -200,7 +195,7 @@ export class DiffView {
 
   private async read(target: Target | null) {
     const path = this.repository.snapshot()?.path;
-    this.failure.set(null);
+    this.readFailure.set(null);
     if (!target || !path) {
       this.versions.set(null);
       return;
@@ -216,7 +211,7 @@ export class DiffView {
       if (this.versions()?.target.change.path !== target.change.path) this.picked.set(null);
       this.versions.set(split(target, buffer));
     } catch (e) {
-      if (this.target() === target) this.failure.set(String(e));
+      if (this.target() === target) this.readFailure.set(String(e));
     }
   }
 
@@ -318,22 +313,7 @@ export class DiffView {
   }
 
   private create(monaco: MonacoApi, host: HTMLElement, mode: DiffMode): Shown {
-    const mono = getComputedStyle(document.documentElement).getPropertyValue('--r-mono').trim();
-    const options: Monaco.editor.IEditorOptions = {
-      readOnly: true,
-      automaticLayout: true,
-      contextmenu: false,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      stickyScroll: { enabled: false },
-      unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
-      fontFamily: mono,
-      fontSize: 12.5,
-      lineHeight: 21,
-      lineNumbersMinChars: 4,
-      renderLineHighlight: 'none',
-      padding: { top: 8, bottom: 8 },
-    };
+    const options = editorOptions();
     const pane = document.createElement('div');
     pane.style.cssText = 'position: absolute; inset: 0';
     host.append(pane);

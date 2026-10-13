@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { t } from '../../core/i18n/i18n';
-import { Commit, Planned } from '../../core/models/repository';
+import { Change, Commit, Planned, Where } from '../../core/models/repository';
 import { RepositoryService } from '../../core/services/repository.service';
 import { Ask } from '../../shared/ask-dialog';
 import { MenuEntry } from '../../shared/context-menu';
@@ -357,6 +357,100 @@ export class MenusService {
     ];
   }
 
+  /**
+   * What can be done with a changed file: in the working tree, stage it or throw its
+   * changes away, keep it out of git; anywhere, look at its history, at who wrote it,
+   * open it, edit it.
+   */
+  forFile(change: Change, where: Where): MenuEntry[] {
+    const r = this.repository;
+    const path = change.path;
+    const name = path.slice(path.lastIndexOf('/') + 1);
+    const gone = change.kind === 'deleted';
+    const inTree = where.kind === 'staged' || where.kind === 'unstaged';
+    // a file not committed yet has no history and nobody to blame
+    const fresh = inTree && (change.kind === 'untracked' || change.kind === 'added');
+    const at = inTree ? undefined : where.id;
+    const looks: MenuEntry[] = [
+      {
+        label: t('File history'),
+        disabled: fresh,
+        run: () => r.openFile({ mode: 'history', path }),
+      },
+      {
+        label: t('File blame'),
+        disabled: fresh || gone,
+        run: () => r.openFile({ mode: 'blame', path, at }),
+      },
+      null,
+      { label: t('Open the file'), disabled: gone, run: () => r.onFile('open_file', path) },
+      {
+        label: t('Show it in its folder'),
+        disabled: gone,
+        run: () => r.onFile('reveal_file', path),
+      },
+      null,
+      { label: t('Copy the file path'), run: () => this.copy(this.fullPath(path)) },
+      null,
+      { label: t('Edit the file'), disabled: gone, run: () => r.openFile({ mode: 'edit', path }) },
+    ];
+    if (!inTree) return looks;
+    const staged = where.kind === 'staged';
+    return [
+      staged
+        ? { label: t('Unstage'), run: () => r.unstage([path]) }
+        : { label: t('Stage'), run: () => r.stage([path]) },
+      {
+        label: t('Discard the changes…'),
+        danger: true,
+        run: () =>
+          this.ask({
+            title: t('Discard the changes of {name}?', { name }),
+            text:
+              change.kind === 'untracked'
+                ? t('The new file is deleted for good.')
+                : staged
+                  ? t('Its staged and unstaged changes are thrown away for good.')
+                  : t('It goes back as it is staged, or committed, for good.'),
+            fields: [],
+            confirm: t('Discard'),
+            danger: true,
+            answered: () => r.discard([path], staged),
+          }),
+      },
+      ...(staged ? [] : [{ label: t('Ignore'), children: this.ignoring(path) }]),
+      { label: t('Stash the file'), run: () => r.stashFiles([path]) },
+      null,
+      ...looks,
+      {
+        label: t('Delete the file…'),
+        danger: true,
+        disabled: gone,
+        run: () =>
+          this.ask({
+            title: t('Delete {name}?', { name }),
+            text: t('It goes from the disk: only a version git kept can bring it back.'),
+            fields: [],
+            confirm: t('Delete'),
+            danger: true,
+            answered: () => r.deleteFile(path),
+          }),
+      },
+    ];
+  }
+
+  /** Throws away every change of the working tree, once sure. */
+  discardAll() {
+    this.ask({
+      title: t('Discard every change?'),
+      text: t('Every change, staged or not, and every new file is thrown away for good.'),
+      fields: [],
+      confirm: t('Discard everything'),
+      danger: true,
+      answered: () => this.repository.discardAll(),
+    });
+  }
+
   /** A local branch dropped on another: join them one way or the other. */
   forDrop(from: string, onto: string): MenuEntry[] {
     const r = this.repository;
@@ -497,4 +591,50 @@ export class MenusService {
   private copy(text: string) {
     void navigator.clipboard.writeText(text);
   }
+
+  /** Keeping a file out of git: it alone, every file of its kind, or its whole folder. */
+  private ignoring(path: string): MenuEntry[] {
+    const r = this.repository;
+    const name = path.slice(path.lastIndexOf('/') + 1);
+    const dir = path.slice(0, Math.max(path.lastIndexOf('/'), 0));
+    const dot = name.lastIndexOf('.');
+    const extension = dot > 0 ? name.slice(dot) : null;
+    return [
+      { label: t('Ignore {name}', { name }), run: () => r.ignore(rooted(path)) },
+      ...(extension
+        ? [
+            {
+              label: t('Every file ending in {extension}', { extension }),
+              run: () => r.ignore(`*${escapeGlob(extension)}`),
+            },
+          ]
+        : []),
+      ...(dir
+        ? [
+            {
+              label: t('Everything in {dir}', { dir: `${dir}/` }),
+              run: () => r.ignore(`${rooted(dir)}/`),
+            },
+          ]
+        : []),
+    ];
+  }
+
+  /** A file of the working tree as the system names it. */
+  private fullPath(path: string): string {
+    const root = this.repository.snapshot()?.path ?? '';
+    const windows = root.includes('\\');
+    const sep = windows ? '\\' : '/';
+    return root.replace(/[\\/]+$/, '') + sep + (windows ? path.replaceAll('/', '\\') : path);
+  }
+}
+
+/** A .gitignore pattern matching `path` alone, from the repository's root. */
+function rooted(path: string): string {
+  return `/${escapeGlob(path)}`;
+}
+
+/** Wildcards taken literally in a .gitignore pattern. */
+function escapeGlob(text: string): string {
+  return text.replace(/[*?[\\]/g, '\\$&');
 }

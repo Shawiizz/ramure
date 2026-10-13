@@ -126,19 +126,21 @@
   }
 }
 
-app-workspace-menu,
-app-profile-menu,
-.settings {
-  align-self: center;
+/* the titlebar's own controls: one height, one gap */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .settings {
-  width: 30px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   justify-content: center;
   svg {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     stroke-width: 1.5;
     stroke-linejoin: round;
   }
@@ -146,7 +148,7 @@ app-profile-menu,
 
 .window {
   display: flex;
-  margin-left: 8px;
+  margin-left: 6px;
 }
 
 .win {

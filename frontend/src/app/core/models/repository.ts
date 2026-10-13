@@ -92,6 +92,25 @@ export interface Commit {
   time: number;
 }
 
+/** A commit that changed a file, and how (`ramure_git::FileCommit`). */
+export interface FileCommit {
+  id: string;
+  summary: string;
+  author: string;
+  email: string;
+  time: number;
+  /** The file as this commit changed it: a renamed one under the name it had then. */
+  change: Change;
+}
+
+/** A file with the commit of each line (`ramure_git::Blame`). */
+export interface Blame {
+  text: string;
+  /** The commit of each line, in order; zeros for one not committed yet. */
+  lines: string[];
+  commits: Record<string, { author: string; email: string; time: number; summary: string }>;
+}
+
 /** What crosses one row of the graph: see `ramure_git::graph`. */
 export interface GraphRow {
   lane: number;
