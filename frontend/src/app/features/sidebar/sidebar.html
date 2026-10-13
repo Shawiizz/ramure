@@ -44,7 +44,7 @@
                     (dblclick)="switchTo(section.key, item)"
                     [title]="
                       section.key === 'local' || section.key === 'remote'
-                        ? item.name + ' · ' + switchHint
+                        ? item.name + ' · ' + switchHint()
                         : item.name
                     "
                   >

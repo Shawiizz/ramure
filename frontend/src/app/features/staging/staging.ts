@@ -14,8 +14,8 @@ import { FileList } from '../../shared/file-list';
 })
 export class Staging {
   protected readonly repository = inject(RepositoryService);
-  protected readonly stageLabel = t('Stage');
-  protected readonly unstageLabel = t('Unstage');
+  protected readonly stageLabel = computed(() => t('Stage'));
+  protected readonly unstageLabel = computed(() => t('Unstage'));
 
   protected readonly status = computed(() => this.repository.snapshot()?.status);
   protected readonly openPath = computed(() => {

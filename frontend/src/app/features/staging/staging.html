@@ -9,7 +9,7 @@
         </header>
         <app-file-list
           [changes]="status.conflicted"
-          [action]="stageLabel"
+          [action]="stageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, false)"
           (acted)="repository.stage([$event.path])"
@@ -31,7 +31,7 @@
       @if (status.unstaged.length) {
         <app-file-list
           [changes]="status.unstaged"
-          [action]="stageLabel"
+          [action]="stageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, false)"
           (acted)="repository.stage([$event.path])"
@@ -55,7 +55,7 @@
       @if (status.staged.length) {
         <app-file-list
           [changes]="status.staged"
-          [action]="unstageLabel"
+          [action]="unstageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, true)"
           (acted)="repository.unstage([$event.path])"

@@ -87,7 +87,7 @@ export class Sidebar {
       },
     ];
   });
-  protected readonly switchHint = t('Double-click to switch to it');
+  protected readonly switchHint = computed(() => t('Double-click to switch to it'));
 
   protected toggle(key: string) {
     this.store.update((s) => ({

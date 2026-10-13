@@ -1,3 +1,4 @@
+import { computed, signal } from '@angular/core';
 import { FR } from './fr';
 
 export type Language = 'en' | 'fr';
@@ -8,14 +9,15 @@ export const LANGUAGES: { id: Language; name: string }[] = [
 
 const STORAGE_KEY = 'ramure.language';
 
-/**
- * The language of this run of the UI: chosen once at startup (the English text is the
- * key, so a missing translation shows in English).
- */
-export const LANGUAGE: Language = chosenLanguage();
+/** The English text is the key, so a missing translation shows in English. */
+const current = signal<Language>(chosenLanguage());
+document.documentElement.lang = current();
+
+/** The UI's language: everything translated, dates and numbers follow it as it changes. */
+export const language = current.asReadonly();
 
 /** For dates and numbers. */
-export const LOCALE = LANGUAGE === 'fr' ? 'fr-FR' : 'en-GB';
+export const locale = computed(() => (current() === 'fr' ? 'fr-FR' : 'en-GB'));
 
 function chosenLanguage(): Language {
   let saved: string | null = null;
@@ -28,21 +30,22 @@ function chosenLanguage(): Language {
   return navigator.language.toLowerCase().startsWith('fr') ? 'fr' : 'en';
 }
 
-/** Switches the language: the UI starts again in it. */
+/** Switches the language, at once and for the next runs. */
 export function setLanguage(language: Language) {
   try {
     localStorage.setItem(STORAGE_KEY, language);
   } catch {
-    return;
+    // storage unavailable: the choice lasts for this run
   }
-  location.reload();
+  current.set(language);
+  document.documentElement.lang = language;
 }
 
 export type Params = Record<string, string | number>;
 
 /** `text` in the UI's language, its `{name}` placeholders filled from `params`. */
 export function t(text: string, params?: Params): string {
-  return translate(LANGUAGE, text, params);
+  return translate(current(), text, params);
 }
 
 export function translate(language: Language, text: string, params?: Params): string {

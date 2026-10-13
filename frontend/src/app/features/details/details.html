@@ -121,7 +121,7 @@
           }}</span>
           <span class="kinds">
             @for (kind of kinds(); track kind.letter) {
-              <span class="kind" [style.color]="kind.color" [title]="kind.title">
+              <span class="kind" [style.color]="kind.color" [title]="kind.title()">
                 <b>{{ kind.letter }}</b
                 >{{ kind.count }}
               </span>

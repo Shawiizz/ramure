@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
-import { LANGUAGE, LANGUAGES, Language, setLanguage, t } from '../../core/i18n/i18n';
+import { LANGUAGES, language, locale, setLanguage, t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import {
   AUTO_FETCH_MINUTES,
@@ -25,30 +25,32 @@ export class SettingsDialog {
   protected readonly service = inject(PreferencesService);
   protected readonly prefs = this.service.preferences;
   protected readonly page = signal<Page>('general');
-  protected readonly pages: { id: Page; label: string }[] = [
+  protected readonly pages = computed<{ id: Page; label: string }[]>(() => [
     { id: 'general', label: t('General') },
     { id: 'git', label: 'Git' },
     { id: 'about', label: t('About') },
-  ];
-  protected readonly title = computed(() => this.pages.find((p) => p.id === this.page())!.label);
-  protected readonly language = LANGUAGE;
+  ]);
+  protected readonly title = computed(() => this.pages().find((p) => p.id === this.page())!.label);
+  protected readonly language = language;
   protected readonly languages = LANGUAGES;
+  protected readonly setLanguage = setLanguage;
   protected readonly themes = THEMES;
-  protected readonly themeNames: Record<Theme, string> = {
+  protected readonly themeNames = computed<Record<Theme, string>>(() => ({
     dark: t('Dark'),
     light: t('Light'),
     system: t('As the system'),
-  };
+  }));
   protected readonly autoFetch = AUTO_FETCH_MINUTES;
   protected readonly historyLimits = HISTORY_LIMITS;
   protected readonly version = signal('');
-  protected readonly gitVersion = signal('');
+  /** git's version once it answers, null when it cannot be found. */
+  protected readonly gitVersion = signal<string | null>('');
 
   constructor() {
     getVersion().then((v) => this.version.set(v));
     invoke<string>('git_version').then(
       (v) => this.gitVersion.set(v),
-      () => this.gitVersion.set(t('git could not be found')),
+      () => this.gitVersion.set(null),
     );
   }
 
@@ -56,8 +58,8 @@ export class SettingsDialog {
     this.service.set(key, value);
   }
 
-  protected chooseLanguage(language: Language) {
-    if (language !== this.language) setLanguage(language);
+  protected count(n: number): string {
+    return n.toLocaleString(locale());
   }
 
   protected minutes(n: number): string {

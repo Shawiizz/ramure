@@ -10,7 +10,7 @@
     <aside class="pages">
       <h2>{{ 'Settings' | t }}</h2>
       <nav>
-        @for (p of pages; track p.id) {
+        @for (p of pages(); track p.id) {
           <button
             class="page"
             [class.current]="page() === p.id"
@@ -57,14 +57,14 @@
             <div class="row">
               <div>
                 <span class="name">{{ 'Language' | t }}</span>
-                <span class="help">{{ 'The interface starts again in it.' | t }}</span>
+                <span class="help">{{ 'The texts, the dates and the numbers.' | t }}</span>
               </div>
               <div class="seg" role="radiogroup" [attr.aria-label]="'Language' | t">
                 @for (l of languages; track l.id) {
                   <button
                     role="radio"
-                    [attr.aria-checked]="language === l.id"
-                    (click)="chooseLanguage(l.id)"
+                    [attr.aria-checked]="language() === l.id"
+                    (click)="setLanguage(l.id)"
                   >
                     {{ l.name }}
                   </button>
@@ -83,7 +83,7 @@
                     [attr.aria-checked]="prefs().theme === theme"
                     (click)="set('theme', theme)"
                   >
-                    {{ themeNames[theme] }}
+                    {{ themeNames()[theme] }}
                   </button>
                 }
               </div>
@@ -153,7 +153,7 @@
                     [attr.aria-checked]="prefs().historyLimit === n"
                     (click)="set('historyLimit', n)"
                   >
-                    {{ n.toLocaleString() }}
+                    {{ count(n) }}
                   </button>
                 }
               </div>
@@ -186,7 +186,7 @@
             </div>
             <div class="row">
               <span class="name">Git</span>
-              <span class="value r-mono">{{ gitVersion() }}</span>
+              <span class="value r-mono">{{ gitVersion() ?? ('git could not be found' | t) }}</span>
             </div>
             <div class="row">
               <span class="name">{{ 'License' | t }}</span>
