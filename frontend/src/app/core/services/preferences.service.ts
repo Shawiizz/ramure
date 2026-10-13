@@ -1,11 +1,12 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
-import { Preferences } from '../models/settings';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { Preferences, ZOOMS } from '../models/settings';
 import { SettingsService } from './settings.service';
 
 /**
  * How Ramure behaves, as the settings say: read by the features, changed by the settings
- * dialog. The theme and the history's length take effect here.
+ * dialog. The theme, the zoom and the history's length take effect here.
  */
 @Injectable({ providedIn: 'root' })
 export class PreferencesService {
@@ -27,6 +28,18 @@ export class PreferencesService {
     query.addEventListener('change', follow);
     inject(DestroyRef).onDestroy(() => query.removeEventListener('change', follow));
     effect(() => (document.documentElement.dataset['theme'] = this.theme()));
+    effect(() => {
+      getCurrentWebview()
+        .setZoom(this.preferences().zoom)
+        .catch((e) => console.error('zoom not set', e));
+    });
+  }
+
+  /** One step closer, or further (a negative `steps`); back to 1 with none. */
+  zoom(steps: number) {
+    const at = ZOOMS.indexOf(this.preferences().zoom);
+    const to = steps ? ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, at + steps))] : 1;
+    this.set('zoom', to);
   }
 
   set<K extends keyof Preferences>(key: K, value: Preferences[K]) {

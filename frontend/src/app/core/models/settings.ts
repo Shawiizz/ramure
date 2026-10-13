@@ -43,6 +43,8 @@ export interface Preferences {
   wordWrap: boolean;
   /** How far a wheel's notch scrolls the history and the diffs, the system's distance times this. */
   scrollSpeed: number;
+  /** The whole interface's scale, 1 as designed. */
+  zoom: number;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -51,6 +53,8 @@ export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
 export const DIFF_MODES: readonly DiffMode[] = ['file', 'diff'];
 export const DIFF_LAYOUTS: readonly DiffLayout[] = ['hunks', 'inline', 'split'];
 export const SCROLL_SPEEDS: readonly number[] = [1, 1.5, 2.5];
+/** The zoom's steps, as a browser has them. */
+export const ZOOMS: readonly number[] = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'dark',
@@ -63,6 +67,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   diffLayout: 'hunks',
   wordWrap: false,
   scrollSpeed: 1.5,
+  zoom: 1,
 };
 
 /** What Ramure remembers from one run to the next. */
@@ -150,6 +155,7 @@ function parsePreferences(value: unknown): Preferences {
     diffLayout: among('diffLayout', DIFF_LAYOUTS, d.diffLayout),
     wordWrap: flag('wordWrap', d.wordWrap),
     scrollSpeed: among('scrollSpeed', SCROLL_SPEEDS, d.scrollSpeed),
+    zoom: among('zoom', ZOOMS, d.zoom),
   };
 }
 

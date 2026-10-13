@@ -1,0 +1,65 @@
+<footer class="status">
+  @if (repository.snapshot()) {
+    @if (head(); as head) {
+      <button
+        class="item"
+        [disabled]="repository.working()"
+        (click)="sync()"
+        [title]="'Pull, push, or fetch when there is nothing to send or bring' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="5" cy="3.5" r="1.6" />
+          <circle cx="5" cy="12.5" r="1.6" />
+          <circle cx="11" cy="5.5" r="1.6" />
+          <path d="M5 5.1v5.8M11 7.1c0 2.4-3 2.6-5.4 4" />
+        </svg>
+        <span class="r-mono">{{ head }}</span>
+        @if (upstream(); as upstream) {
+          <span class="sync r-mono">↓{{ upstream.behind }} ↑{{ upstream.ahead }}</span>
+        }
+      </button>
+    }
+    @if (repository.changes(); as changes) {
+      <button class="item" (click)="showChanges()" [title]="'Show the changes to commit' | t">
+        <span class="dot"></span>
+        {{ changes === 1 ? ('1 changed file' | t) : ('{n} changed files' | t: { n: changes }) }}
+      </button>
+    }
+    @if (operation(); as operation) {
+      <span class="item warn">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13zM8 6.5v3.2" /></svg>
+        {{ operation }}
+      </span>
+    }
+    @if (busy(); as busy) {
+      <span class="item busy"><span class="spinner"></span>{{ busy }}</span>
+    }
+  }
+
+  <span class="space"></span>
+
+  <span class="zoom" [title]="'Zoom (Ctrl+wheel, Ctrl+0 to reset)' | t">
+    <button class="item" (click)="preferences.zoom(-1)" [attr.aria-label]="'Zoom out' | t">
+      −
+    </button>
+    <button
+      class="item r-mono"
+      (click)="preferences.zoom(0)"
+      [attr.aria-label]="'Reset the zoom' | t"
+    >
+      {{ zoom() }}%
+    </button>
+    <button class="item" (click)="preferences.zoom(1)" [attr.aria-label]="'Zoom in' | t">+</button>
+  </span>
+  @if (update.available(); as release) {
+    <button
+      class="item update"
+      (click)="openRelease(release.url)"
+      [title]="'Open the page of version {v}' | t: { v: release.version }"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
+      {{ 'Update to {v}' | t: { v: release.version } }}
+    </button>
+  }
+  <span class="item version r-mono">ramure {{ update.version() }}</span>
+</footer>

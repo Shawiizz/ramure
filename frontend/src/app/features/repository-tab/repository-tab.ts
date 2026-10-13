@@ -9,6 +9,7 @@ import { DiffView } from '../diff/diff-view';
 import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
 import { Sidebar } from '../sidebar/sidebar';
+import { StatusBar } from '../status-bar/status-bar';
 import { Toolbar } from '../toolbar/toolbar';
 import { Welcome } from '../welcome/welcome';
 
@@ -33,6 +34,7 @@ import { Welcome } from '../welcome/welcome';
     } @else {
       <app-welcome (chose)="show($event)" />
     }
+    <app-status-bar />
     <app-toast />
   `,
   styles: `
@@ -71,7 +73,17 @@ import { Welcome } from '../welcome/welcome';
   `,
   providers: [RepositoryService],
   host: { '[class.behind]': '!active()' },
-  imports: [Toolbar, OperationBanner, Sidebar, History, DiffView, Details, Welcome, Toast],
+  imports: [
+    Toolbar,
+    OperationBanner,
+    Sidebar,
+    History,
+    DiffView,
+    Details,
+    Welcome,
+    StatusBar,
+    Toast,
+  ],
 })
 export class RepositoryTab {
   readonly tab = input.required<Tab>();

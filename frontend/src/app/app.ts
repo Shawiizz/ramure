@@ -32,6 +32,19 @@ import { Titlebar } from './shell/titlebar/titlebar';
   imports: [Titlebar, RepositoryTab, SettingsDialog],
 })
 export class App {
+  constructor() {
+    // Ctrl and the wheel zoom, as in a browser
+    document.addEventListener(
+      'wheel',
+      (event) => {
+        if (!event.ctrlKey || !event.deltaY) return;
+        event.preventDefault();
+        this.preferences.zoom(event.deltaY < 0 ? 1 : -1);
+      },
+      { passive: false },
+    );
+  }
+
   protected readonly tabs = inject(TabsService);
   protected readonly preferences = inject(PreferencesService);
 
@@ -39,7 +52,10 @@ export class App {
   protected shortcut(event: KeyboardEvent) {
     if (!event.ctrlKey || event.altKey) return;
     const key = event.key.toLowerCase();
-    if (key === ',') this.preferences.open.set(!this.preferences.open());
+    if (key === '+' || key === '=' || event.code === 'NumpadAdd') this.preferences.zoom(1);
+    else if (key === '-' || event.code === 'NumpadSubtract') this.preferences.zoom(-1);
+    else if (event.code === 'Digit0' || event.code === 'Numpad0') this.preferences.zoom(0);
+    else if (key === ',') this.preferences.open.set(!this.preferences.open());
     else if (key === 't') this.tabs.add();
     else if (key === 'w') this.tabs.close(this.tabs.activeId());
     else if (key === 'tab') this.tabs.cycle(event.shiftKey ? -1 : 1);
