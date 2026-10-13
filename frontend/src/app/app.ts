@@ -3,6 +3,9 @@ import { PreferencesService } from './core/services/preferences.service';
 import { TabsService } from './core/services/tabs.service';
 import { RepositoryTab } from './features/repository-tab/repository-tab';
 import { SettingsDialog } from './shell/settings-dialog/settings-dialog';
+import { NewRepositoryService } from './core/services/new-repository.service';
+import { CloneDialog } from './shell/new-repository/clone-dialog';
+import { CreateDialog } from './shell/new-repository/create-dialog';
 import { Titlebar } from './shell/titlebar/titlebar';
 import { Tooltip } from './shell/tooltip/tooltip';
 
@@ -15,6 +18,18 @@ import { Tooltip } from './shell/tooltip/tooltip';
         <app-repository-tab [tab]="tab" [active]="tab.id === tabs.activeId()" />
       }
     </main>
+    @switch (making.making()) {
+      @case ('clone') {
+        @defer {
+          <app-clone-dialog />
+        }
+      }
+      @case ('create') {
+        @defer {
+          <app-create-dialog />
+        }
+      }
+    }
     <!-- loaded the first time the settings open -->
     @if (preferences.open()) {
       @defer {
@@ -34,7 +49,7 @@ import { Tooltip } from './shell/tooltip/tooltip';
       min-height: 0;
     }
   `,
-  imports: [Titlebar, RepositoryTab, SettingsDialog, Tooltip],
+  imports: [Titlebar, RepositoryTab, SettingsDialog, Tooltip, CloneDialog, CreateDialog],
 })
 export class App {
   constructor() {
@@ -51,6 +66,7 @@ export class App {
   }
 
   protected readonly tabs = inject(TabsService);
+  protected readonly making = inject(NewRepositoryService);
   protected readonly preferences = inject(PreferencesService);
 
   @HostListener('document:keydown', ['$event'])

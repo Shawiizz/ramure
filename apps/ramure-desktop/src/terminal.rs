@@ -1,6 +1,7 @@
 //! Terminals opened in a repository: a shell in a pseudo-console, its output streamed to
 //! the interface as it comes, what is typed written to it.
 
+use crate::programs::{git_bash, on_path};
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
@@ -22,20 +23,6 @@ fn with_session<T>(id: u32, act: impl FnOnce(&mut Session) -> Result<T, String>)
     let mut sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
     let session = sessions.get_mut(&id).ok_or("This terminal is closed.")?;
     act(session)
-}
-
-/// The first folder of the `PATH` holding `program`.
-fn on_path(program: &str) -> Option<PathBuf> {
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path).map(|dir| dir.join(program)).find(|file| file.is_file())
-}
-
-/// Git for Windows' bash, beside the git found on the `PATH`.
-fn git_bash() -> Option<PathBuf> {
-    let git = on_path("git.exe")?;
-    // …\Git\cmd\git.exe or …\Git\bin\git.exe: bash is in …\Git\bin
-    let root = git.parent()?.parent()?;
-    Some(root.join("bin").join("bash.exe")).filter(|bash| bash.is_file())
 }
 
 /// The shells a terminal can run on this computer, by the names the settings give them;
@@ -121,6 +108,9 @@ fn open(
     let mut command = shell(name, path);
     command.cwd(path);
     command.env("TERM", "xterm-256color");
+    if let Some(ssh) = ramure_git::ssh_command() {
+        command.env("GIT_SSH_COMMAND", ssh);
+    }
     let child = pair.slave.spawn_command(command)?;
     // the shell holds its end of the console now; ours would keep it open past the shell
     drop(pair.slave);

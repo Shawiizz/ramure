@@ -33,6 +33,10 @@ export class PreferencesService {
     effect(() => (document.documentElement.dataset['theme'] = this.theme()));
     effect(() => (document.documentElement.dataset['accent'] = this.preferences().accent));
     effect(() => {
+      const key = this.preferences().sshKey || null;
+      invoke('set_ssh_key', { key }).catch((e) => console.error('ssh key not set', e));
+    });
+    effect(() => {
       getCurrentWebview()
         .setZoom(this.preferences().zoom)
         .catch((e) => console.error('zoom not set', e));

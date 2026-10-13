@@ -2,9 +2,13 @@
   <img src="logo.svg" class="logo" alt="" />
   <h1>ramure</h1>
   <p class="lead">{{ 'Open a Git repository to see its branches and its history.' | t }}</p>
-  <button class="r-btn r-btn--primary" (click)="pick()" [disabled]="repository.loading()">
-    {{ repository.loading() ? ('Opening…' | t) : ('Open a repository' | t) }}
-  </button>
+  <div class="starts">
+    <button class="r-btn r-btn--primary" (click)="pick()" [disabled]="repository.loading()">
+      {{ repository.loading() ? ('Opening…' | t) : ('Open a repository' | t) }}
+    </button>
+    <button class="r-btn" (click)="making.making.set('clone')">{{ 'Clone…' | t }}</button>
+    <button class="r-btn" (click)="making.making.set('create')">{{ 'Create…' | t }}</button>
+  </div>
   @if (repository.error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }

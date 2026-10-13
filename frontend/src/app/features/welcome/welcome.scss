@@ -110,3 +110,9 @@ h1 {
     stroke: var(--r-text);
   }
 }
+
+/* opening one, cloning one, making one */
+.starts {
+  display: flex;
+  gap: 8px;
+}

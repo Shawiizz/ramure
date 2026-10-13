@@ -1,5 +1,6 @@
 import { Component, inject, output } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
+import { NewRepositoryService } from '../../core/services/new-repository.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { TabsService, splitPath } from '../../core/services/tabs.service';
 import { pickRepository } from '../../shared/pick';
@@ -14,6 +15,7 @@ import { pickRepository } from '../../shared/pick';
 export class Welcome {
   protected readonly repository = inject(RepositoryService);
   protected readonly tabs = inject(TabsService);
+  protected readonly making = inject(NewRepositoryService);
   protected readonly split = splitPath;
   readonly chose = output<string>();
 

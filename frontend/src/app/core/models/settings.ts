@@ -105,6 +105,10 @@ export interface Preferences {
   editor: string;
   /** The global git identity follows the profile in use, for git run outside Ramure. */
   syncGitConfig: boolean;
+  /** The private key git signs in to ssh remotes with; ssh's own choice when empty. */
+  sshKey: string;
+  /** The folder the last repository was cloned or made in, offered for the next. */
+  cloneFolder: string;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -178,6 +182,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   prune: true,
   editor: 'code',
   syncGitConfig: false,
+  sshKey: '',
+  cloneFolder: '',
 };
 
 /** Where the panels are and how big: dragged by the user, kept from run to run. */
@@ -340,6 +346,8 @@ function parsePreferences(value: unknown): Preferences {
     prune: flag('prune', d.prune),
     editor: isString(saved['editor']) && saved['editor'].trim() ? saved['editor'].trim() : d.editor,
     syncGitConfig: flag('syncGitConfig', d.syncGitConfig),
+    sshKey: isString(saved['sshKey']) ? saved['sshKey'] : d.sshKey,
+    cloneFolder: isString(saved['cloneFolder']) ? saved['cloneFolder'] : d.cloneFolder,
   };
 }
 

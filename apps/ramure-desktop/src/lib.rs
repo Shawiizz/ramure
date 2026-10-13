@@ -14,6 +14,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
+mod programs;
+mod ssh;
 mod terminal;
 mod windows;
 
@@ -77,6 +79,48 @@ fn set_global_config(key: String, value: Option<String>) -> Answer<()> {
         return Err(CommandError::System(format!("{key} is not set from Ramure")));
     }
     Ok(ramure_git::set_global_config(&key, value.as_deref())?)
+}
+
+/// Clones `url` into the new folder `name` of `parent`; `progress` hears each line git
+/// tells of it. Answers the new repository's path.
+#[tauri::command(async)]
+fn clone_repository(
+    url: String,
+    parent: PathBuf,
+    name: String,
+    progress: tauri::ipc::Channel<String>,
+) -> Answer<PathBuf> {
+    let into = folder_in(&parent, &name)?;
+    ramure_git::clone(&url, &into, |line| {
+        let _ = progress.send(line.to_owned());
+    })?;
+    Ok(into)
+}
+
+/// A new repository in the folder `name` of `parent`, an empty one or one made; with
+/// `readme`, a README in a first commit. Answers its path.
+#[tauri::command(async)]
+fn create_repository(
+    parent: PathBuf,
+    name: String,
+    readme: bool,
+    identity: Option<Identity>,
+) -> Answer<PathBuf> {
+    let dir = folder_in(&parent, &name)?;
+    if dir.read_dir().is_ok_and(|mut entries| entries.next().is_some()) {
+        return Err(CommandError::System(format!("{} is not empty", dir.display())));
+    }
+    ramure_git::init(&dir, readme.then_some(name.as_str()), identity.as_ref())?;
+    Ok(dir)
+}
+
+/// The folder `name` in `parent`, refused when it is not one plain name.
+fn folder_in(parent: &Path, name: &str) -> Answer<PathBuf> {
+    let mut parts = Path::new(name).components();
+    if !matches!((parts.next(), parts.next()), (Some(std::path::Component::Normal(_)), None)) {
+        return Err(CommandError::System(format!("{name} is not a folder name")));
+    }
+    Ok(parent.join(name))
 }
 
 /// The profile's identity made the one git uses outside Ramure.
@@ -622,6 +666,12 @@ pub fn run() {
             open_file,
             reveal_file,
             terminal::terminal_shells,
+            clone_repository,
+            create_repository,
+            ssh::set_ssh_key,
+            ssh::ssh_public_key,
+            ssh::ssh_generate,
+            ssh::ssh_test,
             terminal::terminal_open,
             read_more,
             global_config,

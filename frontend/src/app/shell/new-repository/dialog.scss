@@ -1,0 +1,68 @@
+/* a dialog making a repository: its fields, a folder chosen with a button beside it */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.dialog {
+  width: min(520px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: var(--r-radius-panel);
+  background: var(--r-base);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+}
+
+h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.folder {
+  display: flex;
+  gap: 8px;
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--r-text-2);
+  input {
+    margin: 0;
+    accent-color: var(--r-accent);
+  }
+}
+
+.where {
+  margin: 0;
+  color: var(--r-text-3);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.problem {
+  flex: 1;
+  color: var(--r-danger);
+  font-size: 12px;
+  user-select: text;
+}

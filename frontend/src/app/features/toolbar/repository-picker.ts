@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
+import { Making, NewRepositoryService } from '../../core/services/new-repository.service';
 import { TabsService, splitPath } from '../../core/services/tabs.service';
 import { pickRepository } from '../../shared/pick';
 import { MenusService } from '../repository-tab/menus.service';
@@ -61,11 +62,13 @@ import { Picker } from './picker';
           }
         </ul>
         <div class="actions">
-          <button class="r-btn more" (click)="browse()">{{ 'Open a repository…' | t }}</button>
-          <button class="r-btn more" (click)="open.set(false); repository.openInEditor(null)">
-            {{ 'Open in {editor}' | t: { editor: menus.editor() } }}
-          </button>
+          <button class="r-btn more" (click)="browse()">{{ 'Open…' | t }}</button>
+          <button class="r-btn more" (click)="start('clone')">{{ 'Clone…' | t }}</button>
+          <button class="r-btn more" (click)="start('create')">{{ 'Create…' | t }}</button>
         </div>
+        <button class="r-btn more" (click)="open.set(false); repository.openInEditor(null)">
+          {{ 'Open in {editor}' | t: { editor: menus.editor() } }}
+        </button>
       </div>
     }
   `,
@@ -76,6 +79,7 @@ export class RepositoryPicker extends Picker<string> {
   protected readonly repository = inject(RepositoryService);
   private readonly tabs = inject(TabsService);
   protected readonly menus = inject(MenusService);
+  private readonly making = inject(NewRepositoryService);
   protected readonly split = splitPath;
   protected readonly current = computed(() => this.repository.snapshot()?.path ?? null);
 
@@ -93,6 +97,11 @@ export class RepositoryPicker extends Picker<string> {
   protected override choose(path: string) {
     this.open.set(false);
     if (path !== this.current()) this.tabs.show(this.tabs.activeId(), path);
+  }
+
+  protected start(how: Making) {
+    this.open.set(false);
+    this.making.making.set(how);
   }
 
   protected async browse() {
