@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { t } from '../i18n/i18n';
-import { Identity, Profile } from '../models/settings';
+import { Identity, NO_SIGNING, Profile, ProfileSigning } from '../models/settings';
 import { SettingsService } from './settings.service';
 
 /** The profiles to commit as, and the one in use. */
@@ -13,10 +13,18 @@ export class ProfilesService {
     const { profiles, profileId } = this.store.settings();
     return profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
   });
-  /** Who signs commits: the profile's identity once complete, git's own before. */
+  /**
+   * Who signs commits: the profile's identity once complete, with its key when it has one;
+   * git's own before.
+   */
   readonly identity = computed<Identity | null>(() => {
-    const identity = this.active()?.identity;
-    return identity?.name.trim() && identity.email.trim() ? identity : null;
+    const profile = this.active();
+    const identity = profile?.identity;
+    if (!identity?.name.trim() || !identity.email.trim()) return null;
+    const { format, ...signing } = profile!.signing;
+    return format === 'none' || !signing.key.trim()
+      ? { name: identity.name, email: identity.email }
+      : { name: identity.name, email: identity.email, signing: { format, ...signing } };
   });
 
   constructor() {
@@ -48,8 +56,19 @@ export class ProfilesService {
 
   /** A new profile, put in use. */
   add(name: string, identity: Identity) {
-    const profile: Profile = { id: crypto.randomUUID(), name, identity };
+    const profile: Profile = { id: crypto.randomUUID(), name, identity, signing: NO_SIGNING };
     this.store.update((s) => ({ ...s, profiles: [...s.profiles, profile], profileId: profile.id }));
+  }
+
+  /** The profile in use signs as `change` says from now on. */
+  sign(change: Partial<ProfileSigning>) {
+    const id = this.active()?.id;
+    this.store.update((s) => ({
+      ...s,
+      profiles: s.profiles.map((p) =>
+        p.id === id ? { ...p, signing: { ...p.signing, ...change } } : p,
+      ),
+    }));
   }
 
   edit(id: string, name: string, identity: Identity) {

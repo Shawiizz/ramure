@@ -286,7 +286,7 @@ fn a_profile_signs_the_commit_instead_of_the_configured_identity() {
     let d = dir.path();
     write(d, "a.txt", "a\n");
     actions::stage(d, &["a.txt".into()]).unwrap();
-    let grace = Identity { name: "Grace".into(), email: "grace@example.com".into() };
+    let grace = Identity { name: "Grace".into(), email: "grace@example.com".into(), signing: None };
     actions::commit(d, "Signed", Some(&grace)).unwrap();
     let snapshot = Repository::open(d).unwrap().snapshot(10).unwrap();
     assert_eq!(

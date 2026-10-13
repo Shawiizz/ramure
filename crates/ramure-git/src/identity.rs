@@ -9,6 +9,49 @@ use std::collections::BTreeMap;
 pub struct Identity {
     pub name: String,
     pub email: String,
+    /// How the commits and tags it makes are signed; as git is configured without.
+    #[serde(default)]
+    pub signing: Option<Signing>,
+}
+
+/// A profile's signature: the kind of key, the key, and what it signs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Signing {
+    pub format: SigningFormat,
+    /// A GPG key's id, or an ssh key's file.
+    pub key: String,
+    /// The program signing: `ssh-keygen` or `gpg` when empty.
+    #[serde(default)]
+    pub program: String,
+    pub commits: bool,
+    pub tags: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SigningFormat {
+    Ssh,
+    Openpgp,
+}
+
+impl Signing {
+    /// The configuration git signs with, as `-c` gives it; the program always named, as an
+    /// empty one set elsewhere would leave git with none.
+    pub(crate) fn config(&self) -> [(&'static str, String); 5] {
+        let (format, program_key, default_program) = match self.format {
+            SigningFormat::Ssh => ("ssh", "gpg.ssh.program", "ssh-keygen"),
+            SigningFormat::Openpgp => ("openpgp", "gpg.program", "gpg"),
+        };
+        let program = if self.program.trim().is_empty() { default_program } else { self.program.trim() };
+        [
+            ("gpg.format", format.to_owned()),
+            (program_key, program.to_owned()),
+            ("user.signingkey", self.key.clone()),
+            ("commit.gpgsign", self.commits.to_string()),
+            ("tag.gpgsign", self.tags.to_string()),
+        ]
+    }
 }
 
 /// The git command's version, as it gives it (`git version 2.46.2.windows.1`).
@@ -24,7 +67,7 @@ pub fn global_identity() -> Result<Identity, Error> {
         let value = git_global(&["config", "--global", "--get", key])?.unwrap_or_default();
         Ok(String::from_utf8_lossy(&value).trim().to_owned())
     };
-    Ok(Identity { name: get("user.name")?, email: get("user.email")? })
+    Ok(Identity { name: get("user.name")?, email: get("user.email")?, signing: None })
 }
 
 /// The values `keys` have outside any repository: the user's own, else the system's (Git

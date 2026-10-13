@@ -123,6 +123,18 @@ fn folder_in(parent: &Path, name: &str) -> Answer<PathBuf> {
     Ok(parent.join(name))
 }
 
+/// The signature of the commit `id`, none when it has none.
+#[tauri::command(async)]
+fn signature(path: PathBuf, id: String) -> Answer<Option<ramure_git::Signature>> {
+    Ok(ramure_git::signature(&path, &id)?)
+}
+
+/// The signature of the commit `id` checked: slow, as gpg may be.
+#[tauri::command(async)]
+fn verify_signature(path: PathBuf, id: String) -> Answer<ramure_git::Verification> {
+    Ok(ramure_git::verify(&path, &id)?)
+}
+
 /// The profile's identity made the one git uses outside Ramure.
 #[tauri::command(async)]
 fn set_global_identity(identity: Identity) -> Answer<()> {
@@ -672,6 +684,9 @@ pub fn run() {
             ssh::ssh_public_key,
             ssh::ssh_generate,
             ssh::ssh_test,
+            ssh::gpg_keys,
+            signature,
+            verify_signature,
             terminal::terminal_open,
             read_more,
             global_config,

@@ -6,18 +6,29 @@ import { AboutPage } from './pages/about-page';
 import { EditorPage } from './pages/editor-page';
 import { GeneralPage } from './pages/general-page';
 import { GitPage } from './pages/git-page';
+import { SigningPage } from './pages/signing-page';
 import { SshPage } from './pages/ssh-page';
 import { TerminalPage } from './pages/terminal-page';
 import { ToolsPage } from './pages/tools-page';
 
-type Page = 'general' | 'editor' | 'terminal' | 'git' | 'ssh' | 'tools' | 'about';
+type Page = 'general' | 'editor' | 'terminal' | 'git' | 'ssh' | 'signing' | 'tools' | 'about';
 
 /** The settings: a page per subject, every change applied and kept at once. */
 @Component({
   selector: 'app-settings-dialog',
   templateUrl: './settings-dialog.html',
   styleUrl: './settings-dialog.scss',
-  imports: [TPipe, GeneralPage, EditorPage, TerminalPage, GitPage, SshPage, ToolsPage, AboutPage],
+  imports: [
+    TPipe,
+    GeneralPage,
+    EditorPage,
+    TerminalPage,
+    GitPage,
+    SshPage,
+    SigningPage,
+    ToolsPage,
+    AboutPage,
+  ],
 })
 export class SettingsDialog {
   private readonly service = inject(PreferencesService);
@@ -28,6 +39,7 @@ export class SettingsDialog {
     { id: 'terminal', label: t('Terminal') },
     { id: 'git', label: 'Git' },
     { id: 'ssh', label: 'SSH' },
+    { id: 'signing', label: t('Signing') },
     { id: 'tools', label: t('External tools') },
     { id: 'about', label: t('About') },
   ]);

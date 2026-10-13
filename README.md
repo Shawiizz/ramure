@@ -6,6 +6,8 @@ tags at hand, the commit you pick in detail.
 - Repositories cloned (their progress as it comes) or made anew, with a README in a first
   commit when asked.
 - An ssh key chosen, made or tried from the settings, its public half copied in a click.
+- Commits and tags signed with the profile's ssh or GPG key; a commit's signature shown, and
+  checked on a click.
 - Repositories in tabs, moved by dragging, dragged out into a window of their own and back
   again, as in a browser; workspaces that reopen several of them at once.
 - Profiles: the name and email Ramure signs commits with, switched from the title bar

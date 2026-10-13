@@ -23,7 +23,7 @@ fn the_global_configuration_is_read_set_and_unset() {
     set_global_config("ramure.two", None).unwrap();
     assert!(!global_config(&keys).unwrap().contains_key("ramure.two"));
 
-    let ada = Identity { name: "Ada".to_owned(), email: "ada@example.com".to_owned() };
+    let ada = Identity { name: "Ada".to_owned(), email: "ada@example.com".to_owned(), signing: None };
     set_global_identity(&ada).unwrap();
     assert_eq!(global_identity().unwrap(), ada);
     assert!(std::fs::read_to_string(&file).unwrap().contains("one = true"));

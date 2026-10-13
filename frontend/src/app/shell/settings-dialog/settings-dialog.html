@@ -42,6 +42,10 @@
                   <rect x="4" y="10.5" width="16" height="10" rx="2" />
                   <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5M12 14.5v2" />
                 }
+                @case ('signing') {
+                  <path d="M4 19.5c2.5-1 4-4 5.5-4s1 3 3 3 2.5-2 4-2 2.5 1 3.5 1.5" />
+                  <path d="M14.5 4.5l4 4L10 17l-4.5.5.5-4.5z" />
+                }
                 @case ('tools') {
                   <path
                     d="M14.5 6.5a4 4 0 0 0 5 5l-8.5 8.5a2.1 2.1 0 0 1-3-3l8.5-8.5a4 4 0 0 0-2-2z"
@@ -83,6 +87,9 @@
           }
           @case ('ssh') {
             <app-ssh-page />
+          }
+          @case ('signing') {
+            <app-signing-page />
           }
           @case ('tools') {
             <app-tools-page />

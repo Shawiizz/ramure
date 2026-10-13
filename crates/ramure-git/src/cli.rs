@@ -87,8 +87,12 @@ pub(crate) fn command(
     env: &[(&str, &str)],
 ) -> Command {
     let mut command = Command::new("git");
+    command.args(["-c", "core.quotepath=false", "-c", "color.ui=false"]);
+    // the profile's signature; git passes it on to the git it runs itself (a rebase's amends)
+    for (key, value) in identity.and_then(|i| i.signing.as_ref()).map(|s| s.config()).into_iter().flatten() {
+        command.arg("-c").arg(format!("{key}={value}"));
+    }
     command
-        .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
         .args(args)
         // never wait for an answer on a terminal nobody sees, nor in an editor: a message
         // git would ask for is the one it proposes

@@ -98,3 +98,37 @@ pub fn ssh_test(host: String) -> Result<String, String> {
     let said = [output.stderr, output.stdout].concat();
     Ok(String::from_utf8_lossy(&said).trim().to_owned())
 }
+
+/// A GPG secret key: its long id and who it is for.
+#[derive(Serialize)]
+pub struct GpgKey {
+    id: String,
+    user: String,
+}
+
+/// The GPG secret keys `program` (`gpg` when empty) holds; none when it cannot run.
+#[tauri::command(async)]
+pub fn gpg_keys(program: String) -> Vec<GpgKey> {
+    let program = if program.trim().is_empty() { git_tool("gpg") } else { PathBuf::from(program.trim()) };
+    let Ok(output) =
+        quiet(program).args(["--list-secret-keys", "--with-colons", "--keyid-format=long"]).output()
+    else {
+        return Vec::new();
+    };
+    let mut keys: Vec<GpgKey> = Vec::new();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let fields: Vec<&str> = line.split(':').collect();
+        match fields.first() {
+            Some(&"sec") => {
+                keys.push(GpgKey { id: fields.get(4).unwrap_or(&"").to_string(), user: String::new() })
+            }
+            Some(&"uid") => {
+                if let Some(key) = keys.last_mut().filter(|k| k.user.is_empty()) {
+                    key.user = fields.get(9).unwrap_or(&"").to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    keys
+}

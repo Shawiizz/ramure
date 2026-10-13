@@ -33,7 +33,7 @@ fn a_failed_clone_says_why() {
 #[test]
 fn a_repository_is_made_with_or_without_a_first_commit() {
     let parent = tempfile::tempdir().unwrap();
-    let ada = Identity { name: "Ada".to_owned(), email: "ada@example.com".to_owned() };
+    let ada = Identity { name: "Ada".to_owned(), email: "ada@example.com".to_owned(), signing: None };
 
     let bare = parent.path().join("bare");
     init(&bare, None, Some(&ada)).unwrap();

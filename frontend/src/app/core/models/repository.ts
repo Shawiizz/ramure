@@ -92,6 +92,17 @@ export interface Commit {
   time: number;
 }
 
+/** A commit's signature, unchecked (`ramure_git::Signature`). */
+export interface Signature {
+  kind: 'ssh' | 'gpg';
+}
+
+/** A signature checked against the keys git trusts (`ramure_git::Verification`). */
+export interface Verification {
+  verified: boolean;
+  signer: string;
+}
+
 /** What a commit becomes, rewritten (`ramure_git::actions::Rewrite`). */
 export interface Rewrite {
   message: string;

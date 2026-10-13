@@ -1,6 +1,8 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { invoke } from '@tauri-apps/api/core';
+import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { Stash } from '../../core/models/repository';
+import { Stash, Verification } from '../../core/models/repository';
 import { DEFAULT_LAYOUT, MIN_MESSAGE } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
@@ -45,6 +47,39 @@ export class Details {
     return [commit, ...this.message().coAuthors.map((c) => ({ author: c.name, email: c.email }))]
       .map((p) => `${p.author} <${p.email}>`)
       .join('\n');
+  });
+  /** The selected commit's signature, once read and when it has one. */
+  protected readonly signature = computed(() => {
+    const read = this.repository.signature();
+    return read?.id === this.repository.selectedId() ? read.signature : null;
+  });
+  /** The selected commit's signature checked, once asked for: it takes gpg a while. */
+  private readonly checks = signal(new Map<string, Verification | 'checking'>());
+  protected readonly verification = computed(
+    () => this.checks().get(this.repository.selectedId() ?? '') ?? null,
+  );
+  protected readonly signatureState = computed(() => {
+    const checked = this.verification();
+    if (!checked) return 'signed';
+    if (checked === 'checking') return 'checking';
+    return checked.verified ? 'verified' : 'unverified';
+  });
+  protected readonly stateNames = computed(() => ({
+    signed: t('Signed'),
+    checking: t('Checking…'),
+    verified: t('Verified'),
+    unverified: t('Not verified'),
+  }));
+  protected readonly signedTitle = computed(() => {
+    const signed = this.signature();
+    const checked = this.verification();
+    if (!signed) return '';
+    const kind = signed.kind === 'ssh' ? t('an ssh key') : t('a GPG key');
+    if (!checked || checked === 'checking')
+      return t('Signed with {kind}: click to check it', { kind });
+    return checked.verified
+      ? t('Signed with {kind}, checked: {signer}', { kind, signer: checked.signer })
+      : t('Signed with {kind}, that git cannot check here', { kind });
   });
   /** The selected commit's files, once read. */
   protected readonly files = computed(() => {
@@ -95,5 +130,19 @@ export class Details {
 
   protected unsize() {
     this.store.setLayout({ message: DEFAULT_LAYOUT.message });
+  }
+
+  /** Checks the commit's signature against the keys git trusts. */
+  protected async verify(id: string) {
+    const path = this.repository.snapshot()?.path;
+    if (!path) return;
+    const record = (result: Verification | 'checking') =>
+      this.checks.update((checks) => new Map(checks).set(id, result));
+    record('checking');
+    try {
+      record(await invoke<Verification>('verify_signature', { path, id }));
+    } catch (e) {
+      record({ verified: false, signer: String(e) });
+    }
   }
 }

@@ -12,6 +12,7 @@ import {
   RefState,
   Reset,
   Rewrite,
+  Signature,
   Snapshot,
   Stash,
   Step,
@@ -90,6 +91,8 @@ export class RepositoryService {
   private reading = false;
   private readAll = false;
   readonly terminalShown = signal(false);
+  /** The selected commit's signature, once read; null for one unsigned. */
+  readonly signature = signal<{ id: string; signature: Signature | null } | null>(null);
   /** The files of the selected commit, once read. */
   readonly commitFiles = signal<{ id: string; files: Change[] } | null>(null);
   /** The commit message being written, kept while other commits are looked at. */
@@ -263,7 +266,20 @@ export class RepositoryService {
 
   select(id: string) {
     this.selectedId.set(id);
-    if (id !== WIP) this.loadCommitFiles(id);
+    if (id === WIP) return;
+    this.loadCommitFiles(id);
+    if (!this.stashes().has(id)) void this.loadSignature(id);
+  }
+
+  private async loadSignature(id: string) {
+    const path = this.snapshot()?.path;
+    if (!path || this.signature()?.id === id) return;
+    try {
+      const signature = await invoke<Signature | null>('signature', { path, id });
+      if (this.selectedId() === id) this.signature.set({ id, signature });
+    } catch (e) {
+      console.warn('signature not read', e);
+    }
   }
 
   stage(files: string[]) {

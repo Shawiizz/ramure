@@ -1,7 +1,7 @@
 //! One file at a time: the commits that changed it, who wrote each of its lines, and the
 //! file itself read, written or deleted.
 
-use crate::cli::git;
+use crate::cli::{git, git_answer};
 use crate::diff::kind_of;
 use crate::status::Change;
 use crate::Error;
@@ -166,4 +166,45 @@ pub fn ignore(dir: &Path, pattern: &str) -> Result<(), Error> {
     text.push_str(pattern);
     text.push_str(eol);
     std::fs::write(&file, text).map_err(|e| io(&file, e))
+}
+
+/// A commit's signature: the kind of key it was made with (`ssh`, `gpg`).
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Signature {
+    pub kind: String,
+}
+
+/// The signature of the commit `id`, none when it is not signed; read from the commit
+/// itself, unchecked.
+pub fn signature(dir: &Path, id: &str) -> Result<Option<Signature>, Error> {
+    let raw = git(dir, &["cat-file", "commit", id])?;
+    let raw = String::from_utf8_lossy(&raw);
+    let header = raw.split("\n\n").next().unwrap_or_default();
+    let kind = if header.contains("BEGIN SSH SIGNATURE") {
+        "ssh"
+    } else if header.contains("BEGIN PGP SIGNATURE") {
+        "gpg"
+    } else {
+        return Ok(None);
+    };
+    Ok(Some(Signature { kind: kind.to_owned() }))
+}
+
+/// A signature checked: good against the keys git trusts, and whose.
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Verification {
+    pub verified: bool,
+    /// Who signed, as the key says.
+    pub signer: String,
+}
+
+/// Checks the signature of the commit `id` against the keys git trusts (gpg's own, or an
+/// allowed signers file for ssh): it may take gpg a while.
+pub fn verify(dir: &Path, id: &str) -> Result<Verification, Error> {
+    let checked = git_answer(dir, &["log", "-1", "--format=%G?%x1f%GS", id])?.unwrap_or_default();
+    let checked = String::from_utf8_lossy(&checked);
+    let (status, signer) = checked.trim().split_once('\u{1f}').unwrap_or(("N", ""));
+    Ok(Verification { verified: matches!(status, "G" | "U"), signer: signer.to_owned() })
 }

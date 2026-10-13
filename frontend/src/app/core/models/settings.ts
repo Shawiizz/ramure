@@ -1,14 +1,41 @@
-/** Who signs commits (`ramure_git::Identity`). */
+/** Who signs commits, and with which key (`ramure_git::Identity`). */
 export interface Identity {
   name: string;
   email: string;
+  signing?: Signing;
 }
+
+/** The kind of key commits are signed with. */
+export type SigningFormat = 'ssh' | 'openpgp';
+
+/** The key commits and tags are signed with, and what it signs (`ramure_git::Signing`). */
+export interface Signing {
+  format: SigningFormat;
+  /** A GPG key's id, or an ssh key's file. */
+  key: string;
+  /** The program signing; `ssh-keygen` or `gpg` when empty. */
+  program: string;
+  commits: boolean;
+  tags: boolean;
+}
+
+/** A profile's signing: a key, or none. */
+export type ProfileSigning = Omit<Signing, 'format'> & { format: SigningFormat | 'none' };
+
+export const NO_SIGNING: ProfileSigning = {
+  format: 'none',
+  key: '',
+  program: '',
+  commits: true,
+  tags: true,
+};
 
 /** A named identity to commit with, switched from the title bar. */
 export interface Profile {
   id: string;
   name: string;
   identity: Identity;
+  signing: ProfileSigning;
 }
 
 /** Repositories opened together, in tabs. */
@@ -266,6 +293,7 @@ export function parseSettings(value: unknown): Settings {
             name: isString(identity['name']) ? identity['name'] : '',
             email: isString(identity['email']) ? identity['email'] : '',
           },
+          signing: parseSigning(p['signing']),
         },
       ];
     },
@@ -296,6 +324,18 @@ export function parseSettings(value: unknown): Settings {
     ),
     layout: parseLayout(value['layout']),
     preferences: parsePreferences(value['preferences']),
+  };
+}
+
+function parseSigning(value: unknown): ProfileSigning {
+  const saved = isRecord(value) ? value : {};
+  const format = saved['format'];
+  return {
+    format: format === 'ssh' || format === 'openpgp' ? format : 'none',
+    key: isString(saved['key']) ? saved['key'] : '',
+    program: isString(saved['program']) ? saved['program'] : '',
+    commits: saved['commits'] !== false,
+    tags: saved['tags'] !== false,
   };
 }
 
