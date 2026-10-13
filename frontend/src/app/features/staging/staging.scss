@@ -1,48 +1,59 @@
+/* the changes in compartments, each under a heading strip, and the commit form below */
 .staging {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px 10px 14px 12px;
 }
 
 section {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-bottom: 1px solid var(--r-line);
   &.grow {
     flex: 1;
   }
   app-file-list {
     display: block;
-    margin: 0 -10px 0 -12px;
+    padding: 4px 0;
     overflow-y: auto;
-    --inset: 20px;
+    --inset: 14px;
   }
 }
 
 header {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 30px;
-  padding: 0 4px 0 8px;
+  height: var(--r-panel-head);
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--r-line);
+  background: var(--r-raised);
 }
 
 h3 {
   margin: 0;
-  color: var(--r-text-3);
-  font-size: 11px;
+  color: var(--r-text);
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   span {
-    margin-left: 4px;
-    font: 500 11px var(--r-mono);
+    margin-left: 6px;
+    color: var(--r-accent);
+    font: 600 12px var(--r-mono);
     letter-spacing: 0;
   }
-  &.conflict {
+}
+
+.conflicts {
+  header {
+    background: color-mix(in srgb, var(--r-danger) 14%, var(--r-raised));
+  }
+  h3,
+  h3 span {
     color: var(--r-danger);
   }
 }
@@ -53,9 +64,18 @@ h3 {
   font-size: 12px;
 }
 
+.stage-all {
+  border-color: color-mix(in srgb, var(--r-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--r-accent) 14%, var(--r-raised));
+  color: var(--r-accent);
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--r-accent) 24%, var(--r-raised));
+  }
+}
+
 .none {
   margin: 0;
-  padding: 4px 8px;
+  padding: 12px 14px;
   color: var(--r-text-3);
 }
 
@@ -64,8 +84,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--r-line);
+  padding: 14px 12px;
   .r-btn {
     justify-content: center;
     height: 36px;

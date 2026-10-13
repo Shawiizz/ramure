@@ -1,9 +1,12 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { ChangeKind, Stash } from '../../core/models/repository';
+import { DEFAULT_LAYOUT, MIN_MESSAGE } from '../../core/models/settings';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { Avatar } from '../../shared/avatar';
 import { splitCoAuthors } from '../../shared/co-authors';
+import { follow } from '../../shared/drag';
 import { FileList, KIND } from '../../shared/file-list';
 import { fullDate, shortDate } from '../../shared/when';
 import { Staging } from '../staging/staging';
@@ -17,7 +20,9 @@ import { Staging } from '../staging/staging';
 })
 export class Details {
   protected readonly repository = inject(RepositoryService);
+  private readonly store = inject(SettingsService);
   protected readonly wip = WIP;
+  protected readonly messageHeight = computed(() => this.store.layout().message);
   protected readonly fullDate = fullDate;
   protected readonly shortDate = shortDate;
   protected readonly copied = signal(false);
@@ -78,5 +83,17 @@ export class Details {
     await navigator.clipboard.writeText(id);
     this.copied.set(true);
     setTimeout(() => this.copied.set(false), 1500);
+  }
+
+  /** Drags the bottom of the message: it takes at most the height given, then scrolls. */
+  protected resize(event: PointerEvent, box: HTMLElement) {
+    const start = box.getBoundingClientRect().height;
+    follow(event, (_, dy) =>
+      this.store.setLayout({ message: Math.min(1200, Math.max(MIN_MESSAGE, start + dy)) }),
+    );
+  }
+
+  protected unsize() {
+    this.store.setLayout({ message: DEFAULT_LAYOUT.message });
   }
 }

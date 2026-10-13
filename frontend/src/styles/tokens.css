@@ -33,8 +33,8 @@
   --r-lane-6: #b4dc5a;
   --r-lane-7: #4fd0d6;
   /* the tints of added and removed lines, as r g b for their alpha */
-  --r-added-rgb: 95 211 168;
-  --r-removed-rgb: 239 111 108;
+  --r-added-rgb: 98 178 108;
+  --r-removed-rgb: 232 102 104;
 
   --r-font: 'Geist Variable', 'Segoe UI', sans-serif;
   --r-mono: 'Geist Mono Variable', 'Cascadia Mono', monospace;
@@ -77,6 +77,6 @@
   --r-lane-5: #a9408f;
   --r-lane-6: #5f8a12;
   --r-lane-7: #0f8a91;
-  --r-added-rgb: 40 170 120;
-  --r-removed-rgb: 220 80 75;
+  --r-added-rgb: 46 150 70;
+  --r-removed-rgb: 214 72 70;
 }

@@ -52,6 +52,13 @@ import { RefLabel } from '../../core/models/repository';
       color: var(--lane);
       font: 500 12px var(--r-font);
       white-space: nowrap;
+      transition:
+        background var(--r-fast),
+        border-color var(--r-fast);
+    }
+    :host(:hover) {
+      border-color: var(--lane);
+      background: color-mix(in srgb, var(--lane) 34%, var(--r-base));
     }
     :host(.head) {
       border-color: var(--lane);
@@ -59,13 +66,24 @@ import { RefLabel } from '../../core/models/repository';
       color: var(--r-on-accent);
       font-weight: 600;
     }
+    :host(.head:hover) {
+      background: color-mix(in srgb, var(--lane) 82%, var(--r-text));
+    }
     :host(.remote) {
       background: var(--r-base);
+    }
+    :host(.remote:hover) {
+      background: color-mix(in srgb, var(--lane) 16%, var(--r-base));
     }
     :host(.tag) {
       border-color: var(--r-line-strong);
       background: var(--r-raised);
       color: var(--r-text-2);
+    }
+    :host(.tag:hover) {
+      border-color: var(--r-text-3);
+      background: var(--r-hover);
+      color: var(--r-text);
     }
     .name {
       min-width: 0;

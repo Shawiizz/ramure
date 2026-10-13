@@ -34,14 +34,20 @@ interface Versions {
   new: Uint8Array | null;
 }
 
-/** What the editor shows now, to change only what has to. */
+/** An editor and what it shows, to change only what has to. */
 interface Shown {
   mode: DiffMode;
+  /** Its own layer of the editor's area: a new diff is laid out unseen, under the old one. */
+  pane: HTMLElement;
   editor: Monaco.editor.IStandaloneCodeEditor | Monaco.editor.IStandaloneDiffEditor;
+  path: string | null;
   texts: { old: string; new: string } | null;
   models: Monaco.editor.ITextModel[];
   decorations: Monaco.editor.IEditorDecorationsCollection | null;
 }
+
+/** How long a new diff may take before it shows anyway. */
+const DIFF_WAIT_MS = 400;
 
 const LAYOUTS: Record<DiffLayout, Monaco.editor.IDiffEditorOptions> = {
   hunks: {
@@ -80,6 +86,8 @@ export class DiffView {
   private readonly monaco = signal<MonacoApi | null>(null);
   private readonly host = viewChild<ElementRef<HTMLElement>>('editor');
   private shown: Shown | null = null;
+  /** The diff still on screen while the one replacing it is computed. */
+  private leaving: Shown | null = null;
 
   protected readonly where = computed(() => {
     const where = this.open()?.where;
@@ -192,18 +200,21 @@ export class DiffView {
 
   private async read(target: Target | null) {
     const path = this.repository.snapshot()?.path;
-    const same = !!target && this.versions()?.target.change.path === target.change.path;
-    this.versions.set(null);
     this.failure.set(null);
-    if (!same) this.picked.set(null);
-    if (!target || !path) return;
+    if (!target || !path) {
+      this.versions.set(null);
+      return;
+    }
     try {
       const buffer = await invoke<ArrayBuffer>('file_versions', {
         path,
         change: target.change,
         side: target.where,
       });
-      if (this.target() === target) this.versions.set(split(target, buffer));
+      if (this.target() !== target) return;
+      // the last file stays on screen until this one is read
+      if (this.versions()?.target.change.path !== target.change.path) this.picked.set(null);
+      this.versions.set(split(target, buffer));
     } catch (e) {
       if (this.target() === target) this.failure.set(String(e));
     }
@@ -220,39 +231,90 @@ export class DiffView {
       this.dispose();
       this.shown = this.create(monaco, host, prefs.diffMode);
     }
-    const shown = this.shown!;
-    if (shown.texts !== texts) {
-      const language = languageOf(monaco, this.open()?.change.path ?? '');
-      const models = shown.models;
-      if (shown.mode === 'diff') {
-        const original = monaco.editor.createModel(texts.old, language);
-        const modified = monaco.editor.createModel(texts.new, language);
-        (shown.editor as Monaco.editor.IStandaloneDiffEditor).setModel({ original, modified });
-        shown.models = [original, modified];
-      } else {
-        // a deleted file has only its old lines to show
-        const model = monaco.editor.createModel(texts.new || texts.old, language);
-        (shown.editor as Monaco.editor.IStandaloneCodeEditor).setModel(model);
-        shown.models = [model];
-      }
-      models.forEach((m) => m.dispose());
-      shown.texts = texts;
+    if (this.shown!.texts !== texts) {
+      const path = this.versions()?.target.change.path ?? null;
+      const language = languageOf(monaco, path ?? '');
+      if (this.shown!.mode === 'diff') this.replaceDiff(monaco, host, texts, path, language, prefs);
+      else this.replaceFile(monaco, texts, path, language);
     }
-    const wordWrap = prefs.wordWrap ? 'on' : 'off';
-    const mouseWheelScrollSensitivity = prefs.scrollSpeed;
+    const shown = this.shown!;
     if (shown.mode === 'diff') {
-      (shown.editor as Monaco.editor.IStandaloneDiffEditor).updateOptions({
-        wordWrap,
-        mouseWheelScrollSensitivity,
-        ...LAYOUTS[prefs.diffLayout],
-        ignoreTrimWhitespace: prefs.ignoreWhitespace,
-      });
+      (shown.editor as Monaco.editor.IStandaloneDiffEditor).updateOptions(diffOptions(prefs));
     } else {
       const editor = shown.editor as Monaco.editor.IStandaloneCodeEditor;
-      editor.updateOptions({ wordWrap, mouseWheelScrollSensitivity });
+      editor.updateOptions({
+        wordWrap: prefs.wordWrap ? 'on' : 'off',
+        mouseWheelScrollSensitivity: prefs.scrollSpeed,
+      });
       shown.decorations?.clear();
       shown.decorations = editor.createDecorationsCollection(marks(monaco, diff));
     }
+  }
+
+  /**
+   * Lays the new diff out in an editor of its own, unseen, and shows it in place of the
+   * old one once computed: never the whole file first, folded a moment later.
+   */
+  private replaceDiff(
+    monaco: MonacoApi,
+    host: HTMLElement,
+    texts: { old: string; new: string },
+    path: string | null,
+    language: string,
+    prefs: Preferences,
+  ) {
+    const before = this.shown!;
+    const next = before.texts ? this.create(monaco, host, 'diff') : before;
+    const editor = next.editor as Monaco.editor.IStandaloneDiffEditor;
+    editor.updateOptions(diffOptions(prefs));
+    if (next !== before) {
+      // a diff replaced before it showed is dropped: the one on screen stays until the last
+      if (this.leaving) this.discard(before);
+      else this.leaving = before;
+    }
+    const original = monaco.editor.createModel(texts.old, language);
+    const modified = monaco.editor.createModel(texts.new, language);
+    editor.setModel({ original, modified });
+    if (path === before.path && before !== next) {
+      const state = (before.editor as Monaco.editor.IStandaloneDiffEditor).saveViewState();
+      if (state) editor.restoreViewState(state);
+    }
+    Object.assign(next, { path, texts, models: [original, modified] });
+    this.shown = next;
+    // unseen and out of the pointer's way; Monaco's lines ignore a parent's visibility
+    Object.assign(next.pane.style, { opacity: '0', pointerEvents: 'none' });
+    const reveal = (late: boolean) => {
+      // the diff is announced once cleared, before it is computed
+      if (!late && !editor.getLineChanges()) return;
+      updated.dispose();
+      clearTimeout(timer);
+      if (this.shown !== next) return;
+      requestAnimationFrame(() => {
+        if (this.shown !== next) return;
+        Object.assign(next.pane.style, { opacity: '', pointerEvents: '' });
+        if (this.leaving) this.discard(this.leaving);
+        this.leaving = null;
+      });
+    };
+    const updated = editor.onDidUpdateDiff(() => reveal(false));
+    const timer = setTimeout(() => reveal(true), DIFF_WAIT_MS);
+  }
+
+  private replaceFile(
+    monaco: MonacoApi,
+    texts: { old: string; new: string },
+    path: string | null,
+    language: string,
+  ) {
+    const shown = this.shown!;
+    const editor = shown.editor as Monaco.editor.IStandaloneCodeEditor;
+    const state = path === shown.path ? editor.saveViewState() : null;
+    // a deleted file has only its old lines to show
+    const model = monaco.editor.createModel(texts.new || texts.old, language);
+    editor.setModel(model);
+    if (state) editor.restoreViewState(state);
+    shown.models.forEach((m) => m.dispose());
+    Object.assign(shown, { path, texts, models: [model] });
   }
 
   private create(monaco: MonacoApi, host: HTMLElement, mode: DiffMode): Shown {
@@ -272,25 +334,43 @@ export class DiffView {
       renderLineHighlight: 'none',
       padding: { top: 8, bottom: 8 },
     };
+    const pane = document.createElement('div');
+    pane.style.cssText = 'position: absolute; inset: 0';
+    host.append(pane);
     const editor =
       mode === 'diff'
-        ? monaco.editor.createDiffEditor(host, {
+        ? monaco.editor.createDiffEditor(pane, {
             ...options,
             originalEditable: false,
             renderMarginRevertIcon: false,
             renderOverviewRuler: true,
             useInlineViewWhenSpaceIsLimited: false,
           })
-        : monaco.editor.create(host, options);
-    return { mode, editor, texts: null, models: [], decorations: null };
+        : monaco.editor.create(pane, options);
+    return { mode, pane, editor, path: null, texts: null, models: [], decorations: null };
   }
 
   private dispose() {
-    if (!this.shown) return;
-    this.shown.editor.dispose();
-    this.shown.models.forEach((m) => m.dispose());
+    if (this.leaving) this.discard(this.leaving);
+    if (this.shown) this.discard(this.shown);
+    this.leaving = null;
     this.shown = null;
   }
+
+  private discard(shown: Shown) {
+    shown.editor.dispose();
+    shown.models.forEach((m) => m.dispose());
+    shown.pane.remove();
+  }
+}
+
+function diffOptions(prefs: Preferences): Monaco.editor.IDiffEditorOptions {
+  return {
+    wordWrap: prefs.wordWrap ? 'on' : 'off',
+    mouseWheelScrollSensitivity: prefs.scrollSpeed,
+    ...LAYOUTS[prefs.diffLayout],
+    ignoreTrimWhitespace: prefs.ignoreWhitespace,
+  };
 }
 
 /** The buffer `file_versions` answers: which versions are there, the old one's length, both. */

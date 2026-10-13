@@ -27,12 +27,18 @@
     </header>
 
     <div class="scroll">
-      <section class="message">
+      <section #box class="message" [style.max-height.px]="messageHeight()">
         <h2>{{ commit.summary }}</h2>
         @if (message().text) {
           <p class="body">{{ message().text }}</p>
         }
       </section>
+      <div
+        class="grip"
+        (pointerdown)="resize($event, box)"
+        (dblclick)="unsize()"
+        [title]="'Drag to resize; double-click to put it back' | t"
+      ></div>
 
       @if (stash) {
         <div class="stash-actions">

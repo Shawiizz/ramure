@@ -108,6 +108,8 @@ export const FR: Record<string, string> = {
   'Drag to resize': 'Faites glisser pour redimensionner',
   'Drag to resize; double-click to fit the list':
     'Faites glisser pour redimensionner ; double-cliquez pour ajuster à la liste',
+  'Drag to resize; double-click to put it back':
+    'Faites glisser pour redimensionner ; double-cliquez pour revenir à la taille d’origine',
   'Drag to show more lanes': 'Faites glisser pour voir plus de branches',
   Drop: 'Supprimer',
   Edit: 'Modifier',

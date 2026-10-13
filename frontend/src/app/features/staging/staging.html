@@ -1,9 +1,9 @@
 @if (status(); as status) {
   <div class="staging">
     @if (status.conflicted.length) {
-      <section>
+      <section class="conflicts">
         <header>
-          <h3 class="conflict">
+          <h3>
             {{ 'Conflicts' | t }} <span>{{ status.conflicted.length }}</span>
           </h3>
         </header>
@@ -23,7 +23,7 @@
           {{ 'Unstaged' | t }} <span>{{ status.unstaged.length }}</span>
         </h3>
         @if (status.unstaged.length) {
-          <button class="r-btn r-btn--ghost small" (click)="stageAll()">
+          <button class="r-btn small stage-all" (click)="stageAll()">
             {{ 'Stage all' | t }}
           </button>
         }
@@ -47,7 +47,7 @@
           {{ 'Staged' | t }} <span>{{ status.staged.length }}</span>
         </h3>
         @if (status.staged.length) {
-          <button class="r-btn r-btn--ghost small" (click)="unstageAll()">
+          <button class="r-btn small" (click)="unstageAll()">
             {{ 'Unstage all' | t }}
           </button>
         }

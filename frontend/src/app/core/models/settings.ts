@@ -108,17 +108,23 @@ export interface Layout {
   /** The sidebar's width and the details panel's, in px. */
   sidebar: number;
   details: number;
+  /** The most a commit's message takes of the details panel, in px: past it, it scrolls. */
+  message: number;
   /** The sidebar's sections, in their order, by key. */
   sections: string[];
   /** The height given to a section's list, by its key; a section left out is as tall as its list. */
   heights: Record<string, number>;
 }
 
+/** A commit's message is never given less than this. */
+export const MIN_MESSAGE = 60;
+
 export const SECTIONS: readonly string[] = ['local', 'remote', 'tag', 'stash'];
 
 export const DEFAULT_LAYOUT: Layout = {
   sidebar: 228,
   details: 340,
+  message: 220,
   sections: [...SECTIONS],
   heights: {},
 };
@@ -229,17 +235,18 @@ function parsePreferences(value: unknown): Preferences {
 
 function parseLayout(value: unknown): Layout {
   const saved = isRecord(value) ? value : {};
-  const width = (key: string, fallback: number) => {
+  const size = (key: string, min: number, fallback: number) => {
     const v = saved[key];
-    return typeof v === 'number' && v >= 120 && v <= 1200 ? v : fallback;
+    return typeof v === 'number' && v >= min && v <= 1200 ? v : fallback;
   };
   const order = (Array.isArray(saved['sections']) ? saved['sections'] : []).filter(
     (k, i, all): k is string => SECTIONS.includes(k as string) && all.indexOf(k) === i,
   );
   const heights = isRecord(saved['heights']) ? saved['heights'] : {};
   return {
-    sidebar: width('sidebar', DEFAULT_LAYOUT.sidebar),
-    details: width('details', DEFAULT_LAYOUT.details),
+    sidebar: size('sidebar', 120, DEFAULT_LAYOUT.sidebar),
+    details: size('details', 120, DEFAULT_LAYOUT.details),
+    message: size('message', MIN_MESSAGE, DEFAULT_LAYOUT.message),
     sections: [...order, ...SECTIONS.filter((k) => !order.includes(k))],
     heights: Object.fromEntries(
       Object.entries(heights).filter(
