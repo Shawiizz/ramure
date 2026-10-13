@@ -41,6 +41,8 @@ export interface Preferences {
   diffLayout: DiffLayout;
   /** Long lines of a diff wrap rather than scroll. */
   wordWrap: boolean;
+  /** How far a wheel's notch scrolls the history and the diffs, the system's distance times this. */
+  scrollSpeed: number;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -48,6 +50,7 @@ export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
 export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
 export const DIFF_MODES: readonly DiffMode[] = ['file', 'diff'];
 export const DIFF_LAYOUTS: readonly DiffLayout[] = ['hunks', 'inline', 'split'];
+export const SCROLL_SPEEDS: readonly number[] = [1, 1.5, 2.5];
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'dark',
@@ -59,6 +62,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   diffMode: 'diff',
   diffLayout: 'hunks',
   wordWrap: false,
+  scrollSpeed: 1.5,
 };
 
 /** What Ramure remembers from one run to the next. */
@@ -145,6 +149,7 @@ function parsePreferences(value: unknown): Preferences {
     diffMode: among('diffMode', DIFF_MODES, d.diffMode),
     diffLayout: among('diffLayout', DIFF_LAYOUTS, d.diffLayout),
     wordWrap: flag('wordWrap', d.wordWrap),
+    scrollSpeed: among('scrollSpeed', SCROLL_SPEEDS, d.scrollSpeed),
   };
 }
 

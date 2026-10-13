@@ -15,13 +15,7 @@
     <span class="sha">SHA</span>
   </div>
   @if (lines().length || wip()) {
-    <div
-      #rows
-      class="rows"
-      role="listbox"
-      [attr.aria-label]="'History' | t"
-      (scroll)="scrolled($event)"
-    >
+    <div #rows class="rows" role="listbox" [attr.aria-label]="'History' | t">
       @if (wip(); as wip) {
         <button
           role="option"
@@ -56,40 +50,104 @@
       }
       <div [style.height.px]="range().start * row"></div>
       @for (line of shown(); track line.commit.id) {
+        @let selected = line.commit.id === repository.selectedId();
+        @let s = line.shape;
         <button
           role="option"
           class="row"
-          [class.selected]="line.commit.id === repository.selectedId()"
-          [attr.aria-selected]="line.commit.id === repository.selectedId()"
+          [class.selected]="selected"
+          [attr.aria-selected]="selected"
           (click)="repository.select(line.commit.id)"
         >
           <span class="refs" (mouseenter)="unfold($event, line)">
             @if (line.labels.length) {
               <app-ref-pill
                 [label]="line.labels[0]"
-                [color]="line.color"
+                [color]="s.color"
                 (dblclick)="repository.switchTo(line.labels[0])"
               />
               @if (line.labels.length > 1) {
-                <span class="more" [style.--lane]="line.color">+{{ line.labels.length - 1 }}</span>
+                <span class="more" [style.--lane]="s.color">+{{ line.labels.length - 1 }}</span>
               }
-              <span class="tie" [style.background]="line.color"></span>
+              <span class="tie" [style.background]="s.color"></span>
             }
           </span>
-          <app-graph-cell
-            class="graph"
-            [class.selected]="line.commit.id === repository.selectedId()"
-            [row]="line.row"
-            [width]="graphWidth()"
-            [initials]="line.initials"
-            [email]="line.commit.email"
-            [merge]="line.commit.parents.length > 1"
-            [stash]="line.stash"
-            [labeled]="line.labels.length > 0"
-            [fromWip]="range().start + $index === 0 && !!wip()?.linked"
-          />
-          <span class="message" [class.stashed]="line.stash">
-            @if (line.stash) {
+          <svg class="graph" [attr.width]="graphWidth()" [attr.height]="row" aria-hidden="true">
+            <rect
+              class="band"
+              [attr.x]="s.cx"
+              y="3"
+              [attr.width]="graphWidth() - s.cx"
+              [attr.height]="row - 6"
+              [style.fill]="s.color"
+            />
+            @if (line.labels.length) {
+              <path
+                class="tie-line"
+                [attr.d]="'M0 ' + row / 2 + 'H' + s.cx"
+                [style.stroke]="s.color"
+              />
+            }
+            @for (p of s.paths; track $index) {
+              <path [attr.d]="p.d" [style.stroke]="p.color" />
+            }
+            @if (range().start + $index === 0 && wip()?.linked) {
+              <path
+                class="from-wip"
+                [attr.d]="'M' + s.cx + ' 0V' + row / 2"
+                [style.stroke]="s.color"
+              />
+            }
+            @switch (s.node) {
+              @case ('stash') {
+                <rect
+                  class="stash-box"
+                  [attr.x]="s.cx - stashSide / 2"
+                  [attr.y]="row / 2 - stashSide / 2"
+                  [attr.width]="stashSide"
+                  [attr.height]="stashSide"
+                  rx="4"
+                  [style.stroke]="s.color"
+                />
+              }
+              @case ('merge') {
+                <circle
+                  class="merge"
+                  [attr.cx]="s.cx"
+                  [attr.cy]="row / 2"
+                  [attr.r]="mergeR"
+                  [style.stroke]="s.color"
+                />
+              }
+              @default {
+                <circle
+                  [attr.cx]="s.cx"
+                  [attr.cy]="row / 2"
+                  [attr.r]="node"
+                  [style.fill]="s.color"
+                />
+                @if (gravatar.url(line.commit.email); as picture) {
+                  <clipPath [attr.id]="clip + line.commit.id">
+                    <circle [attr.cx]="s.cx" [attr.cy]="row / 2" [attr.r]="pictureR" />
+                  </clipPath>
+                  <image
+                    [attr.href]="picture"
+                    [attr.x]="s.cx - pictureR"
+                    [attr.y]="row / 2 - pictureR"
+                    [attr.width]="pictureR * 2"
+                    [attr.height]="pictureR * 2"
+                    [attr.clip-path]="'url(#' + clip + line.commit.id + ')'"
+                    preserveAspectRatio="xMidYMid slice"
+                    (error)="gravatar.notFound(line.commit.email)"
+                  />
+                } @else {
+                  <text [attr.x]="s.cx" [attr.y]="row / 2">{{ line.initials }}</text>
+                }
+              }
+            }
+          </svg>
+          <span class="message" [class.stashed]="s.node === 'stash'">
+            @if (s.node === 'stash') {
               <span class="stash-tag">stash</span>
             }
             <span class="summary">{{ line.commit.summary }}</span>
@@ -98,9 +156,7 @@
             }
           </span>
           <span class="author" [title]="line.commit.email">{{ line.commit.author }}</span>
-          <span class="date" [title]="fullDate(line.commit.time)">{{
-            relativeDates() ? when(line.commit.time) : shortDate(line.commit.time)
-          }}</span>
+          <span class="date" [title]="line.fullDate">{{ line.date }}</span>
           <span class="sha r-mono">{{ line.commit.id.slice(0, 7) }}</span>
         </button>
       }

@@ -239,15 +239,17 @@ export class DiffView {
       shown.texts = texts;
     }
     const wordWrap = prefs.wordWrap ? 'on' : 'off';
+    const mouseWheelScrollSensitivity = prefs.scrollSpeed;
     if (shown.mode === 'diff') {
       (shown.editor as Monaco.editor.IStandaloneDiffEditor).updateOptions({
         wordWrap,
+        mouseWheelScrollSensitivity,
         ...LAYOUTS[prefs.diffLayout],
         ignoreTrimWhitespace: prefs.ignoreWhitespace,
       });
     } else {
       const editor = shown.editor as Monaco.editor.IStandaloneCodeEditor;
-      editor.updateOptions({ wordWrap });
+      editor.updateOptions({ wordWrap, mouseWheelScrollSensitivity });
       shown.decorations?.clear();
       shown.decorations = editor.createDecorationsCollection(marks(monaco, diff));
     }

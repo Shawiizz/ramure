@@ -11,10 +11,23 @@ import {
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
 import { PreferencesService } from '../../core/services/preferences.service';
+import { GravatarService } from '../../core/services/gravatar.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { initials } from '../../shared/avatar';
+import { speedUpWheel } from '../../shared/wheel';
 import { fullDate, shortDate, when } from '../../shared/when';
-import { GraphCell, NODE, ROW, graphWidth, laneColor, laneX } from './graph-cell';
+import {
+  MERGE,
+  NODE,
+  PICTURE,
+  ROW,
+  STASH,
+  Shape,
+  graphWidth,
+  laneColor,
+  laneX,
+  shape,
+} from './graph';
 import { RefPill } from './ref-pill';
 
 /** Lanes the graph column shows at first; more once it is widened. */
@@ -22,18 +35,23 @@ const FIRST_LANES = 6;
 /** Wide enough for its heading. */
 const MIN_GRAPH_WIDTH = 64;
 /** Rows drawn beyond each edge of the view, so that scrolling never shows a gap. */
-const OVERSCAN = 12;
+const OVERSCAN = 16;
+/** The rows drawn change by this many at a time: scrolling within draws nothing new. */
+const CHUNK = 4;
+/** Tells each history's clip paths from another tab's. */
+let histories = 0;
 
+/** A row as drawn, all of it worked out once for the whole history. */
 interface Line {
   commit: Commit;
   row: GraphRow;
-  color: string;
+  shape: Shape;
   labels: RefLabel[];
   initials: string;
-  /** Work put aside, hanging on the commit it was made on. */
-  stash: boolean;
   /** The first line of the description, after the summary. */
   detail: string;
+  date: string;
+  fullDate: string;
 }
 
 /** The names on a commit, unfolded over the rows below while the pointer is on them. */
@@ -54,18 +72,19 @@ interface Unfolded {
   selector: 'app-history',
   templateUrl: './history.html',
   styleUrl: './history.scss',
-  imports: [TPipe, GraphCell, RefPill],
+  imports: [TPipe, RefPill],
 })
 export class History {
   protected readonly repository = inject(RepositoryService);
-  protected readonly when = when;
-  protected readonly shortDate = shortDate;
-  protected readonly fullDate = fullDate;
+  protected readonly gravatar = inject(GravatarService);
   private readonly preferences = inject(PreferencesService);
-  protected readonly relativeDates = computed(() => this.preferences.preferences().relativeDates);
   protected readonly wipId = WIP;
   protected readonly row = ROW;
   protected readonly node = NODE;
+  protected readonly mergeR = MERGE;
+  protected readonly pictureR = PICTURE;
+  protected readonly stashSide = STASH;
+  protected readonly clip = `history-${++histories}-`;
   protected readonly unfolded = signal<Unfolded | null>(null);
   /** The graph's width as the user dragged it, null until then. */
   private readonly dragged = signal<number | null>(null);
@@ -88,28 +107,44 @@ export class History {
     if (!snapshot) return [];
     const labels = this.repository.labels();
     const stashes = this.repository.stashes();
-    return snapshot.commits.map((commit, i) => ({
-      commit,
-      row: snapshot.graph[i],
-      color: laneColor(snapshot.graph[i].lane),
-      labels: labels.get(commit.id) ?? [],
-      initials: initials(commit.author),
-      stash: stashes.has(commit.id),
-      detail: commit.body.split('\n', 1)[0],
-    }));
+    const relative = this.preferences.preferences().relativeDates;
+    const now = Date.now() / 1000;
+    return snapshot.commits.map((commit, i) => {
+      const row = snapshot.graph[i];
+      const node = stashes.has(commit.id)
+        ? 'stash'
+        : commit.parents.length > 1
+          ? 'merge'
+          : 'commit';
+      return {
+        commit,
+        row,
+        shape: shape(row, node),
+        labels: labels.get(commit.id) ?? [],
+        initials: initials(commit.author),
+        detail: commit.body.split('\n', 1)[0],
+        date: relative ? when(commit.time, now) : shortDate(commit.time),
+        fullDate: fullDate(commit.time),
+      };
+    });
   });
 
-  /** The commits' rows in view, as indexes into [`lines`]: from `start`, up to `end`. */
-  protected readonly range = computed(() => {
-    const count = this.lines().length;
-    const top = this.scrollTop() - (this.wip() ? ROW : 0);
-    const start = Math.min(count, Math.max(0, Math.floor(top / ROW) - OVERSCAN));
-    const end = Math.min(
-      count,
-      Math.max(start, Math.ceil((top + this.viewHeight()) / ROW) + OVERSCAN),
-    );
-    return { start, end };
-  });
+  /**
+   * The commits' rows drawn, as indexes into [`lines`]: from `start`, up to `end`. They
+   * move by whole chunks, so that most scrolling changes nothing to draw.
+   */
+  protected readonly range = computed(
+    () => {
+      const count = this.lines().length;
+      const top = this.scrollTop() - (this.wip() ? ROW : 0);
+      const first = Math.floor(Math.max(0, top) / ROW / CHUNK) * CHUNK;
+      const last = Math.ceil((top + this.viewHeight()) / ROW / CHUNK) * CHUNK;
+      const start = Math.min(count, Math.max(0, first - OVERSCAN));
+      const end = Math.min(count, Math.max(start, last + OVERSCAN));
+      return { start, end };
+    },
+    { equal: (a, b) => a.start === b.start && a.end === b.end },
+  );
 
   protected readonly shown = computed(() => {
     const { start, end } = this.range();
@@ -129,23 +164,29 @@ export class History {
   );
 
   constructor() {
+    // listened to here rather than in the template: a scroll redraws nothing by itself
     effect((onCleanup) => {
       const view = this.rows()?.nativeElement;
       if (!view) return;
       const observer = new ResizeObserver(() => this.viewHeight.set(view.clientHeight));
       observer.observe(view);
-      onCleanup(() => observer.disconnect());
+      const scrolled = () => {
+        this.scrollTop.set(view.scrollTop);
+        if (this.unfolded()) this.unfolded.set(null);
+      };
+      view.addEventListener('scroll', scrolled, { passive: true });
+      const wheel = speedUpWheel(view, () => this.preferences.preferences().scrollSpeed);
+      onCleanup(() => {
+        observer.disconnect();
+        view.removeEventListener('scroll', scrolled);
+        wheel();
+      });
     });
     // a commit chosen elsewhere (a branch in the sidebar) is brought into view
     effect(() => {
       const id = this.repository.selectedId();
       untracked(() => this.reveal(id));
     });
-  }
-
-  protected scrolled(event: Event) {
-    this.scrollTop.set((event.target as HTMLElement).scrollTop);
-    this.unfolded.set(null);
   }
 
   private reveal(id: string | null) {
@@ -179,7 +220,7 @@ export class History {
     this.unfolded.set({
       id: line.commit.id,
       labels: line.labels,
-      color: line.color,
+      color: line.shape.color,
       top: cell.top,
       left: cell.left,
       width: cell.width,

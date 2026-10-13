@@ -7,6 +7,7 @@ import {
   AUTO_FETCH_MINUTES,
   HISTORY_LIMITS,
   Preferences,
+  SCROLL_SPEEDS,
   THEMES,
   Theme,
 } from '../../core/models/settings';
@@ -42,6 +43,12 @@ export class SettingsDialog {
   }));
   protected readonly autoFetch = AUTO_FETCH_MINUTES;
   protected readonly historyLimits = HISTORY_LIMITS;
+  protected readonly scrollSpeeds = SCROLL_SPEEDS;
+  protected readonly speedNames = computed<Record<number, string>>(() => ({
+    1: t('As the system'),
+    1.5: t('Fast'),
+    2.5: t('Very fast'),
+  }));
   protected readonly version = signal('');
   /** git's version once it answers, null when it cannot be found. */
   protected readonly gitVersion = signal<string | null>('');

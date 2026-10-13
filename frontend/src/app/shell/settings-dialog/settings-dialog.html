@@ -105,6 +105,25 @@
             </div>
             <div class="row">
               <div>
+                <span class="name">{{ 'Scrolling speed' | t }}</span>
+                <span class="help">{{
+                  'How far a wheel’s notch scrolls the history and the diffs.' | t
+                }}</span>
+              </div>
+              <div class="seg" role="radiogroup" [attr.aria-label]="'Scrolling speed' | t">
+                @for (speed of scrollSpeeds; track speed) {
+                  <button
+                    role="radio"
+                    [attr.aria-checked]="prefs().scrollSpeed === speed"
+                    (click)="set('scrollSpeed', speed)"
+                  >
+                    {{ speedNames()[speed] }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="row">
+              <div>
                 <span class="name">{{ 'Relative dates' | t }}</span>
                 <span class="help">{{
                   '“3 days ago” in the history, rather than the date.' | t
