@@ -19,7 +19,9 @@ pub use files::{
     FileCommit,
 };
 pub use graph::{layout, Row};
-pub use identity::{git_version, global_identity, Identity};
+pub use identity::{
+    git_version, global_config, global_identity, set_global_config, set_global_identity, Identity,
+};
 pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};
 pub use stash::{stash_files, Stash};
 pub use status::{status, Change, ChangeKind, Status, Upstream};

@@ -16,7 +16,15 @@ import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
 import { decode, guessEncoding } from '../../shared/encoding';
-import { MonacoApi, editorOptions, injectMonaco, languageOf } from '../../shared/monaco';
+import {
+  MonacoApi,
+  codeLook,
+  codeModel,
+  editorOptions,
+  injectMonaco,
+  restyle,
+} from '../../shared/monaco';
+import { PreferencesService } from '../../core/services/preferences.service';
 
 /** A file of the working tree read for editing: its text, and whether it began with a BOM. */
 interface Opened {
@@ -57,6 +65,7 @@ interface Opened {
 })
 export class FileEditor {
   private readonly repository = inject(RepositoryService);
+  private readonly prefs = inject(PreferencesService).preferences;
   readonly path = input.required<string>();
   private readonly loaded = injectMonaco();
   private readonly readFailure = signal<string | null>(null);
@@ -79,6 +88,15 @@ export class FileEditor {
       const host = this.host()?.nativeElement;
       const opened = this.opened();
       if (monaco && host && opened) untracked(() => this.show(monaco, host, opened));
+    });
+    effect(() => {
+      const prefs = this.prefs();
+      untracked(() => {
+        const model = this.editor?.getModel();
+        this.editor?.updateOptions(codeLook(prefs));
+        if (model && this.loaded.monaco())
+          restyle(this.loaded.monaco()!, [model], this.path(), prefs);
+      });
     });
     inject(DestroyRef).onDestroy(() => {
       this.editor?.getModel()?.dispose();
@@ -122,7 +140,7 @@ export class FileEditor {
   private show(monaco: MonacoApi, host: HTMLElement, opened: Opened) {
     if (!this.editor) {
       this.editor = monaco.editor.create(host, {
-        ...editorOptions(),
+        ...editorOptions(this.prefs()),
         readOnly: false,
         renderLineHighlight: 'line',
       });
@@ -130,7 +148,7 @@ export class FileEditor {
     }
     const old = this.editor.getModel();
     // the file's own line endings are kept: the model takes them from its text
-    const model = monaco.editor.createModel(opened.text, languageOf(monaco, opened.file));
+    const model = codeModel(monaco, opened.text, opened.file, this.prefs());
     this.editor.setModel(model);
     old?.dispose();
     this.saved = model.getAlternativeVersionId();

@@ -19,7 +19,14 @@ import { DiffLayout, DiffMode, Preferences } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { ENCODINGS, Encoding, decode, guessEncoding } from '../../shared/encoding';
-import { MonacoApi, editorOptions, injectMonaco, languageOf } from '../../shared/monaco';
+import {
+  MonacoApi,
+  codeLook,
+  codeModel,
+  editorOptions,
+  injectMonaco,
+  restyle,
+} from '../../shared/monaco';
 
 /** The file a diff is about: a change, and where it lies. */
 interface Target {
@@ -224,20 +231,21 @@ export class DiffView {
   ) {
     if (this.shown?.mode !== prefs.diffMode) {
       this.dispose();
-      this.shown = this.create(monaco, host, prefs.diffMode);
+      this.shown = this.create(monaco, host, prefs);
     }
     if (this.shown!.texts !== texts) {
       const path = this.versions()?.target.change.path ?? null;
-      const language = languageOf(monaco, path ?? '');
-      if (this.shown!.mode === 'diff') this.replaceDiff(monaco, host, texts, path, language, prefs);
-      else this.replaceFile(monaco, texts, path, language);
+      if (this.shown!.mode === 'diff') this.replaceDiff(monaco, host, texts, path, prefs);
+      else this.replaceFile(monaco, texts, path, prefs);
     }
     const shown = this.shown!;
+    restyle(monaco, shown.models, shown.path ?? '', prefs);
     if (shown.mode === 'diff') {
       (shown.editor as Monaco.editor.IStandaloneDiffEditor).updateOptions(diffOptions(prefs));
     } else {
       const editor = shown.editor as Monaco.editor.IStandaloneCodeEditor;
       editor.updateOptions({
+        ...codeLook(prefs),
         wordWrap: prefs.wordWrap ? 'on' : 'off',
         mouseWheelScrollSensitivity: prefs.scrollSpeed,
       });
@@ -255,11 +263,10 @@ export class DiffView {
     host: HTMLElement,
     texts: { old: string; new: string },
     path: string | null,
-    language: string,
     prefs: Preferences,
   ) {
     const before = this.shown!;
-    const next = before.texts ? this.create(monaco, host, 'diff') : before;
+    const next = before.texts ? this.create(monaco, host, prefs) : before;
     const editor = next.editor as Monaco.editor.IStandaloneDiffEditor;
     editor.updateOptions(diffOptions(prefs));
     if (next !== before) {
@@ -267,8 +274,8 @@ export class DiffView {
       if (this.leaving) this.discard(before);
       else this.leaving = before;
     }
-    const original = monaco.editor.createModel(texts.old, language);
-    const modified = monaco.editor.createModel(texts.new, language);
+    const original = codeModel(monaco, texts.old, path ?? '', prefs);
+    const modified = codeModel(monaco, texts.new, path ?? '', prefs);
     editor.setModel({ original, modified });
     if (path === before.path && before !== next) {
       const state = (before.editor as Monaco.editor.IStandaloneDiffEditor).saveViewState();
@@ -299,21 +306,22 @@ export class DiffView {
     monaco: MonacoApi,
     texts: { old: string; new: string },
     path: string | null,
-    language: string,
+    prefs: Preferences,
   ) {
     const shown = this.shown!;
     const editor = shown.editor as Monaco.editor.IStandaloneCodeEditor;
     const state = path === shown.path ? editor.saveViewState() : null;
     // a deleted file has only its old lines to show
-    const model = monaco.editor.createModel(texts.new || texts.old, language);
+    const model = codeModel(monaco, texts.new || texts.old, path ?? '', prefs);
     editor.setModel(model);
     if (state) editor.restoreViewState(state);
     shown.models.forEach((m) => m.dispose());
     Object.assign(shown, { path, texts, models: [model] });
   }
 
-  private create(monaco: MonacoApi, host: HTMLElement, mode: DiffMode): Shown {
-    const options = editorOptions();
+  private create(monaco: MonacoApi, host: HTMLElement, prefs: Preferences): Shown {
+    const mode = prefs.diffMode;
+    const options = editorOptions(prefs);
     const pane = document.createElement('div');
     pane.style.cssText = 'position: absolute; inset: 0';
     host.append(pane);
@@ -346,6 +354,7 @@ export class DiffView {
 
 function diffOptions(prefs: Preferences): Monaco.editor.IDiffEditorOptions {
   return {
+    ...codeLook(prefs),
     wordWrap: prefs.wordWrap ? 'on' : 'off',
     mouseWheelScrollSensitivity: prefs.scrollSpeed,
     ...LAYOUTS[prefs.diffLayout],

@@ -24,35 +24,101 @@ fn with_session<T>(id: u32, act: impl FnOnce(&mut Session) -> Result<T, String>)
     act(session)
 }
 
-/// The shell to open: PowerShell on Windows (the newer one when installed), the user's
-/// own elsewhere.
-fn shell() -> CommandBuilder {
-    if cfg!(windows) {
-        let newer = std::env::var_os("PATH")
-            .is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join("pwsh.exe").is_file()));
-        let mut command = CommandBuilder::new(if newer { "pwsh.exe" } else { "powershell.exe" });
-        command.arg("-NoLogo");
-        command
+/// The first folder of the `PATH` holding `program`.
+fn on_path(program: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path).map(|dir| dir.join(program)).find(|file| file.is_file())
+}
+
+/// Git for Windows' bash, beside the git found on the `PATH`.
+fn git_bash() -> Option<PathBuf> {
+    let git = on_path("git.exe")?;
+    // …\Git\cmd\git.exe or …\Git\bin\git.exe: bash is in …\Git\bin
+    let root = git.parent()?.parent()?;
+    Some(root.join("bin").join("bash.exe")).filter(|bash| bash.is_file())
+}
+
+/// The shells a terminal can run on this computer, by the names the settings give them;
+/// the system's own choice is always there besides.
+#[tauri::command]
+pub fn terminal_shells() -> Vec<&'static str> {
+    if !cfg!(windows) {
+        return Vec::new();
+    }
+    let mut found = vec!["powershell"];
+    if on_path("pwsh.exe").is_some() {
+        found.push("pwsh");
+    }
+    found.push("cmd");
+    if git_bash().is_some() {
+        found.push("gitBash");
+    }
+    if on_path("wsl.exe").is_some() {
+        found.push("wsl");
+    }
+    found
+}
+
+/// The shell `name` names, opening in `dir`: on Windows the newest PowerShell by default,
+/// elsewhere the user's own.
+fn shell(name: &str, dir: &Path) -> CommandBuilder {
+    if !cfg!(windows) {
+        return CommandBuilder::new(std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_owned()));
+    }
+    let name = if name == "auto" {
+        if on_path("pwsh.exe").is_some() {
+            "pwsh"
+        } else {
+            "powershell"
+        }
     } else {
-        CommandBuilder::new(std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_owned()))
+        name
+    };
+    match name {
+        "cmd" => CommandBuilder::new("cmd.exe"),
+        "gitBash" => {
+            let mut command = CommandBuilder::new(git_bash().unwrap_or_else(|| PathBuf::from("bash.exe")));
+            command.args(["--login", "-i"]);
+            command
+        }
+        "wsl" => {
+            let mut command = CommandBuilder::new("wsl.exe");
+            command.arg("--cd");
+            command.arg(dir);
+            command
+        }
+        powershell => {
+            let mut command =
+                CommandBuilder::new(if powershell == "pwsh" { "pwsh.exe" } else { "powershell.exe" });
+            command.arg("-NoLogo");
+            command
+        }
     }
 }
 
-/// A shell in the folder `path`, `cols` by `rows` characters; its output goes to `output`
-/// in chunks of bytes, then an empty one once it has ended. Answers the terminal's id.
+/// The shell `shell` in the folder `path`, `cols` by `rows` characters; its output goes to
+/// `output` in chunks of bytes, then an empty one once it has ended. Answers the
+/// terminal's id.
 #[tauri::command(async)]
-pub fn terminal_open(path: PathBuf, cols: u16, rows: u16, output: Channel<Response>) -> Result<u32, String> {
-    open(&path, cols, rows, output).map_err(|e| e.to_string())
+pub fn terminal_open(
+    path: PathBuf,
+    shell: String,
+    cols: u16,
+    rows: u16,
+    output: Channel<Response>,
+) -> Result<u32, String> {
+    open(&path, &shell, cols, rows, output).map_err(|e| e.to_string())
 }
 
 fn open(
     path: &Path,
+    name: &str,
     cols: u16,
     rows: u16,
     output: Channel<Response>,
 ) -> Result<u32, Box<dyn std::error::Error>> {
     let pair = native_pty_system().openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })?;
-    let mut command = shell();
+    let mut command = shell(name, path);
     command.cwd(path);
     command.env("TERM", "xterm-256color");
     let child = pair.slave.spawn_command(command)?;

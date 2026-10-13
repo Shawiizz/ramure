@@ -16,7 +16,15 @@ import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Blame } from '../../core/models/repository';
 import { RepositoryService } from '../../core/services/repository.service';
-import { MonacoApi, editorOptions, injectMonaco, languageOf } from '../../shared/monaco';
+import {
+  MonacoApi,
+  codeLook,
+  codeModel,
+  editorOptions,
+  injectMonaco,
+  restyle,
+} from '../../shared/monaco';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { fullDate, when } from '../../shared/when';
 
 /** The width of the blame beside each line, in characters: the author, then the date. */
@@ -58,6 +66,7 @@ const BLAME_WIDTH = 34;
 })
 export class FileBlame {
   private readonly repository = inject(RepositoryService);
+  private readonly prefs = inject(PreferencesService).preferences;
   readonly path = input.required<string>();
   readonly at = input<string | undefined>();
   private readonly loaded = injectMonaco();
@@ -79,6 +88,15 @@ export class FileBlame {
       const host = this.host()?.nativeElement;
       const blame = this.blame();
       if (monaco && host && blame) untracked(() => this.show(monaco, host, blame));
+    });
+    effect(() => {
+      const prefs = this.prefs();
+      untracked(() => {
+        const model = this.editor?.getModel();
+        this.editor?.updateOptions(codeLook(prefs));
+        if (model && this.loaded.monaco())
+          restyle(this.loaded.monaco()!, [model], this.path(), prefs);
+      });
     });
     inject(DestroyRef).onDestroy(() => {
       this.editor?.getModel()?.dispose();
@@ -103,7 +121,7 @@ export class FileBlame {
     if (!this.editor) {
       // the guides would cross the blame, which stands before the indentation
       this.editor = monaco.editor.create(host, {
-        ...editorOptions(),
+        ...editorOptions(this.prefs()),
         guides: { indentation: false },
       });
       // a click on a line's blame shows its commit
@@ -115,7 +133,7 @@ export class FileBlame {
       });
     }
     const old = this.editor.getModel();
-    this.editor.setModel(monaco.editor.createModel(blame.text, languageOf(monaco, this.path())));
+    this.editor.setModel(codeModel(monaco, blame.text, this.path(), this.prefs()));
     old?.dispose();
     this.decorations?.clear();
     this.decorations = this.editor.createDecorationsCollection(marks(monaco, blame));

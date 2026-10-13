@@ -1,4 +1,4 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, effect, inject } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { t } from '../i18n/i18n';
 import { Identity, Profile } from '../models/settings';
@@ -18,6 +18,17 @@ export class ProfilesService {
     const identity = this.active()?.identity;
     return identity?.name.trim() && identity.email.trim() ? identity : null;
   });
+
+  constructor() {
+    // git run outside Ramure signs as the profile in use, when the settings say so
+    effect(() => {
+      const identity = this.identity();
+      if (identity && this.store.settings().preferences.syncGitConfig)
+        invoke('set_global_identity', { identity }).catch((e) =>
+          console.error('global identity not set', e),
+        );
+    });
+  }
 
   /** The first run: a profile with the identity git already has. */
   async ensureOne(): Promise<void> {

@@ -1,87 +1,35 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { getVersion } from '@tauri-apps/api/app';
-import { invoke } from '@tauri-apps/api/core';
-import { LANGUAGES, language, locale, setLanguage, t } from '../../core/i18n/i18n';
+import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
-import {
-  ACCENTS,
-  AUTO_FETCH_MINUTES,
-  Accent,
-  HISTORY_LIMITS,
-  Preferences,
-  SCROLL_SPEEDS,
-  THEMES,
-  Theme,
-} from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
+import { AboutPage } from './pages/about-page';
+import { EditorPage } from './pages/editor-page';
+import { GeneralPage } from './pages/general-page';
+import { GitPage } from './pages/git-page';
+import { TerminalPage } from './pages/terminal-page';
+import { ToolsPage } from './pages/tools-page';
 
-type Page = 'general' | 'git' | 'about';
+type Page = 'general' | 'editor' | 'terminal' | 'git' | 'tools' | 'about';
 
 /** The settings: a page per subject, every change applied and kept at once. */
 @Component({
   selector: 'app-settings-dialog',
   templateUrl: './settings-dialog.html',
   styleUrl: './settings-dialog.scss',
-  imports: [TPipe],
+  imports: [TPipe, GeneralPage, EditorPage, TerminalPage, GitPage, ToolsPage, AboutPage],
 })
 export class SettingsDialog {
-  protected readonly service = inject(PreferencesService);
-  protected readonly prefs = this.service.preferences;
+  private readonly service = inject(PreferencesService);
   protected readonly page = signal<Page>('general');
   protected readonly pages = computed<{ id: Page; label: string }[]>(() => [
     { id: 'general', label: t('General') },
+    { id: 'editor', label: t('Editor') },
+    { id: 'terminal', label: t('Terminal') },
     { id: 'git', label: 'Git' },
+    { id: 'tools', label: t('External tools') },
     { id: 'about', label: t('About') },
   ]);
   protected readonly title = computed(() => this.pages().find((p) => p.id === this.page())!.label);
-  protected readonly language = language;
-  protected readonly languages = LANGUAGES;
-  protected readonly setLanguage = setLanguage;
-  protected readonly themes = THEMES;
-  protected readonly accents = ACCENTS;
-  protected readonly accentNames = computed<Record<Accent, string>>(() => ({
-    blue: t('Blue'),
-    violet: t('Violet'),
-    green: t('Green'),
-    orange: t('Orange'),
-    neutral: t('Neutral'),
-  }));
-  protected readonly themeNames = computed<Record<Theme, string>>(() => ({
-    dark: t('Dark'),
-    light: t('Light'),
-    system: t('As the system'),
-  }));
-  protected readonly autoFetch = AUTO_FETCH_MINUTES;
-  protected readonly historyLimits = HISTORY_LIMITS;
-  protected readonly scrollSpeeds = SCROLL_SPEEDS;
-  protected readonly speedNames = computed<Record<number, string>>(() => ({
-    1: t('As the system'),
-    1.5: t('Fast'),
-    2.5: t('Very fast'),
-  }));
-  protected readonly version = signal('');
-  /** git's version once it answers, null when it cannot be found. */
-  protected readonly gitVersion = signal<string | null>('');
-
-  constructor() {
-    getVersion().then((v) => this.version.set(v));
-    invoke<string>('git_version').then(
-      (v) => this.gitVersion.set(v),
-      () => this.gitVersion.set(null),
-    );
-  }
-
-  protected set<K extends keyof Preferences>(key: K, value: Preferences[K]) {
-    this.service.set(key, value);
-  }
-
-  protected count(n: number): string {
-    return n.toLocaleString(locale());
-  }
-
-  protected minutes(n: number): string {
-    return n ? t('Every {n} min', { n }) : t('Never');
-  }
 
   protected close() {
     this.service.open.set(false);

@@ -1,0 +1,136 @@
+/* a settings page: one row a setting, its name and what it does on the left, its control on
+   the right */
+:host {
+  display: block;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 64px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--r-line);
+  > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+}
+
+.name {
+  font-weight: 500;
+}
+
+.help {
+  color: var(--r-text-3);
+  font-size: 12px;
+}
+
+.value {
+  color: var(--r-text-2);
+}
+
+.selectable {
+  user-select: text;
+}
+
+/* a choice among a few: the chosen one lit */
+.seg {
+  flex: none;
+  display: flex;
+  padding: 3px;
+  border-radius: var(--r-radius);
+  background: var(--r-void);
+  button {
+    height: 28px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: calc(var(--r-radius) - 2px);
+    background: transparent;
+    color: var(--r-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    &:hover {
+      color: var(--r-text);
+    }
+    &[aria-checked='true'] {
+      background: var(--r-hover);
+      color: var(--r-text);
+    }
+  }
+}
+
+/* on or off */
+.switch {
+  flex: none;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--r-line-strong);
+  cursor: pointer;
+  transition: background var(--r-fast);
+  &::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--r-knob);
+    transition: transform var(--r-fast);
+  }
+  &[aria-checked='true'] {
+    background: var(--r-accent);
+    &::after {
+      background: var(--r-on-accent);
+      transform: translateX(16px);
+    }
+  }
+}
+
+/* a text, a choice from a list */
+.field {
+  flex: none;
+  width: 240px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--r-line-strong);
+  border-radius: var(--r-radius);
+  background: var(--r-void);
+  color: var(--r-text);
+  font: inherit;
+  user-select: text;
+  &:focus {
+    outline: none;
+    border-color: var(--r-accent);
+  }
+  &::placeholder {
+    color: var(--r-text-3);
+  }
+  &.small {
+    width: 120px;
+  }
+}
+
+/* rows grouped under a heading */
+.group {
+  margin: 22px 0 2px;
+  color: var(--r-text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.failure {
+  margin: 14px 0 0;
+  color: var(--r-danger);
+  user-select: text;
+}

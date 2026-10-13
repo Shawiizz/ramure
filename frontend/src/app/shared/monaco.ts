@@ -1,6 +1,7 @@
 import { Signal, effect, inject, signal } from '@angular/core';
 import loader from '@monaco-editor/loader';
 import type * as Monaco from 'monaco-editor';
+import { Preferences } from '../core/models/settings';
 import { PreferencesService } from '../core/services/preferences.service';
 
 export type MonacoApi = typeof Monaco;
@@ -45,8 +46,8 @@ export function injectMonaco(): {
   return { monaco: monaco.asReadonly(), failure: failure.asReadonly() };
 }
 
-/** What every editor of Ramure shares: read-only, in the app's monospace font. */
-export function editorOptions(): Monaco.editor.IEditorOptions {
+/** What every editor of Ramure shares: read-only, code drawn as the settings say. */
+export function editorOptions(prefs: Preferences): Monaco.editor.IEditorOptions {
   return {
     readOnly: true,
     automaticLayout: true,
@@ -55,13 +56,48 @@ export function editorOptions(): Monaco.editor.IEditorOptions {
     scrollBeyondLastLine: false,
     stickyScroll: { enabled: false },
     unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
-    fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--r-mono').trim(),
-    fontSize: 12.5,
-    lineHeight: 21,
     lineNumbersMinChars: 4,
     renderLineHighlight: 'none',
     padding: { top: 8, bottom: 8 },
+    ...codeLook(prefs),
   };
+}
+
+/** The code's look the settings choose: its font and size, the line numbers. */
+export function codeLook(prefs: Preferences): Monaco.editor.IEditorOptions {
+  const mono = token('mono');
+  return {
+    fontFamily: prefs.editorFont ? `'${prefs.editorFont}', ${mono}` : mono,
+    fontSize: prefs.editorFontSize,
+    lineHeight: Math.round(prefs.editorFontSize * 1.68),
+    lineNumbers: prefs.lineNumbers ? 'on' : 'off',
+  };
+}
+
+/** A model of `text`, coloured as the language of `path` is when the settings say so. */
+export function codeModel(
+  monaco: MonacoApi,
+  text: string,
+  path: string,
+  prefs: Preferences,
+): Monaco.editor.ITextModel {
+  const model = monaco.editor.createModel(text);
+  restyle(monaco, [model], path, prefs);
+  return model;
+}
+
+/** Models brought in line with the settings: their language, their tabs' width. */
+export function restyle(
+  monaco: MonacoApi,
+  models: Monaco.editor.ITextModel[],
+  path: string,
+  prefs: Preferences,
+) {
+  const language = prefs.syntax ? languageOf(monaco, path) : 'plaintext';
+  for (const model of models) {
+    monaco.editor.setModelLanguage(model, language);
+    model.updateOptions({ tabSize: prefs.tabSize });
+  }
 }
 
 /** A colour of the theme, read from its CSS token. */

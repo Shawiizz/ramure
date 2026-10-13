@@ -3,6 +3,7 @@ import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
 import { TabsService, splitPath } from '../../core/services/tabs.service';
 import { pickRepository } from '../../shared/pick';
+import { MenusService } from '../repository-tab/menus.service';
 import { Picker } from './picker';
 
 /** The repository of this tab, and a searchable list of the last ones to show here instead. */
@@ -59,7 +60,12 @@ import { Picker } from './picker';
             <li class="none">{{ 'No repository by that name' | t }}</li>
           }
         </ul>
-        <button class="r-btn more" (click)="browse()">{{ 'Open a repository…' | t }}</button>
+        <div class="actions">
+          <button class="r-btn more" (click)="browse()">{{ 'Open a repository…' | t }}</button>
+          <button class="r-btn more" (click)="open.set(false); repository.openInEditor(null)">
+            {{ 'Open in {editor}' | t: { editor: menus.editor() } }}
+          </button>
+        </div>
       </div>
     }
   `,
@@ -69,6 +75,7 @@ import { Picker } from './picker';
 export class RepositoryPicker extends Picker<string> {
   protected readonly repository = inject(RepositoryService);
   private readonly tabs = inject(TabsService);
+  protected readonly menus = inject(MenusService);
   protected readonly split = splitPath;
   protected readonly current = computed(() => this.repository.snapshot()?.path ?? null);
 

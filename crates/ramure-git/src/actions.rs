@@ -66,9 +66,10 @@ pub fn checkout(dir: &Path, name: &str, remote: bool) -> Result<(), Error> {
     }
 }
 
-/// Fetches every remote, dropping the branches they deleted.
-pub fn fetch(dir: &Path) -> Result<(), Error> {
-    git(dir, &["fetch", "--all", "--prune"]).map(drop)
+/// Fetches every remote; with `prune`, the branches they deleted go here too.
+pub fn fetch(dir: &Path, prune: bool) -> Result<(), Error> {
+    let prune = if prune { "--prune" } else { "--no-prune" };
+    git(dir, &["fetch", "--all", prune]).map(drop)
 }
 
 /// How a pull joins the upstream's commits to the branch's own.

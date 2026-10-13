@@ -25,11 +25,23 @@
                   />
                   <circle cx="12" cy="12" r="3" />
                 }
+                @case ('editor') {
+                  <path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14" />
+                }
+                @case ('terminal') {
+                  <rect x="2.5" y="4" width="19" height="16" rx="2" />
+                  <path d="M6.5 9l3 3-3 3M12 15.5h5" />
+                }
                 @case ('git') {
                   <circle cx="7" cy="5.5" r="2" />
                   <circle cx="7" cy="18.5" r="2" />
                   <circle cx="17" cy="8.5" r="2" />
                   <path d="M7 7.5v9M17 10.5c0 3.5-4.5 4-8.2 6.4" />
+                }
+                @case ('tools') {
+                  <path
+                    d="M14.5 6.5a4 4 0 0 0 5 5l-8.5 8.5a2.1 2.1 0 0 1-3-3l8.5-8.5a4 4 0 0 0-2-2z"
+                  />
                 }
                 @case ('about') {
                   <circle cx="12" cy="12" r="8.5" />
@@ -54,172 +66,22 @@
       <div class="rows">
         @switch (page()) {
           @case ('general') {
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Language' | t }}</span>
-                <span class="help">{{ 'The texts, the dates and the numbers.' | t }}</span>
-              </div>
-              <div class="seg" role="radiogroup" [attr.aria-label]="'Language' | t">
-                @for (l of languages; track l.id) {
-                  <button
-                    role="radio"
-                    [attr.aria-checked]="language() === l.id"
-                    (click)="setLanguage(l.id)"
-                  >
-                    {{ l.name }}
-                  </button>
-                }
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Theme' | t }}</span>
-                <span class="help">{{ 'Dark, light, or as the system is.' | t }}</span>
-              </div>
-              <div class="seg" role="radiogroup" [attr.aria-label]="'Theme' | t">
-                @for (theme of themes; track theme) {
-                  <button
-                    role="radio"
-                    [attr.aria-checked]="prefs().theme === theme"
-                    (click)="set('theme', theme)"
-                  >
-                    {{ themeNames()[theme] }}
-                  </button>
-                }
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Accent colour' | t }}</span>
-                <span class="help">{{
-                  'The buttons, the selections and the graph’s main lane.' | t
-                }}</span>
-              </div>
-              <div class="swatches" role="radiogroup" [attr.aria-label]="'Accent colour' | t">
-                @for (accent of accents; track accent) {
-                  <button
-                    role="radio"
-                    [class]="'swatch ' + accent"
-                    [attr.aria-checked]="prefs().accent === accent"
-                    [attr.aria-label]="accentNames()[accent]"
-                    [title]="accentNames()[accent]"
-                    (click)="set('accent', accent)"
-                  ></button>
-                }
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Reopen the tabs' | t }}</span>
-                <span class="help">{{
-                  'At startup, the repositories open when Ramure closed.' | t
-                }}</span>
-              </div>
-              <button
-                class="switch"
-                role="switch"
-                [attr.aria-checked]="prefs().reopenTabs"
-                [attr.aria-label]="'Reopen the tabs' | t"
-                (click)="set('reopenTabs', !prefs().reopenTabs)"
-              ></button>
-            </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Scrolling speed' | t }}</span>
-                <span class="help">{{
-                  'How far a wheel’s notch scrolls the history and the diffs.' | t
-                }}</span>
-              </div>
-              <div class="seg" role="radiogroup" [attr.aria-label]="'Scrolling speed' | t">
-                @for (speed of scrollSpeeds; track speed) {
-                  <button
-                    role="radio"
-                    [attr.aria-checked]="prefs().scrollSpeed === speed"
-                    (click)="set('scrollSpeed', speed)"
-                  >
-                    {{ speedNames()[speed] }}
-                  </button>
-                }
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Relative dates' | t }}</span>
-                <span class="help">{{
-                  '“3 days ago” in the history, rather than the date.' | t
-                }}</span>
-              </div>
-              <button
-                class="switch"
-                role="switch"
-                [attr.aria-checked]="prefs().relativeDates"
-                [attr.aria-label]="'Relative dates' | t"
-                (click)="set('relativeDates', !prefs().relativeDates)"
-              ></button>
-            </div>
+            <app-general-page />
+          }
+          @case ('editor') {
+            <app-editor-page />
+          }
+          @case ('terminal') {
+            <app-terminal-page />
           }
           @case ('git') {
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Fetch on its own' | t }}</span>
-                <span class="help">{{
-                  'Brings what the remotes have new, in every open repository.' | t
-                }}</span>
-              </div>
-              <div class="seg" role="radiogroup" [attr.aria-label]="'Fetch on its own' | t">
-                @for (n of autoFetch; track n) {
-                  <button
-                    role="radio"
-                    [attr.aria-checked]="prefs().autoFetchMinutes === n"
-                    (click)="set('autoFetchMinutes', n)"
-                  >
-                    {{ minutes(n) }}
-                  </button>
-                }
-              </div>
-            </div>
-            <div class="row">
-              <div>
-                <span class="name">{{ 'Commits in the history' | t }}</span>
-                <span class="help">{{
-                  'More reach further back, and take longer to read.' | t
-                }}</span>
-              </div>
-              <div class="seg" role="radiogroup" [attr.aria-label]="'Commits in the history' | t">
-                @for (n of historyLimits; track n) {
-                  <button
-                    role="radio"
-                    [attr.aria-checked]="prefs().historyLimit === n"
-                    (click)="set('historyLimit', n)"
-                  >
-                    {{ count(n) }}
-                  </button>
-                }
-              </div>
-            </div>
+            <app-git-page />
+          }
+          @case ('tools') {
+            <app-tools-page />
           }
           @case ('about') {
-            <div class="about">
-              <img src="logo.svg" alt="" />
-              <div>
-                <p class="title">
-                  ramure <span class="r-mono">{{ version() }}</span>
-                </p>
-                <p>{{ 'A free and open source Git client.' | t }}</p>
-              </div>
-            </div>
-            <div class="row">
-              <span class="name">Git</span>
-              <span class="value r-mono">{{ gitVersion() ?? ('git could not be found' | t) }}</span>
-            </div>
-            <div class="row">
-              <span class="name">{{ 'License' | t }}</span>
-              <span class="value r-mono">GPL-3.0-or-later</span>
-            </div>
-            <div class="row">
-              <span class="name">{{ 'Source code' | t }}</span>
-              <span class="value r-mono selectable">github.com/Shawiizz/ramure</span>
-            </div>
+            <app-about-page />
           }
         }
       </div>

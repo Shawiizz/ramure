@@ -5,6 +5,7 @@ import {
   afterNextRender,
   effect,
   inject,
+  signal,
   viewChild,
 } from '@angular/core';
 import { Channel, invoke } from '@tauri-apps/api/core';
@@ -44,7 +45,12 @@ import { RepositoryService } from '../../core/services/repository.service';
         <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
       </button>
     </header>
-    <div #screen class="screen" (keydown)="$event.stopPropagation()"></div>
+    <div
+      #screen
+      class="screen"
+      [class.dim]="!focused() && preferences.preferences().dimTerminal"
+      (keydown)="$event.stopPropagation()"
+    ></div>
   `,
   styles: `
     :host {
@@ -104,21 +110,21 @@ import { RepositoryService } from '../../core/services/repository.service';
       flex: 1;
       min-height: 0;
       padding: 6px 0 0 12px;
+      transition: opacity var(--r-fast);
+      &.dim {
+        opacity: 0.6;
+      }
     }
   `,
   imports: [TPipe],
 })
 export class TerminalPanel {
   protected readonly repository = inject(RepositoryService);
-  private readonly preferences = inject(PreferencesService);
+  protected readonly preferences = inject(PreferencesService);
   private readonly screen = viewChild.required<ElementRef<HTMLElement>>('screen');
-  private readonly terminal = new Terminal({
-    cursorBlink: true,
-    fontFamily: token('mono'),
-    fontSize: 12.5,
-    lineHeight: 1.15,
-    scrollback: 5000,
-  });
+  private readonly terminal = new Terminal({ cursorBlink: true, scrollback: 5000 });
+  /** The terminal has the keys: undimmed. */
+  protected readonly focused = signal(false);
   private readonly fit = new FitAddon();
   /** The shell's id once it runs. */
   private id: number | null = null;
@@ -128,6 +134,18 @@ export class TerminalPanel {
     this.terminal.loadAddon(this.fit);
     this.terminal.attachCustomKeyEventHandler((event) => this.key(event));
     effect(() => {
+      const prefs = this.preferences.preferences();
+      const options = this.terminal.options;
+      const mono = token('mono');
+      const font = prefs.terminalFont || prefs.editorFont;
+      options.fontFamily = font ? `'${font}', ${mono}` : mono;
+      options.fontSize = prefs.terminalFontSize;
+      options.lineHeight = prefs.terminalLineHeight;
+      options.cursorStyle = prefs.cursorStyle;
+      // drawn, it takes as many lines and columns as its new size allows
+      if (this.terminal.element?.offsetHeight) this.fit.fit();
+    });
+    effect(() => {
       // the colours follow the theme and the accent
       this.preferences.look();
       // once the page wears the new colours, which the terminal copies
@@ -136,6 +154,8 @@ export class TerminalPanel {
     afterNextRender(() => {
       const element = this.screen().nativeElement;
       this.terminal.open(element);
+      this.terminal.textarea?.addEventListener('focus', () => this.focused.set(true));
+      this.terminal.textarea?.addEventListener('blur', () => this.focused.set(false));
       const resized = new ResizeObserver(() => {
         // hidden, it has no size to fit
         if (element.offsetHeight) this.fit.fit();
@@ -165,7 +185,8 @@ export class TerminalPanel {
     };
     const { cols, rows } = this.terminal;
     try {
-      this.id = await invoke<number>('terminal_open', { path, cols, rows, output });
+      const shell = this.preferences.preferences().terminalShell;
+      this.id = await invoke<number>('terminal_open', { path, shell, cols, rows, output });
       this.terminal.focus();
     } catch (e) {
       this.terminal.write(`\x1b[31m${String(e)}\x1b[0m\r\n`);

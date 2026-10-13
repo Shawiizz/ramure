@@ -1,6 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { t } from '../../core/i18n/i18n';
 import { Change, Commit, Planned, Where } from '../../core/models/repository';
+import { editorName } from '../../core/models/settings';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { Ask } from '../../shared/ask-dialog';
 import { reaches } from '../../shared/ancestry';
@@ -28,6 +30,7 @@ export interface Rebasing {
 @Injectable()
 export class MenusService {
   private readonly repository = inject(RepositoryService);
+  private readonly preferences = inject(PreferencesService);
   readonly menu = signal<OpenMenu | null>(null);
   readonly asking = signal<Ask | null>(null);
   readonly rebasing = signal<Rebasing | null>(null);
@@ -393,6 +396,11 @@ export class MenusService {
       null,
       { label: t('Open the file'), disabled: gone, run: () => r.onFile('open_file', path) },
       {
+        label: t('Open in {editor}', { editor: this.editor() }),
+        disabled: gone,
+        run: () => r.openInEditor(path),
+      },
+      {
         label: t('Show it in its folder'),
         disabled: gone,
         run: () => r.onFile('reveal_file', path),
@@ -647,6 +655,11 @@ export class MenusService {
           ]
         : []),
     ];
+  }
+
+  /** The editor the settings name, as the menus call it. */
+  editor(): string {
+    return editorName(this.preferences.preferences().editor);
   }
 
   /** A file of the working tree as the system names it. */

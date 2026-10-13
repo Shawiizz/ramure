@@ -140,5 +140,10 @@ li button {
   direction: rtl;
 }
 .more {
+  flex: 1;
   justify-content: center;
+}
+.actions {
+  display: flex;
+  gap: 6px;
 }

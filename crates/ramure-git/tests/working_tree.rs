@@ -137,7 +137,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     actions::commit(theirs.path(), "Second", None).unwrap();
     actions::push(theirs.path(), false).unwrap();
 
-    actions::fetch(mine.path()).unwrap();
+    actions::fetch(mine.path(), true).unwrap();
     assert_eq!(status(mine.path()).unwrap().upstream.unwrap().behind, 1);
     actions::pull(mine.path(), Pull::Merge, None).unwrap();
     assert!(mine.path().join("b.txt").exists());
@@ -146,7 +146,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     // a remote branch checked out gives a local branch following it
     git(theirs.path(), &["switch", "-q", "-c", "topic"]);
     actions::push(theirs.path(), false).unwrap();
-    actions::fetch(mine.path()).unwrap();
+    actions::fetch(mine.path(), true).unwrap();
     actions::checkout(mine.path(), "origin/topic", true).unwrap();
     let snapshot = Repository::open(mine.path()).unwrap().snapshot(10).unwrap();
     assert!(matches!(snapshot.head, Head::Branch { ref name } if name == "topic"));
@@ -186,7 +186,7 @@ fn diverged() -> (tempfile::TempDir, tempfile::TempDir) {
     write(mine.path(), "mine.txt", "mine\n");
     git(mine.path(), &["add", "."]);
     commit(mine.path(), "Mine", 2);
-    actions::fetch(mine.path()).unwrap();
+    actions::fetch(mine.path(), true).unwrap();
     (remote, mine)
 }
 

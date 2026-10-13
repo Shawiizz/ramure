@@ -86,6 +86,9 @@ export class RepositoryService {
   readonly filePanel = signal<FilePanel | null>(null);
   /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
   readonly terminalOpen = signal(false);
+  /** Older commits are being read, or none is left to read. */
+  private reading = false;
+  private readAll = false;
   readonly terminalShown = signal(false);
   /** The files of the selected commit, once read. */
   readonly commitFiles = signal<{ id: string; files: Change[] } | null>(null);
@@ -208,6 +211,40 @@ export class RepositoryService {
   }
 
   /** Reads the repository again (it may have changed outside). */
+  /**
+   * Reads the history further back, once its end is in sight; until a read brings no more
+   * commits.
+   */
+  async readMore(): Promise<void> {
+    const path = this.snapshot()?.path;
+    if (!path || this.reading || this.readAll || this.working()) return;
+    this.reading = true;
+    const before = this.snapshot()!.commits.length;
+    try {
+      this.apply(await invoke<Snapshot>('read_more', { path }));
+      this.readAll = this.snapshot()!.commits.length === before;
+    } catch (e) {
+      this.error.set(String(e));
+    } finally {
+      this.reading = false;
+    }
+  }
+
+  /** Opens the repository, or one of its files, in the editor the settings name. */
+  async openInEditor(file: string | null): Promise<void> {
+    const path = this.snapshot()?.path;
+    if (!path) return;
+    try {
+      await invoke('open_in_editor', {
+        path,
+        file,
+        command: this.preferences.preferences().editor,
+      });
+    } catch (e) {
+      this.error.set(String(e));
+    }
+  }
+
   async refresh(): Promise<void> {
     const path = this.snapshot()?.path;
     if (!path || this.working()) return;
@@ -585,7 +622,8 @@ export class RepositoryService {
     const path = this.snapshot()?.path;
     if (!path || this.working()) return;
     try {
-      this.apply(await invoke<Snapshot>('fetch', { path }));
+      const prune = this.preferences.preferences().prune;
+      this.apply(await invoke<Snapshot>('fetch', { path, prune }));
     } catch (e) {
       console.warn('background fetch failed', e);
     }
@@ -600,7 +638,8 @@ export class RepositoryService {
         const how = this.preferences.preferences().pull;
         await this.change(kind, { how, identity: this.profiles.identity() }, what);
       } else {
-        await this.change(kind, kind === 'push' ? { force } : {});
+        const prune = this.preferences.preferences().prune;
+        await this.change(kind, kind === 'push' ? { force } : { prune });
       }
     } finally {
       this.exchange.set(null);

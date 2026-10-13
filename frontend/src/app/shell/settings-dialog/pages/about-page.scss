@@ -1,0 +1,21 @@
+.about {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--r-line);
+  img {
+    width: 56px;
+    height: 56px;
+  }
+  p {
+    margin: 0;
+    color: var(--r-text-2);
+  }
+  .title {
+    margin-bottom: 4px;
+    color: var(--r-text);
+    font-size: 20px;
+    font-weight: 600;
+  }
+}

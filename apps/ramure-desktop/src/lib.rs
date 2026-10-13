@@ -21,6 +21,11 @@ mod windows;
 static HISTORY_LIMIT: AtomicUsize = AtomicUsize::new(5000);
 /// The names each repository's history is drawn from, as its sidebar sets them.
 static VIEWS: Mutex<BTreeMap<PathBuf, View>> = Mutex::new(BTreeMap::new());
+/// The commits each repository's history reads, once it read more than the settings say.
+static READ: Mutex<BTreeMap<PathBuf, usize>> = Mutex::new(BTreeMap::new());
+/// The keys of the global git configuration the settings may write.
+const GLOBAL_KEYS: [&str; 5] =
+    ["core.longpaths", "core.autocrlf", "init.defaultBranch", "user.name", "user.email"];
 
 #[derive(Debug, thiserror::Error)]
 enum CommandError {
@@ -42,7 +47,71 @@ type Answer<T> = Result<T, CommandError>;
 
 fn snapshot(path: &Path) -> Answer<Snapshot> {
     let view = VIEWS.lock().unwrap_or_else(|e| e.into_inner()).get(path).cloned().unwrap_or_default();
-    Ok(Repository::open(path)?.snapshot_with(HISTORY_LIMIT.load(Ordering::Relaxed), &view)?)
+    Ok(Repository::open(path)?.snapshot_with(history_length(path), &view)?)
+}
+
+/// How many commits the history of `path` reads.
+fn history_length(path: &Path) -> usize {
+    let first = HISTORY_LIMIT.load(Ordering::Relaxed);
+    READ.lock().unwrap_or_else(|e| e.into_inner()).get(path).map_or(first, |&read| read.max(first))
+}
+
+/// The history of `path` read further back, by as many commits as the settings say.
+#[tauri::command(async)]
+fn read_more(path: PathBuf) -> Answer<Snapshot> {
+    let more = history_length(&path) + HISTORY_LIMIT.load(Ordering::Relaxed);
+    READ.lock().unwrap_or_else(|e| e.into_inner()).insert(path.clone(), more);
+    snapshot(&path)
+}
+
+/// The values of the global configuration's `keys`; those not set are left out.
+#[tauri::command(async)]
+fn global_config(keys: Vec<String>) -> Answer<BTreeMap<String, String>> {
+    Ok(ramure_git::global_config(&keys)?)
+}
+
+/// Sets, or unsets with `None`, one of the global configuration's keys the settings show.
+#[tauri::command(async)]
+fn set_global_config(key: String, value: Option<String>) -> Answer<()> {
+    if !GLOBAL_KEYS.contains(&key.as_str()) {
+        return Err(CommandError::System(format!("{key} is not set from Ramure")));
+    }
+    Ok(ramure_git::set_global_config(&key, value.as_deref())?)
+}
+
+/// The profile's identity made the one git uses outside Ramure.
+#[tauri::command(async)]
+fn set_global_identity(identity: Identity) -> Answer<()> {
+    Ok(ramure_git::set_global_identity(&identity)?)
+}
+
+/// Opens the repository at `path`, or its `file`, with the editor `command` (`code`).
+#[tauri::command(async)]
+fn open_in_editor(path: PathBuf, file: Option<String>, command: String) -> Answer<()> {
+    let target = match file {
+        Some(file) => ramure_git::full_path(&path, &file)?,
+        None => path,
+    };
+    let started = editor(&command, &target).spawn();
+    started.map(drop).map_err(|e| CommandError::System(format!("{command}: {e}")))
+}
+
+/// `command` with `target` after it, run as the system's shell would: editors' launchers
+/// are often scripts (`code.cmd`).
+#[cfg(windows)]
+fn editor(command: &str, target: &Path) -> std::process::Command {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut run = std::process::Command::new("cmd");
+    run.arg("/C").raw_arg(format!("{command} \"{}\"", target.display())).creation_flags(CREATE_NO_WINDOW);
+    run
+}
+
+#[cfg(not(windows))]
+fn editor(command: &str, target: &Path) -> std::process::Command {
+    let mut run = std::process::Command::new("sh");
+    run.arg("-c").arg(format!("{command} \"$1\"")).arg("sh").arg(target);
+    run
 }
 
 /// The names the history of `path` is drawn from, from now on.
@@ -237,8 +306,8 @@ fn checkout(path: PathBuf, name: String, remote: bool) -> Answer<Snapshot> {
 }
 
 #[tauri::command(async)]
-fn fetch(path: PathBuf) -> Answer<Snapshot> {
-    actions::fetch(&path)?;
+fn fetch(path: PathBuf, prune: bool) -> Answer<Snapshot> {
+    actions::fetch(&path, prune)?;
     snapshot(&path)
 }
 
@@ -552,7 +621,13 @@ pub fn run() {
             blame,
             open_file,
             reveal_file,
+            terminal::terminal_shells,
             terminal::terminal_open,
+            read_more,
+            global_config,
+            set_global_config,
+            set_global_identity,
+            open_in_editor,
             windows::open_window,
             windows::window_under,
             windows::give_tab,

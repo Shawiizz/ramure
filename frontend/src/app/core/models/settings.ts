@@ -41,6 +41,10 @@ export const DEFAULT_COLUMNS: readonly Column[] = [
 /** How a pull joins the upstream's commits to the branch's own (`ramure_git::actions::Pull`). */
 export type PullMode = 'merge' | 'fastForward' | 'rebase';
 
+/** The shell a terminal opens: the system's own choice, or one asked for. */
+export type TerminalShell = 'auto' | 'powershell' | 'pwsh' | 'cmd' | 'gitBash' | 'wsl';
+export type CursorStyle = 'bar' | 'block' | 'underline';
+
 /** The whole file with its changes marked, or the changes themselves. */
 export type DiffMode = 'file' | 'diff';
 /** The changes alone with a little context, inline with the whole file, or side by side. */
@@ -78,6 +82,29 @@ export interface Preferences {
   pull: PullMode;
   /** Changed files in their folders, rather than one list of paths. */
   fileTree: boolean;
+  /** The font of the diffs, the blame and the editor; the app's own when empty. */
+  editorFont: string;
+  editorFontSize: number;
+  tabSize: number;
+  lineNumbers: boolean;
+  /** Code coloured as its language is. */
+  syntax: boolean;
+  terminalShell: TerminalShell;
+  /** The terminal's font; the editor's when empty. */
+  terminalFont: string;
+  terminalFontSize: number;
+  terminalLineHeight: number;
+  cursorStyle: CursorStyle;
+  /** The terminal dims while another part of the window has the keys. */
+  dimTerminal: boolean;
+  /** Older commits read as the history is scrolled to its end. */
+  lazyHistory: boolean;
+  /** A fetch drops the remote branches deleted on their remote. */
+  prune: boolean;
+  /** The command opening a file or a repository in the user's editor. */
+  editor: string;
+  /** The global git identity follows the profile in use, for git run outside Ramure. */
+  syncGitConfig: boolean;
 }
 
 export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
@@ -86,6 +113,33 @@ export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
 export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
 export const DIFF_MODES: readonly DiffMode[] = ['file', 'diff'];
 export const DIFF_LAYOUTS: readonly DiffLayout[] = ['hunks', 'inline', 'split'];
+export const FONT_SIZES: readonly number[] = [11, 12, 12.5, 13, 14, 15, 16];
+export const TAB_SIZES: readonly number[] = [2, 4, 8];
+export const TERMINAL_SHELLS: readonly TerminalShell[] = [
+  'auto',
+  'powershell',
+  'pwsh',
+  'cmd',
+  'gitBash',
+  'wsl',
+];
+export const LINE_HEIGHTS: readonly number[] = [1, 1.15, 1.3];
+export const CURSOR_STYLES: readonly CursorStyle[] = ['bar', 'block', 'underline'];
+/** Editors often installed, by the command that opens them. */
+export const EDITORS: readonly { command: string; name: string }[] = [
+  { command: 'code', name: 'Visual Studio Code' },
+  { command: 'cursor', name: 'Cursor' },
+  { command: 'zed', name: 'Zed' },
+  { command: 'subl', name: 'Sublime Text' },
+  { command: 'notepad++', name: 'Notepad++' },
+  { command: 'idea', name: 'IntelliJ IDEA' },
+];
+
+/** The name of the editor `command` opens, the command itself when it is not a known one. */
+export function editorName(command: string): string {
+  return EDITORS.find((e) => e.command === command)?.name ?? command;
+}
+
 export const PULL_MODES: readonly PullMode[] = ['merge', 'fastForward', 'rebase'];
 export const SCROLL_SPEEDS: readonly number[] = [1, 1.5, 2.5];
 /** The zoom's steps, as a browser has them. */
@@ -109,6 +163,21 @@ export const DEFAULT_PREFERENCES: Preferences = {
   pictures: true,
   pull: 'merge',
   fileTree: false,
+  editorFont: '',
+  editorFontSize: 12.5,
+  tabSize: 4,
+  lineNumbers: true,
+  syntax: true,
+  terminalShell: 'auto',
+  terminalFont: '',
+  terminalFontSize: 12.5,
+  terminalLineHeight: 1.15,
+  cursorStyle: 'bar',
+  dimTerminal: true,
+  lazyHistory: true,
+  prune: true,
+  editor: 'code',
+  syncGitConfig: false,
 };
 
 /** Where the panels are and how big: dragged by the user, kept from run to run. */
@@ -233,6 +302,11 @@ function parsePreferences(value: unknown): Preferences {
   };
   const among = <T>(key: string, choices: readonly T[], fallback: T): T =>
     choices.includes(saved[key] as T) ? (saved[key] as T) : fallback;
+  /** A font's name: letters, digits, spaces, dots and dashes. */
+  const font = (key: string): string => {
+    const v = saved[key];
+    return typeof v === 'string' && /^[\w .-]{0,64}$/.test(v) ? v.trim() : '';
+  };
   return {
     theme: among('theme', THEMES, d.theme),
     accent: among('accent', ACCENTS, d.accent),
@@ -251,6 +325,21 @@ function parsePreferences(value: unknown): Preferences {
     pictures: flag('pictures', d.pictures),
     pull: among('pull', PULL_MODES, d.pull),
     fileTree: flag('fileTree', d.fileTree),
+    editorFont: font('editorFont'),
+    editorFontSize: among('editorFontSize', FONT_SIZES, d.editorFontSize),
+    tabSize: among('tabSize', TAB_SIZES, d.tabSize),
+    lineNumbers: flag('lineNumbers', d.lineNumbers),
+    syntax: flag('syntax', d.syntax),
+    terminalShell: among('terminalShell', TERMINAL_SHELLS, d.terminalShell),
+    terminalFont: font('terminalFont'),
+    terminalFontSize: among('terminalFontSize', FONT_SIZES, d.terminalFontSize),
+    terminalLineHeight: among('terminalLineHeight', LINE_HEIGHTS, d.terminalLineHeight),
+    cursorStyle: among('cursorStyle', CURSOR_STYLES, d.cursorStyle),
+    dimTerminal: flag('dimTerminal', d.dimTerminal),
+    lazyHistory: flag('lazyHistory', d.lazyHistory),
+    prune: flag('prune', d.prune),
+    editor: isString(saved['editor']) && saved['editor'].trim() ? saved['editor'].trim() : d.editor,
+    syncGitConfig: flag('syncGitConfig', d.syncGitConfig),
   };
 }
 

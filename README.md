@@ -25,6 +25,9 @@ tags at hand, the commit you pick in detail.
 - A commit of the current branch rewritten after the fact: its message, author and dates;
   a branch that parted from its upstream force-pushed, once sure.
 - A terminal in the repository under the history (Ctrl+`), its shell kept while hidden.
+- Settings by subject: the editor's font, size and tabs; the terminal's shell (PowerShell,
+  cmd, Git Bash, WSL) and look; fetching, pruning, a history read further back as it is
+  scrolled; the global git configuration; the editor files open in.
 - Undo and redo (Ctrl+Z, Ctrl+Y) of commits, merges, rebases, resets, branches and tags.
 - A search through the commits (Ctrl+F); the history's columns shown, hidden and reordered;
   the panels resized, the sidebar's sections reordered and resized.

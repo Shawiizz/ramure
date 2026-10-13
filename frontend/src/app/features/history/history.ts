@@ -236,6 +236,12 @@ export class History {
         wheel();
       });
     });
+    // the history's end in sight, older commits are read
+    effect(() => {
+      const { end } = this.range();
+      if (end && end === this.lines().length && this.preferences.preferences().lazyHistory)
+        untracked(() => void this.repository.readMore());
+    });
     // a commit chosen elsewhere (a branch in the sidebar) is brought into view
     effect(() => {
       const id = this.repository.selectedId();
