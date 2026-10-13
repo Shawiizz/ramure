@@ -61,10 +61,12 @@
           "
         >
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v10M4 8l4 4 4-4M3 14h10" /></svg>
-          <span>{{ repository.exchange() === 'pull' ? ('Pulling…' | t) : ('Pull' | t) }}</span>
-          @if (upstream()?.behind) {
-            <span class="count">{{ upstream()?.behind }}</span>
-          }
+          <span
+            >{{ repository.exchange() === 'pull' ? ('Pulling…' | t) : ('Pull' | t) }}
+            @if (upstream()?.behind) {
+              <span class="count">{{ upstream()?.behind }}</span>
+            }
+          </span>
         </button>
         <button
           class="tool caret"
@@ -82,10 +84,12 @@
         [title]="'Send this branch’s commits to its upstream' | t"
       >
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14V4M4 8l4-4 4 4M3 2h10" /></svg>
-        <span>{{ repository.exchange() === 'push' ? ('Pushing…' | t) : ('Push' | t) }}</span>
-        @if (upstream()?.ahead) {
-          <span class="count">{{ upstream()?.ahead }}</span>
-        }
+        <span
+          >{{ repository.exchange() === 'push' ? ('Pushing…' | t) : ('Push' | t) }}
+          @if (upstream()?.ahead) {
+            <span class="count">{{ upstream()?.ahead }}</span>
+          }
+        </span>
       </button>
       <div class="branching">
         <button
@@ -146,10 +150,12 @@
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <path d="M2.5 9.5v4h11v-4M8 10V2M5 5l3-3 3 3" />
         </svg>
-        <span>{{ 'Pop' | t }}</span>
-        @if (snapshot.stashes.length) {
-          <span class="count">{{ snapshot.stashes.length }}</span>
-        }
+        <span
+          >{{ 'Pop' | t }}
+          @if (snapshot.stashes.length) {
+            <span class="count">{{ snapshot.stashes.length }}</span>
+          }
+        </span>
       </button>
     </div>
   </div>

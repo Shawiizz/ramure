@@ -486,7 +486,9 @@ pub fn rewrite(dir: &Path, id: &str, to: &Rewrite, identity: Option<&Identity>) 
         let env: &[(&str, &str)] = if to.commit_date_too { &[("GIT_COMMITTER_DATE", &date)] } else { &[] };
         let amend =
             ["commit", "--amend", "--only", "--quiet", "--allow-empty", "-F", &message, "--author", &author];
-        return git_with(dir, &[&amend[..], &["--date", &date]].concat(), identity, env).map(drop);
+        let amended = git_with(dir, &[&amend[..], &["--date", &date]].concat(), identity, env).map(drop);
+        let _ = std::fs::remove_dir_all(&work);
+        return amended;
     }
     let committed =
         if to.commit_date_too { format!("GIT_COMMITTER_DATE={} ", quoted(&date)) } else { String::new() };
@@ -534,8 +536,10 @@ fn replay(
     let todo = write_in(work, "todo", todo)?;
     let editor = format!("cp \"{todo}\"");
     let base = onto.unwrap_or("--root");
-    git_with(dir, &["rebase", "-i", "--autostash", base], identity, &[("GIT_SEQUENCE_EDITOR", &editor)])
-        .map(drop)
+    git_with(dir, &["rebase", "-i", "--autostash", base], identity, &[("GIT_SEQUENCE_EDITOR", &editor)])?;
+    // a rebase stopped on conflicts still needs its files; one done, no longer
+    let _ = std::fs::remove_dir_all(work);
+    Ok(())
 }
 
 /// `text` as one word for the shell, whatever it holds.

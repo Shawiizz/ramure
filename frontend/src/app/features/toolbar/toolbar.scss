@@ -30,19 +30,19 @@
 .tools {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 4px;
 }
 
 .tool {
   position: relative;
-  min-width: 46px;
+  min-width: 52px;
   height: 42px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 0 8px;
+  gap: 4px;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--r-radius);
   background: transparent;
@@ -72,7 +72,8 @@
   }
 }
 
-/* Pull and the caret choosing what it does: one button to the eye, lit as one */
+/* Pull and the caret choosing what it does: one button lit as one, its two parts parted
+   by a line under the pointer, the caret lit a little more on its own */
 .split {
   display: flex;
   border-radius: var(--r-radius);
@@ -84,36 +85,36 @@
     background: transparent;
   }
   .tool:first-child {
-    min-width: 0;
-    padding: 0 1px 0 10px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
   }
 }
 
-/* beside the word Pull, not the icon */
 .caret {
   min-width: 0;
-  width: 14px;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 0 0 8px;
+  width: 20px;
+  padding: 0;
+  border-left: 1px solid transparent;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  color: var(--r-text-3);
+  .split:hover & {
+    border-left-color: var(--r-line-strong);
+  }
+  .split &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--r-text) 6%, var(--r-hover));
+  }
   svg {
     width: 9px;
     height: 9px;
+    stroke-width: 1.6;
   }
 }
 
+/* how many commits to pull or push, stashes to pop: right after the word, in the accent */
 .count {
-  position: absolute;
-  top: 2px;
-  left: calc(50% + 6px);
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: var(--r-accent);
-  color: var(--r-on-accent);
-  font: 700 10px/16px var(--r-mono);
-  text-align: center;
+  color: var(--r-accent);
+  font: 600 11px var(--r-mono);
 }
 
 .branching {

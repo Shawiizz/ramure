@@ -51,6 +51,7 @@ fn a_commit_in_the_middle_is_rewritten_and_the_next_ones_replayed() {
     assert_eq!(show(d, "HEAD~", "%ct"), "1600000000");
     assert_eq!(show(d, "HEAD", "%s %an"), "Third Ada");
     assert_eq!(show(d, "HEAD~2", "%s %an"), "First Ada");
+    assert!(!d.join(".git/ramure-rebase").exists());
 }
 
 #[test]
@@ -65,6 +66,7 @@ fn the_last_commit_is_amended_its_commit_date_moved_only_when_asked() {
     assert_ne!(show(d, "HEAD", "%ct"), "1600000000");
     assert!(show(d, "HEAD", "%ct").parse::<i64>().unwrap() >= committed.parse::<i64>().unwrap());
     assert_eq!(show(d, "HEAD~", "%s"), "Second");
+    assert!(!d.join(".git/ramure-rebase").exists());
 }
 
 #[test]
