@@ -75,6 +75,43 @@ pub fn push(dir: &Path) -> Result<(), Error> {
     }
 }
 
+/// Puts every change aside, new files included, under `message` (git's own when `None`),
+/// leaving the working tree as HEAD has it. The stash's commits are signed by `identity`.
+pub fn stash(dir: &Path, message: Option<&str>, identity: Option<&Identity>) -> Result<(), Error> {
+    let mut args = vec!["stash", "push", "--include-untracked"];
+    if let Some(message) = message {
+        args.extend(["-m", message]);
+    }
+    git_as(dir, &args, identity).map(drop)
+}
+
+/// Brings back the changes of the stash `id`, kept in the list.
+pub fn stash_apply(dir: &Path, index: usize, id: &str) -> Result<(), Error> {
+    with_stash(dir, "apply", index, id)
+}
+
+/// Brings back the changes of the stash `id` and takes it off the list, unless they clash
+/// with the working tree.
+pub fn stash_pop(dir: &Path, index: usize, id: &str) -> Result<(), Error> {
+    with_stash(dir, "pop", index, id)
+}
+
+/// Throws the stash `id` away.
+pub fn stash_drop(dir: &Path, index: usize, id: &str) -> Result<(), Error> {
+    with_stash(dir, "drop", index, id)
+}
+
+/// Runs `git stash command stash@{index}`, once sure that it is still the stash `id`: the
+/// list shifts as stashes come and go.
+fn with_stash(dir: &Path, command: &str, index: usize, id: &str) -> Result<(), Error> {
+    let name = format!("stash@{{{index}}}");
+    let found = git_answer(dir, &["rev-parse", "--verify", "-q", &name])?;
+    if found.as_deref().map(|f| String::from_utf8_lossy(f).trim().to_owned()).as_deref() != Some(id) {
+        return Err(Error::Command("The stashes changed meanwhile: look at them again.".into()));
+    }
+    git(dir, &["stash", command, "-q", &name]).map(drop)
+}
+
 fn has_commits(dir: &Path) -> Result<bool, Error> {
     Ok(git_answer(dir, &["rev-parse", "--verify", "-q", "HEAD"])?.is_some())
 }

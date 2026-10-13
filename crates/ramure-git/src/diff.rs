@@ -55,19 +55,27 @@ pub enum Side<'a> {
     Staged,
     /// Brought by this commit (against its first parent).
     Commit(&'a str),
+    /// Put aside in this stash.
+    Stash(&'a str),
 }
 
 /// The diff of the file `change` in the repository at `dir`.
 pub fn file_diff(dir: &Path, change: &Change, side: Side) -> Result<FileDiff, Error> {
-    if change.kind == ChangeKind::Untracked {
-        return untracked(dir, &change.path);
-    }
+    let untracked_side = match side {
+        Side::Stash(id) => format!("{id}^3"),
+        _ => String::new(),
+    };
     let paths: Vec<&str> = change.old_path.iter().map(String::as_str).chain([change.path.as_str()]).collect();
     let mut args = match side {
+        Side::Unstaged if change.kind == ChangeKind::Untracked => return untracked(dir, &change.path),
         Side::Unstaged => vec!["diff", "--no-ext-diff", "-M"],
         Side::Staged => vec!["diff", "--no-ext-diff", "-M", "--cached"],
-        Side::Commit(id) => {
-            vec!["diff-tree", "-p", "-M", "--root", "-m", "--first-parent", "--no-commit-id", id]
+        // a stash keeps the new files it took along in a parent of their own, with no parent
+        Side::Stash(_) if change.kind == ChangeKind::Untracked => {
+            vec!["diff-tree", "-p", "--root", "--no-commit-id", &untracked_side]
+        }
+        Side::Commit(id) | Side::Stash(id) => {
+            vec!["show", "--no-ext-diff", "--format=", "--diff-merges=first-parent", "-p", "-M", id]
         }
     };
     args.push("--");
@@ -77,21 +85,8 @@ pub fn file_diff(dir: &Path, change: &Change, side: Side) -> Result<FileDiff, Er
 
 /// The files a commit changed (against its first parent).
 pub fn commit_files(dir: &Path, id: &str) -> Result<Vec<Change>, Error> {
-    let out = git(
-        dir,
-        &[
-            "diff-tree",
-            "-r",
-            "-z",
-            "-M",
-            "--root",
-            "-m",
-            "--first-parent",
-            "--no-commit-id",
-            "--name-status",
-            id,
-        ],
-    )?;
+    let out =
+        git(dir, &["show", "--format=", "--diff-merges=first-parent", "-z", "-M", "--name-status", id])?;
     let mut fields =
         out.split(|&b| b == 0).filter(|f| !f.is_empty()).map(|f| String::from_utf8_lossy(f).into_owned());
     let mut changes = Vec::new();

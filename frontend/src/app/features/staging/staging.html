@@ -65,12 +65,12 @@
       }
     </section>
 
-    <form class="commit" (submit)="$event.preventDefault(); commit()">
+    <form class="commit" (submit)="$event.preventDefault(); repository.commit(false)">
       <label class="r-field">
         <span>{{ 'Summary' | t }}</span>
         <input
-          [value]="summary()"
-          (input)="summary.set($any($event.target).value)"
+          [value]="repository.summary()"
+          (input)="repository.summary.set($any($event.target).value)"
           [placeholder]="'What this commit does' | t"
           maxlength="200"
         />
@@ -79,8 +79,8 @@
         <span>{{ 'Description' | t }}</span>
         <textarea
           rows="3"
-          [value]="description()"
-          (input)="description.set($any($event.target).value)"
+          [value]="repository.description()"
+          (input)="repository.description.set($any($event.target).value)"
           [placeholder]="'Why, if it helps (optional)' | t"
         ></textarea>
       </label>
@@ -90,6 +90,15 @@
             ? ('Commit 1 file' | t)
             : ('Commit {n} files' | t: { n: status.staged.length })
         }}
+      </button>
+      <button
+        class="r-btn"
+        type="button"
+        [disabled]="!canCommit()"
+        (click)="repository.commit(true)"
+        [title]="'Then send it to the upstream' | t"
+      >
+        {{ 'Commit and push' | t }}
       </button>
     </form>
   </div>

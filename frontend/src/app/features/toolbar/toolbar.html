@@ -85,6 +85,35 @@
           </form>
         }
       </div>
+      <button
+        class="tool"
+        (click)="repository.stash()"
+        [disabled]="repository.working() || !repository.changes()"
+        [title]="'Put every change aside, new files included' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M2.5 9.5v4h11v-4M8 2v8M5 7l3 3 3-3" />
+        </svg>
+        <span>{{ 'Stash' | t }}</span>
+      </button>
+      <button
+        class="tool"
+        (click)="repository.restore(snapshot.stashes[0], true)"
+        [disabled]="repository.working() || !snapshot.stashes.length"
+        [title]="
+          snapshot.stashes.length
+            ? ('Bring back the last stash: {name}' | t: { name: snapshot.stashes[0].message })
+            : ('No stash' | t)
+        "
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M2.5 9.5v4h11v-4M8 10V2M5 5l3-3 3 3" />
+        </svg>
+        <span>{{ 'Pop' | t }}</span>
+        @if (snapshot.stashes.length) {
+          <span class="count">{{ snapshot.stashes.length }}</span>
+        }
+      </button>
     </div>
   </div>
 }

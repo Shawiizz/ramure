@@ -8,6 +8,11 @@
   background: var(--r-base);
 }
 
+app-staging {
+  flex: 1;
+  min-height: 0;
+}
+
 .bar {
   flex: none;
   height: 40px;
@@ -42,6 +47,24 @@
     svg {
       stroke: var(--r-accent);
     }
+  }
+}
+
+.stash-name {
+  color: var(--r-text);
+}
+
+.stash-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  .r-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .danger {
+    border-color: var(--r-danger);
+    color: var(--r-danger);
   }
 }
 

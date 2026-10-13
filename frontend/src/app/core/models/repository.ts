@@ -9,6 +9,16 @@ export interface Snapshot {
   commits: Commit[];
   graph: GraphRow[];
   status: Status;
+  /** Newest first; their commits are in the history too. */
+  stashes: Stash[];
+}
+
+/** Work put aside (`ramure_git::Stash`). */
+export interface Stash {
+  /** `stash@{index}`, 0 the newest. */
+  index: number;
+  id: string;
+  message: string;
 }
 
 export type Head =
@@ -83,8 +93,12 @@ export interface Change {
   kind: ChangeKind;
 }
 
-/** Where a change lies: in the working tree, in the index, or in a commit. */
-export type Where = { kind: 'unstaged' } | { kind: 'staged' } | { kind: 'commit'; id: string };
+/** Where a change lies: in the working tree, in the index, in a commit or in a stash. */
+export type Where =
+  | { kind: 'unstaged' }
+  | { kind: 'staged' }
+  | { kind: 'commit'; id: string }
+  | { kind: 'stash'; id: string };
 
 export interface FileDiff {
   binary: boolean;

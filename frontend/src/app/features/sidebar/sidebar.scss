@@ -81,3 +81,9 @@ button {
   padding: 4px 8px;
   color: var(--r-text-3);
 }
+
+.stash .dot {
+  border-radius: 1px;
+  background: transparent;
+  outline: 1px dashed var(--r-text-3);
+}

@@ -54,7 +54,17 @@ interface Line {
       @if (fromWip()) {
         <path class="wip" [attr.d]="'M' + cx() + ' 0V' + height / 2" [style.stroke]="color()" />
       }
-      @if (merge()) {
+      @if (stash()) {
+        <rect
+          class="stash"
+          [attr.x]="cx() - stashSide / 2"
+          [attr.y]="height / 2 - stashSide / 2"
+          [attr.width]="stashSide"
+          [attr.height]="stashSide"
+          rx="4"
+          [style.stroke]="color()"
+        />
+      } @else if (merge()) {
         <circle
           class="merge"
           [attr.cx]="cx()"
@@ -92,6 +102,11 @@ interface Line {
     .wip {
       stroke-dasharray: 3 3;
     }
+    .stash {
+      fill: var(--r-base);
+      stroke-width: 2;
+      stroke-dasharray: 3 2;
+    }
     .merge {
       fill: var(--r-base);
       stroke-width: 2.5;
@@ -110,6 +125,8 @@ export class GraphCell {
   readonly initials = input('');
   /** A merge commit: a dot, the branches it joins tell the story. */
   readonly merge = input(false);
+  /** A stash: a dashed box, hanging on the commit it was made on. */
+  readonly stash = input(false);
   /** Names point at this commit: a thin line ties them to it. */
   readonly labeled = input(false);
   /** The working tree's changes sit above this commit (HEAD): a dashed line from them. */
@@ -117,13 +134,14 @@ export class GraphCell {
   protected readonly height = ROW;
   protected readonly nodeR = NODE;
   protected readonly mergeR = MERGE;
+  protected readonly stashSide = NODE * 1.7;
   protected readonly color = computed(() => laneColor(this.row().lane));
   protected readonly cx = computed(() => laneX(this.row().lane));
 
   protected readonly lines = computed<Line[]>(() => {
     const { lane, through, into, out } = this.row();
     const h = ROW;
-    const r = this.merge() ? MERGE : NODE;
+    const r = this.merge() ? MERGE : this.stash() ? NODE * 0.85 : NODE;
     const x = laneX;
     const lines: Line[] = through.map((l) => ({ d: `M${x(l)} 0V${h}`, color: laneColor(l) }));
     for (const j of into) {

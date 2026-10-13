@@ -6,7 +6,8 @@ tags at hand, the commit you pick in detail.
 - Repositories in tabs, and workspaces that reopen several of them at once.
 - Profiles: the name and email Ramure signs commits with, switched from the title bar
   (the git configuration stays as it is).
-- The working tree: stage, unstage and commit; diffs of any file or commit.
+- The working tree: stage, unstage, commit (and push at once); diffs of any file or commit.
+- Stashes, drawn in the history on the commit they were made on: stash, pop, apply, delete.
 - Branches created and switched to; fetch, pull and push.
 
 ## Stack

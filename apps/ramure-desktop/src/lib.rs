@@ -44,6 +44,7 @@ enum Where {
     Unstaged,
     Staged,
     Commit { id: String },
+    Stash { id: String },
 }
 
 #[tauri::command(async)]
@@ -52,6 +53,7 @@ fn file_diff(path: PathBuf, change: Change, side: Where) -> Answer<FileDiff> {
         Where::Unstaged => Side::Unstaged,
         Where::Staged => Side::Staged,
         Where::Commit { id } => Side::Commit(id),
+        Where::Stash { id } => Side::Stash(id),
     };
     Ok(ramure_git::file_diff(&path, &change, side)?)
 }
@@ -59,6 +61,35 @@ fn file_diff(path: PathBuf, change: Change, side: Where) -> Answer<FileDiff> {
 #[tauri::command(async)]
 fn commit_files(path: PathBuf, id: String) -> Answer<Vec<Change>> {
     Ok(ramure_git::commit_files(&path, &id)?)
+}
+
+#[tauri::command(async)]
+fn stash_files(path: PathBuf, id: String) -> Answer<Vec<Change>> {
+    Ok(ramure_git::stash_files(&path, &id)?)
+}
+
+#[tauri::command(async)]
+fn stash(path: PathBuf, message: Option<String>, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::stash(&path, message.as_deref(), identity.as_ref())?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn stash_apply(path: PathBuf, index: usize, id: String) -> Answer<Snapshot> {
+    actions::stash_apply(&path, index, &id)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn stash_pop(path: PathBuf, index: usize, id: String) -> Answer<Snapshot> {
+    actions::stash_pop(&path, index, &id)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn stash_drop(path: PathBuf, index: usize, id: String) -> Answer<Snapshot> {
+    actions::stash_drop(&path, index, &id)?;
+    snapshot(&path)
 }
 
 #[tauri::command(async)]
@@ -166,6 +197,7 @@ pub fn run() {
             open_repository,
             file_diff,
             commit_files,
+            stash_files,
             stage,
             unstage,
             commit,
@@ -174,6 +206,10 @@ pub fn run() {
             fetch,
             pull,
             push,
+            stash,
+            stash_apply,
+            stash_pop,
+            stash_drop,
             global_identity,
             load_settings,
             save_settings,

@@ -83,10 +83,14 @@
             [width]="graphWidth()"
             [initials]="line.initials"
             [merge]="line.commit.parents.length > 1"
+            [stash]="line.stash"
             [labeled]="line.labels.length > 0"
             [fromWip]="$first && !!wip()?.linked"
           />
-          <span class="message">
+          <span class="message" [class.stashed]="line.stash">
+            @if (line.stash) {
+              <span class="stash-tag">stash</span>
+            }
             <span class="summary">{{ line.commit.summary }}</span>
             @if (line.detail) {
               <span class="detail">{{ line.detail }}</span>

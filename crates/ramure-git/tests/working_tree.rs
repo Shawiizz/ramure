@@ -4,7 +4,8 @@ mod common;
 
 use common::{commit, git, init, repository, write};
 use ramure_git::{
-    actions, commit_files, file_diff, status, Change, ChangeKind, Head, Identity, LineKind, Repository, Side,
+    actions, commit_files, file_diff, stash_files, status, Change, ChangeKind, Head, Identity, LineKind,
+    Repository, Side,
 };
 
 fn change(path: &str, kind: ChangeKind) -> Change {
@@ -179,4 +180,86 @@ fn a_profile_signs_the_commit_instead_of_the_configured_identity() {
         (snapshot.commits[0].author.as_str(), snapshot.commits[0].email.as_str()),
         ("Grace", "grace@example.com")
     );
+}
+
+#[test]
+fn a_stash_puts_work_aside_and_brings_it_back() {
+    let dir = repository();
+    let d = dir.path();
+    write(
+        d, "a.txt", "one
+",
+    );
+    git(d, &["add", "a.txt"]);
+    commit(d, "Add a", 1);
+    write(
+        d, "a.txt", "two
+",
+    );
+    write(
+        d, "b.txt", "new
+",
+    );
+
+    actions::stash(d, Some("Put aside"), None).unwrap();
+    assert!(status(d).unwrap().unstaged.is_empty());
+    let snapshot = Repository::open(d).unwrap().snapshot(10).unwrap();
+    let stash = &snapshot.stashes[0];
+    assert_eq!((stash.index, stash.message.as_str()), (0, "On main: Put aside"));
+    let drawn = snapshot.commits.iter().position(|c| c.id == stash.id).unwrap();
+    let head = snapshot.commits.iter().position(|c| c.summary == "Add a").unwrap();
+    assert!(drawn < head);
+    assert_eq!(snapshot.commits[drawn].parents, [snapshot.commits[head].id.clone()]);
+
+    let files = stash_files(d, &stash.id).unwrap();
+    assert_eq!(files, [change("a.txt", ChangeKind::Modified), change("b.txt", ChangeKind::Untracked)]);
+    let texts = |c: &Change| -> Vec<String> {
+        let diff = file_diff(d, c, Side::Stash(&stash.id)).unwrap();
+        diff.hunks[0].lines.iter().map(|l| l.text.clone()).collect()
+    };
+    assert_eq!(texts(&files[0]), ["one", "two"]);
+    assert_eq!(texts(&files[1]), ["new"]);
+
+    actions::stash_apply(d, 0, &stash.id).unwrap();
+    assert_eq!(status(d).unwrap().unstaged.len(), 2);
+    actions::stash_drop(d, 0, &stash.id).unwrap();
+    assert!(Repository::open(d).unwrap().snapshot(10).unwrap().stashes.is_empty());
+
+    actions::stash(d, None, None).unwrap();
+    let id = Repository::open(d).unwrap().snapshot(10).unwrap().stashes[0].id.clone();
+    assert!(actions::stash_pop(d, 0, &stash.id).is_err(), "an old id no longer names stash@{{0}}");
+    actions::stash_pop(d, 0, &id).unwrap();
+    assert_eq!(status(d).unwrap().unstaged.len(), 2);
+    assert!(Repository::open(d).unwrap().snapshot(10).unwrap().stashes.is_empty());
+}
+
+#[test]
+fn a_merge_lists_what_it_brought_to_its_first_parent_once() {
+    let dir = repository();
+    let d = dir.path();
+    write(
+        d, "a.txt", "a
+",
+    );
+    git(d, &["add", "a.txt"]);
+    commit(d, "Add a", 1);
+    git(d, &["switch", "-q", "-c", "feature"]);
+    write(
+        d, "f.txt", "f
+",
+    );
+    git(d, &["add", "f.txt"]);
+    commit(d, "Add f", 2);
+    git(d, &["switch", "-q", "main"]);
+    write(
+        d, "m.txt", "m
+",
+    );
+    git(d, &["add", "m.txt"]);
+    commit(d, "Add m", 3);
+    git(d, &["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"]);
+    let merge = Repository::open(d).unwrap().snapshot(10).unwrap().commits[0].id.clone();
+    assert_eq!(commit_files(d, &merge).unwrap(), [change("f.txt", ChangeKind::Added)]);
+    let diff = file_diff(d, &change("f.txt", ChangeKind::Added), Side::Commit(&merge)).unwrap();
+    assert_eq!(diff.hunks.len(), 1);
 }

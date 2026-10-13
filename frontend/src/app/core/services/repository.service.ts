@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
-import { Change, Commit, FileDiff, RefLabel, Snapshot, Where } from '../models/repository';
+import { Change, Commit, FileDiff, RefLabel, Snapshot, Stash, Where } from '../models/repository';
 import { ProfilesService } from './profiles.service';
 
 /** The selection standing for the working tree's changes, above the history. */
@@ -15,6 +15,11 @@ export interface OpenDiff {
 
 /** An exchange with a remote, under way. */
 export type Exchange = 'fetch' | 'pull' | 'push';
+
+/** The commit or stash a diff is read in, null for the working tree. */
+function sourceOf(where: Where): string | null {
+  return where.kind === 'commit' || where.kind === 'stash' ? where.id : null;
+}
 
 /**
  * One tab's repository and what is done with it: the selection (a commit, or the working
@@ -36,11 +41,23 @@ export class RepositoryService {
   readonly diff = signal<OpenDiff | null>(null);
   /** The files of the selected commit, once read. */
   readonly commitFiles = signal<{ id: string; files: Change[] } | null>(null);
+  /** The commit message being written, kept while other commits are looked at. */
+  readonly summary = signal('');
+  readonly description = signal('');
 
   readonly selected = computed<Commit | null>(() => {
     const id = this.selectedId();
     return this.snapshot()?.commits.find((c) => c.id === id) ?? null;
   });
+
+  /** The stashes by the id of the commit that holds each. */
+  readonly stashes = computed(
+    () => new Map((this.snapshot()?.stashes ?? []).map((stash) => [stash.id, stash])),
+  );
+
+  readonly selectedStash = computed<Stash | null>(
+    () => this.stashes().get(this.selectedId() ?? '') ?? null,
+  );
 
   readonly changes = computed(() => {
     const status = this.snapshot()?.status;
@@ -143,13 +160,33 @@ export class RepositoryService {
     return this.change('unstage', { files });
   }
 
-  /** Commits what is staged, as the profile in use; true when it is done. */
-  async commit(message: string): Promise<boolean> {
-    if (!(await this.change('commit', { message, identity: this.profiles.identity() }))) {
-      return false;
-    }
+  /** Commits what is staged with the message written, as the profile in use; then pushes it. */
+  async commit(push: boolean): Promise<void> {
+    const summary = this.summary().trim();
+    const description = this.description().trim();
+    const message = description ? `${summary}\n\n${description}` : summary;
+    if (!(await this.change('commit', { message, identity: this.profiles.identity() }))) return;
+    this.summary.set('');
+    this.description.set('');
     if (!this.changes()) this.select(this.headId() ?? WIP);
-    return true;
+    if (push) await this.exchangeWith('push');
+  }
+
+  /** Puts every change aside, under the summary being written when there is one. */
+  async stash(): Promise<void> {
+    const message = this.summary().trim() || null;
+    if (await this.change('stash', { message, identity: this.profiles.identity() })) {
+      if (message) this.summary.set('');
+    }
+  }
+
+  /** Brings a stash's changes back; `pop` also takes it off the list. */
+  restore(stash: Stash, pop: boolean) {
+    return this.change(pop ? 'stash_pop' : 'stash_apply', { index: stash.index, id: stash.id });
+  }
+
+  dropStash(stash: Stash) {
+    return this.change('stash_drop', { index: stash.index, id: stash.id });
   }
 
   /** A new branch at the selected commit (at HEAD from the working tree), switched to. */
@@ -189,7 +226,7 @@ export class RepositoryService {
       !!open &&
       open.change.path === change.path &&
       open.where.kind === where.kind &&
-      (open.where.kind !== 'commit' || (where.kind === 'commit' && open.where.id === where.id))
+      sourceOf(open.where) === sourceOf(where)
     );
   }
 
@@ -238,9 +275,13 @@ export class RepositoryService {
       else this.selectedId.set(null);
     }
     // a diff of the working tree follows its file: read again on its side, or on the other
-    // one once it is all staged (unstaged), or closed with its change gone
+    // one once it is all staged (unstaged), or closed with its change gone; one of a commit
+    // or a stash goes with it
     const diff = this.diff();
-    if (diff && diff.where.kind !== 'commit') {
+    const source = diff && sourceOf(diff.where);
+    if (source) {
+      if (!snapshot.commits.some((c) => c.id === source)) this.diff.set(null);
+    } else if (diff) {
       const status = snapshot.status;
       const unstaged = [...status.unstaged, ...status.conflicted];
       const staged = diff.where.kind === 'staged';
@@ -258,7 +299,8 @@ export class RepositoryService {
     if (!path || this.commitFiles()?.id === id) return;
     this.commitFiles.set(null);
     try {
-      const files = await invoke<Change[]>('commit_files', { path, id });
+      const command = this.stashes().has(id) ? 'stash_files' : 'commit_files';
+      const files = await invoke<Change[]>(command, { path, id });
       if (this.selectedId() === id) this.commitFiles.set({ id, files });
     } catch (e) {
       this.error.set(String(e));

@@ -18,6 +18,8 @@ interface Line {
   color: string;
   labels: RefLabel[];
   initials: string;
+  /** Work put aside, hanging on the commit it was made on. */
+  stash: boolean;
   /** The first line of the description, after the summary. */
   detail: string;
 }
@@ -63,12 +65,14 @@ export class History {
     const snapshot = this.repository.snapshot();
     if (!snapshot) return [];
     const labels = this.repository.labels();
+    const stashes = this.repository.stashes();
     return snapshot.commits.map((commit, i) => ({
       commit,
       row: snapshot.graph[i],
       color: laneColor(snapshot.graph[i].lane),
       labels: labels.get(commit.id) ?? [],
       initials: initials(commit.author),
+      stash: stashes.has(commit.id),
       detail: commit.body.split('\n', 1)[0],
     }));
   });

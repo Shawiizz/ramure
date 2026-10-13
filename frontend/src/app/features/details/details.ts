@@ -1,6 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { ChangeKind } from '../../core/models/repository';
+import { ChangeKind, Stash } from '../../core/models/repository';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { Avatar } from '../../shared/avatar';
 import { FileList, KIND } from '../../shared/file-list';
@@ -20,6 +20,8 @@ export class Details {
   protected readonly fullDate = fullDate;
   protected readonly shortDate = shortDate;
   protected readonly copied = signal(false);
+  /** Deleting the stash waits for a second click. */
+  protected readonly dropping = signal(false);
   /** The selected commit's files, once read. */
   protected readonly files = computed(() => {
     const loaded = this.repository.commitFiles();
@@ -35,10 +37,29 @@ export class Details {
   });
   protected readonly openPath = computed(() => {
     const diff = this.repository.diff();
-    return diff?.where.kind === 'commit' && diff.where.id === this.repository.selectedId()
-      ? diff.change.path
+    const where = diff?.where;
+    return (where?.kind === 'commit' || where?.kind === 'stash') &&
+      where.id === this.repository.selectedId()
+      ? diff!.change.path
       : null;
   });
+
+  constructor() {
+    // another selection: the second click asked for no longer applies
+    effect(() => {
+      this.repository.selectedId();
+      this.dropping.set(false);
+    });
+  }
+
+  protected stashName(stash: Stash): string {
+    return `stash@{${stash.index}}`;
+  }
+
+  protected async drop(stash: Stash) {
+    this.dropping.set(false);
+    await this.repository.dropStash(stash);
+  }
 
   protected async copy(id: string) {
     await navigator.clipboard.writeText(id);

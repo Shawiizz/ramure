@@ -6,13 +6,13 @@ import { RepositoryService } from '../../core/services/repository.service';
 
 interface Section {
   title: string;
-  kind: 'local' | 'remote' | 'tag';
+  kind: 'local' | 'remote' | 'tag' | 'stash';
   items: Branch[];
 }
 
 /**
- * The branches, remote branches and tags: a click shows their commit, a double click on a
- * branch switches to it.
+ * The branches, remote branches, tags and stashes: a click shows their commit, a double
+ * click on a branch switches to it.
  */
 @Component({
   selector: 'app-sidebar',
@@ -33,12 +33,18 @@ export class Sidebar {
       { title: t('Branches'), kind: 'local', items: s.branches },
       { title: t('Remote'), kind: 'remote', items: s.remoteBranches },
       { title: t('Tags'), kind: 'tag', items: s.tags },
+      {
+        title: t('Stashes'),
+        kind: 'stash',
+        items: s.stashes.map((stash) => ({ name: stash.message, target: stash.id })),
+      },
     ];
   });
   protected readonly switchHint = t('Double-click to switch to it');
 
   protected switchTo(section: Section, item: Branch) {
-    if (section.kind !== 'tag' && !(section.kind === 'local' && item.name === this.head())) {
+    const branch = section.kind === 'local' || section.kind === 'remote';
+    if (branch && !(section.kind === 'local' && item.name === this.head())) {
       this.repository.checkout(item.name, section.kind === 'remote');
     }
   }

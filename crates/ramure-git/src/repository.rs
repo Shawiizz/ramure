@@ -2,6 +2,7 @@
 //! with the graph to draw it.
 
 use crate::graph::{layout, Row};
+use crate::stash::{stashes, Stash};
 use crate::status::{status, Status};
 use crate::Error;
 use gix::bstr::ByteSlice;
@@ -28,6 +29,8 @@ pub struct Snapshot {
     pub graph: Vec<Row>,
     /// The working tree; empty for a repository without one.
     pub status: Status,
+    /// Newest first; their commits are in the history, each after the one it was made on.
+    pub stashes: Vec<Stash>,
 }
 
 #[derive(Debug, Serialize)]
@@ -94,8 +97,15 @@ impl Repository {
                     .filter_map(|b| ObjectId::from_hex(b.target.as_bytes()).ok()),
             )
             .collect();
-        let commits = self.history(&tips, limit)?;
-        let status = if self.repo.workdir().is_some() { status(&path)? } else { Status::default() };
+        let mut commits = self.history(&tips, limit)?;
+        let (status, stashes) = if self.repo.workdir().is_some() {
+            let (stashes, drawn) = stashes(&path)?;
+            commits.extend(drawn);
+            (status(&path)?, stashes)
+        } else {
+            (Status::default(), Vec::new())
+        };
+        let commits = children_first(commits);
         let graph = layout(&commits.iter().map(|c| (c.id.clone(), c.parents.clone())).collect::<Vec<_>>());
         Ok(Snapshot {
             name,
@@ -107,6 +117,7 @@ impl Repository {
             commits,
             graph,
             status,
+            stashes,
         })
     }
 
@@ -120,7 +131,7 @@ impl Repository {
         })
     }
 
-    /// The commits reachable from `tips`, newest first, every commit before its parents.
+    /// The commits reachable from `tips`, in the order the walk met them (newest first).
     fn history(&self, tips: &[ObjectId], limit: usize) -> Result<Vec<Commit>, Error> {
         if tips.is_empty() {
             return Ok(Vec::new());
@@ -147,7 +158,7 @@ impl Repository {
                 time: author.time().map_err(Error::git)?.seconds,
             });
         }
-        Ok(children_first(commits))
+        Ok(commits)
     }
 }
 

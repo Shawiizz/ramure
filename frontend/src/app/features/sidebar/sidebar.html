@@ -7,14 +7,18 @@
       </h2>
       @if (section.items.length) {
         <ul>
-          @for (item of section.items; track item.name) {
-            <li>
+          @for (item of section.items; track item.name + item.target) {
+            <li [class.stash]="section.kind === 'stash'">
               <button
                 [class.head]="section.kind === 'local' && item.name === head()"
                 [class.selected]="item.target === repository.selectedId()"
                 (click)="repository.select(item.target)"
                 (dblclick)="switchTo(section, item)"
-                [title]="section.kind === 'tag' ? item.name : item.name + ' · ' + switchHint"
+                [title]="
+                  section.kind === 'local' || section.kind === 'remote'
+                    ? item.name + ' · ' + switchHint
+                    : item.name
+                "
               >
                 <span class="dot"></span>{{ item.name }}
               </button>
