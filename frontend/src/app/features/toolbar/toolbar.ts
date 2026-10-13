@@ -6,6 +6,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { MenusService } from '../repository-tab/menus.service';
 import { BranchPicker } from './branch-picker';
+import { RepositoryPicker } from './repository-picker';
 
 /**
  * Above a repository: its name and branch (switched from here), the exchanges with its
@@ -15,7 +16,7 @@ import { BranchPicker } from './branch-picker';
   selector: 'app-toolbar',
   templateUrl: './toolbar.html',
   styleUrl: './toolbar.scss',
-  imports: [TPipe, BranchPicker],
+  imports: [TPipe, BranchPicker, RepositoryPicker],
 })
 export class Toolbar {
   protected readonly repository = inject(RepositoryService);

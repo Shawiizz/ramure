@@ -12,6 +12,7 @@ import {
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
 import { PreferencesService } from '../../core/services/preferences.service';
+import { OverlayScroll } from '../../shared/overlay-scroll';
 import { GravatarService } from '../../core/services/gravatar.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { initials } from '../../shared/avatar';
@@ -77,7 +78,7 @@ interface Unfolded {
   selector: 'app-history',
   templateUrl: './history.html',
   styleUrl: './history.scss',
-  imports: [TPipe, RefPill],
+  imports: [TPipe, RefPill, OverlayScroll],
 })
 export class History {
   protected readonly repository = inject(RepositoryService);

@@ -94,7 +94,7 @@
   </div>
 
   @if (lines().length || wip()) {
-    <div #rows class="rows" role="listbox" [attr.aria-label]="'History' | t">
+    <div #rows class="rows" appOverlayScroll role="listbox" [attr.aria-label]="'History' | t">
       @if (wip(); as wip) {
         <div
           role="option"
@@ -148,7 +148,7 @@
         </div>
       }
       <div [style.height.px]="range().start * row"></div>
-      @for (line of shown(); track line.commit.id) {
+      @for (line of shown(); track line.commit.id; let place = $index) {
         @let selected = line.commit.id === repository.selectedId();
         @let s = line.shape;
         <div
@@ -221,7 +221,7 @@
                   @for (p of s.paths; track $index) {
                     <path [attr.d]="p.d" [style.stroke]="p.color" />
                   }
-                  @if (range().start + $index === 0 && wip()?.linked) {
+                  @if (range().start + place === 0 && wip()?.linked) {
                     <path
                       class="from-wip"
                       [attr.d]="'M' + s.cx + ' 0V' + row / 2"

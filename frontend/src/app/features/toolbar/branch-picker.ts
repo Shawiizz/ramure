@@ -1,6 +1,7 @@
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
+import { Picker } from './picker';
 
 interface Choice {
   name: string;
@@ -21,7 +22,7 @@ interface Choice {
     >
       <span class="caption">{{ 'Branch' | t }}</span>
       <span class="value">
-        <span class="r-mono">{{ head() }}</span>
+        <span class="label r-mono">{{ head() }}</span>
         <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
       </span>
     </button>
@@ -69,145 +70,11 @@ interface Choice {
       </div>
     }
   `,
-  styles: `
-    :host {
-      position: relative;
-      min-width: 0;
-    }
-    .trigger {
-      min-width: 0;
-      max-width: 280px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
-      padding: 4px 8px;
-      border: 0;
-      border-radius: var(--r-radius);
-      background: transparent;
-      text-align: left;
-      cursor: pointer;
-      &:hover:not(:disabled),
-      &.open {
-        background: var(--r-hover);
-      }
-    }
-    .caption {
-      color: var(--r-text-3);
-      font-size: 11px;
-    }
-    .value {
-      max-width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      .r-mono {
-        overflow: hidden;
-        font-size: 14px;
-        font-weight: 600;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
-    .caret {
-      flex: none;
-      width: 10px;
-      height: 6px;
-      fill: none;
-      stroke: var(--r-text-3);
-      stroke-width: 1.4;
-    }
-    .backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 10;
-    }
-    .r-popover {
-      top: calc(100% + 6px);
-      left: 0;
-      width: 320px;
-      gap: 8px;
-      padding: 8px;
-    }
-    .search {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--r-accent);
-      border-radius: var(--r-radius);
-      background: var(--r-void);
-      color: var(--r-text);
-      font: inherit;
-      user-select: text;
-      &:focus {
-        outline: none;
-      }
-      &::placeholder {
-        color: var(--r-text-3);
-      }
-    }
-    ul {
-      max-height: 420px;
-      margin: 0;
-      padding: 0;
-      overflow-y: auto;
-      list-style: none;
-    }
-    li button {
-      width: 100%;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 8px;
-      border: 0;
-      border-radius: var(--r-radius);
-      background: transparent;
-      color: var(--r-text-2);
-      text-align: left;
-      cursor: pointer;
-      &.cursor {
-        background: var(--r-hover);
-        color: var(--r-text);
-      }
-      &.head {
-        color: var(--r-accent);
-        font-weight: 600;
-      }
-      svg {
-        flex: none;
-        width: 14px;
-        height: 14px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 1.4;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        circle {
-          fill: currentColor;
-          stroke: none;
-        }
-      }
-    }
-    .name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .none {
-      padding: 6px 8px;
-      color: var(--r-text-3);
-    }
-  `,
+  styleUrl: './picker.scss',
   imports: [TPipe],
 })
-export class BranchPicker {
+export class BranchPicker extends Picker<Choice> {
   protected readonly repository = inject(RepositoryService);
-  protected readonly open = signal(false);
-  protected readonly query = signal('');
-  /** The choice Enter takes, moved with the arrow keys. */
-  protected readonly cursor = signal(0);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly search = viewChild<ElementRef<HTMLInputElement>>('search');
 
   protected readonly head = computed(() => {
     const head = this.repository.snapshot()?.head;
@@ -229,39 +96,11 @@ export class BranchPicker {
         .filter((b) => !local.has(b.name.slice(b.name.indexOf('/') + 1)))
         .map((b) => ({ name: b.name, remote: true, head: false })),
     ];
-    const words = this.query().toLowerCase().split(/\s+/).filter(Boolean);
+    const words = this.words();
     return all.filter((c) => words.every((w) => c.name.toLowerCase().includes(w)));
   });
 
-  constructor() {
-    effect(() => this.search()?.nativeElement.focus());
-  }
-
-  protected toggle() {
-    this.open.set(!this.open());
-    this.query.set('');
-    this.cursor.set(0);
-  }
-
-  protected key(event: KeyboardEvent) {
-    const count = this.choices().length;
-    if (event.key === 'Escape') this.open.set(false);
-    else if (event.key === 'ArrowDown' && count) this.move((this.cursor() + 1) % count);
-    else if (event.key === 'ArrowUp' && count) this.move((this.cursor() - 1 + count) % count);
-    else if (event.key === 'Enter' && count) this.choose(this.choices()[this.cursor()]);
-    else return;
-    event.preventDefault();
-  }
-
-  /** Moves the cursor, keeping its choice in view once drawn. */
-  private move(index: number) {
-    this.cursor.set(index);
-    requestAnimationFrame(() =>
-      this.host.nativeElement.querySelector('.cursor')?.scrollIntoView({ block: 'nearest' }),
-    );
-  }
-
-  protected async choose(choice: Choice) {
+  protected override async choose(choice: Choice) {
     this.open.set(false);
     if (!choice.head) await this.repository.checkout(choice.name, choice.remote);
   }

@@ -137,6 +137,8 @@ export interface Settings {
   profiles: Profile[];
   profileId: string | null;
   workspaces: Workspace[];
+  /** The workspace whose tabs are open, named in the title bar. */
+  workspaceId: string | null;
   /** The repositories open in tabs, and the one in front. */
   tabs: string[];
   activeTab: number;
@@ -153,6 +155,7 @@ export const NO_SETTINGS: Settings = {
   profiles: [],
   profileId: null,
   workspaces: [],
+  workspaceId: null,
   tabs: [],
   activeTab: 0,
   recent: [],
@@ -189,11 +192,14 @@ export function parseSettings(value: unknown): Settings {
         : [],
   );
   const profileId = value['profileId'];
+  const workspaceId = value['workspaceId'];
   const activeTab = value['activeTab'];
   return {
     profiles,
     profileId: isString(profileId) && profiles.some((p) => p.id === profileId) ? profileId : null,
     workspaces,
+    workspaceId:
+      isString(workspaceId) && workspaces.some((w) => w.id === workspaceId) ? workspaceId : null,
     tabs: strings(value['tabs']),
     activeTab: typeof activeTab === 'number' && Number.isInteger(activeTab) ? activeTab : 0,
     recent: strings(value['recent']),

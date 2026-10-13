@@ -116,6 +116,8 @@ import { follow } from '../../shared/drag';
       flex: 1;
       min-height: 0;
       display: grid;
+      /* the panels take the window's height, whatever their lists hold */
+      grid-template-rows: minmax(0, 1fr);
     }
     /* no room of its own: a grip over the border between two panels */
     .splitter {

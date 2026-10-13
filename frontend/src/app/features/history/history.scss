@@ -148,12 +148,6 @@
   overflow: auto;
 }
 
-/* the same room on both sides of the scroll bar, so that the columns line up */
-.columns,
-.rows {
-  scrollbar-gutter: stable;
-}
-
 .row {
   width: 100%;
   height: var(--r-row);

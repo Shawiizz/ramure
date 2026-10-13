@@ -12,7 +12,16 @@
   align-self: center;
   width: 22px;
   height: 22px;
-  margin-right: 8px;
+  margin-right: 6px;
+}
+
+/* between the workspace and the tabs it opened */
+.divider {
+  align-self: center;
+  width: 1px;
+  height: 18px;
+  margin: 0 6px 0 4px;
+  background: var(--r-line-strong);
 }
 
 .tabs {

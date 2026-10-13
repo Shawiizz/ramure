@@ -17,6 +17,11 @@ export class TabsService {
   readonly activeId = signal('');
   readonly recent = computed(() => this.store.settings().recent);
   readonly workspaces = computed(() => this.store.settings().workspaces);
+  /** The workspace whose tabs were opened, or kept, last. */
+  readonly workspace = computed(() => {
+    const { workspaces, workspaceId } = this.store.settings();
+    return workspaces.find((w) => w.id === workspaceId) ?? null;
+  });
   /** The repositories open in tabs. */
   readonly paths = computed(() => this.tabs().flatMap((tab) => (tab.path ? [tab.path] : [])));
 
@@ -90,25 +95,43 @@ export class TabsService {
     this.store.update((s) => ({ ...s, recent: s.recent.filter((p) => p !== path) }));
   }
 
-  /** The repositories open now, kept under `name`. */
+  /** The repositories open now, kept under `name`: the workspace in use from then on. */
   saveWorkspace(name: string) {
     const workspace = { id: crypto.randomUUID(), name, paths: this.paths() };
-    this.store.update((s) => ({ ...s, workspaces: [...s.workspaces, workspace] }));
+    this.store.update((s) => ({
+      ...s,
+      workspaces: [...s.workspaces, workspace],
+      workspaceId: workspace.id,
+    }));
   }
 
-  /** Opens a workspace's repositories in tabs (welcome tabs make way), its first in front. */
+  /** The workspace `id` holds the repositories open now instead. */
+  updateWorkspace(id: string) {
+    const paths = this.paths();
+    this.store.update((s) => ({
+      ...s,
+      workspaces: s.workspaces.map((w) => (w.id === id ? { ...w, paths } : w)),
+    }));
+  }
+
+  /** Switches to a workspace: its repositories in the tabs, in place of the others. */
   openWorkspace(id: string) {
     const workspace = this.workspaces().find((w) => w.id === id);
     if (!workspace?.paths.length) return;
-    const kept = this.tabs().filter((tab) => tab.path);
-    const added = workspace.paths.filter((path) => !kept.some((tab) => tab.path === path));
-    const tabs = [...kept, ...added.map(newTab)];
+    const tabs = workspace.paths.map(
+      (path) => this.tabs().find((tab) => tab.path === path) ?? newTab(path),
+    );
     this.tabs.set(tabs);
-    this.activate(tabs.find((tab) => tab.path === workspace.paths[0])!.id);
+    this.store.update((s) => ({ ...s, workspaceId: id }));
+    this.activate(tabs[0].id);
   }
 
   removeWorkspace(id: string) {
-    this.store.update((s) => ({ ...s, workspaces: s.workspaces.filter((w) => w.id !== id) }));
+    this.store.update((s) => ({
+      ...s,
+      workspaces: s.workspaces.filter((w) => w.id !== id),
+      workspaceId: s.workspaceId === id ? null : s.workspaceId,
+    }));
   }
 
   private persist() {

@@ -14,14 +14,19 @@ import { Avatar } from '../../shared/avatar';
         class="r-bar-btn trigger"
         [class.open]="open()"
         (click)="toggle()"
-        [title]="'Commits are signed by {name}' | t: { name: signer() }"
+        [attr.aria-label]="active.name"
+        [title]="
+          active.name +
+          '
+' +
+          ('Commits are signed by {name}' | t: { name: signer() })
+        "
       >
         <app-avatar
           [name]="active.identity.name || active.name"
           [email]="active.identity.email"
-          [size]="20"
+          [size]="22"
         />
-        <span class="label">{{ active.name }}</span>
         <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
       </button>
     }
@@ -115,17 +120,9 @@ import { Avatar } from '../../shared/avatar';
       display: flex;
     }
     .trigger {
-      height: 28px;
-      gap: 6px;
-      padding: 0 8px 0 4px;
-      line-height: 1;
-    }
-    .label {
-      max-width: 160px;
-      overflow: hidden;
-      font-weight: 500;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      height: 30px;
+      gap: 5px;
+      padding: 0 7px 0 4px;
     }
     .trigger .caret {
       width: 10px;

@@ -198,6 +198,41 @@ button {
   background-clip: padding-box;
 }
 
+/* the bars a scroll container draws over its content (OverlayScroll): thin, in sight
+   under the pointer and while scrolling */
+.r-overlay-scroll {
+  scrollbar-width: none;
+}
+
+.r-scrollbar {
+  position: absolute;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 200ms;
+  &.shown,
+  &:hover {
+    opacity: 1;
+  }
+  .thumb {
+    position: absolute;
+    border-radius: 999px;
+    background: var(--r-line-strong);
+    transition: background var(--r-fast);
+  }
+  &.y .thumb {
+    left: 3px;
+    right: 3px;
+  }
+  &.x .thumb {
+    top: 3px;
+    bottom: 3px;
+  }
+  &:hover .thumb,
+  .thumb.dragging {
+    background: var(--r-text-3);
+  }
+}
+
 /* the diff's file view, in Monaco: added lines tinted, a notch where lines went; a
    file's blame, before its lines */
 .monaco-editor {

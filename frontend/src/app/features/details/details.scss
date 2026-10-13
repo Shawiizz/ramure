@@ -80,12 +80,10 @@ app-staging {
   padding: 14px 16px 24px;
 }
 
+/* the message as plain text on the panel, scrolling past the height given */
 .message {
   overflow-y: auto;
-  padding: 12px 14px;
-  border: 1px solid var(--r-line);
-  border-radius: var(--r-radius-panel);
-  background: var(--r-raised);
+  padding: 2px 2px 4px;
   user-select: text;
 }
 

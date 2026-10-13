@@ -8,6 +8,9 @@ import { FileList } from '../../shared/file-list';
 import { TreeSwitch } from '../../shared/tree-switch';
 import { MenusService } from '../repository-tab/menus.service';
 
+/** The summary's length most tools show whole. */
+const SUMMARY_WIDTH = 72;
+
 /** The working tree's changes: stage them, unstage them, commit what is staged. */
 @Component({
   selector: 'app-staging',
@@ -33,15 +36,23 @@ export class Staging {
     const kind = diff?.where.kind;
     return kind === 'staged' || kind === 'unstaged' ? diff!.change.path : null;
   });
+  /** An amend may only change the message: nothing needs to be staged for it. */
   protected readonly canCommit = computed(
     () =>
-      !!this.status()?.staged.length &&
+      (this.repository.amending() || !!this.status()?.staged.length) &&
       !!this.repository.summary().trim() &&
       !this.repository.working(),
   );
+  /** Characters left before most tools cut the summary. */
+  protected readonly left = computed(() => SUMMARY_WIDTH - this.repository.summary().length);
 
   protected show(change: Change, staged: boolean) {
     this.repository.toggleDiff(change, { kind: staged ? 'staged' : 'unstaged' });
+  }
+
+  /** Commits, then pushes: by force, once sure, when the last commit was pushed and amended. */
+  protected async commit(push: boolean) {
+    if ((await this.repository.commit()) && push) this.menus.push();
   }
 
   protected paths(changes: Change[]): string[] {

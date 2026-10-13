@@ -210,9 +210,14 @@ fn unstage(path: PathBuf, files: Vec<String>) -> Answer<Snapshot> {
     snapshot(&path)
 }
 
+/// Commits what is staged; with `amend`, into the last commit instead.
 #[tauri::command(async)]
-fn commit(path: PathBuf, message: String, identity: Option<Identity>) -> Answer<Snapshot> {
-    actions::commit(&path, &message, identity.as_ref())?;
+fn commit(path: PathBuf, message: String, amend: bool, identity: Option<Identity>) -> Answer<Snapshot> {
+    if amend {
+        actions::amend(&path, &message, identity.as_ref())?;
+    } else {
+        actions::commit(&path, &message, identity.as_ref())?;
+    }
     snapshot(&path)
 }
 

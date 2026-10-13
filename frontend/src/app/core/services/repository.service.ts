@@ -89,6 +89,8 @@ export class RepositoryService {
   /** The commit message being written, kept while other commits are looked at. */
   readonly summary = signal('');
   readonly description = signal('');
+  /** The next commit goes into the last one instead. */
+  readonly amending = signal(false);
 
   readonly selected = computed<Commit | null>(() => {
     const id = this.selectedId();
@@ -232,21 +234,47 @@ export class RepositoryService {
     return this.change('unstage', { files });
   }
 
-  /** Commits what is staged with the message written, as the profile in use; then pushes it. */
-  async commit(push: boolean): Promise<void> {
+  /**
+   * Commits what is staged with the message written, as the profile in use; into the last
+   * commit when amending. True once done.
+   */
+  async commit(): Promise<boolean> {
     const summary = this.summary().trim();
     const description = this.description().trim();
     const message = description ? `${summary}\n\n${description}` : summary;
+    const amend = this.amending();
     const done = await this.change(
       'commit',
-      { message, identity: this.profiles.identity() },
-      { what: t('the commit “{s}”', { s: summary }), how: 'soft' },
+      { message, amend, identity: this.profiles.identity() },
+      {
+        what: amend ? t('the amend of the last commit') : t('the commit “{s}”', { s: summary }),
+        how: 'soft',
+      },
     );
-    if (!done) return;
+    if (!done) return false;
     this.summary.set('');
     this.description.set('');
+    this.amending.set(false);
     if (!this.changes()) this.select(this.headId() ?? WIP);
-    if (push) await this.exchangeWith('push');
+    return true;
+  }
+
+  /**
+   * Starts or stops amending. The last commit's message is written in when nothing is yet,
+   * and taken out again, untouched, when amending stops.
+   */
+  amend(on: boolean) {
+    const head = this.snapshot()?.commits.find((c) => c.id === this.headId());
+    if (!head) return;
+    this.amending.set(on);
+    const theirs = this.summary() === head.summary && this.description() === head.body;
+    if (on && !this.summary().trim() && !this.description().trim()) {
+      this.summary.set(head.summary);
+      this.description.set(head.body);
+    } else if (!on && theirs) {
+      this.summary.set('');
+      this.description.set('');
+    }
   }
 
   /** Puts every change aside, under the summary being written when there is one. */

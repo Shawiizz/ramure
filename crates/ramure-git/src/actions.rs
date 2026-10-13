@@ -31,6 +31,18 @@ pub fn commit(dir: &Path, message: &str, identity: Option<&Identity>) -> Result<
     Ok(String::from_utf8_lossy(&id).trim().to_owned())
 }
 
+/// Puts what is staged into the last commit, under `message`: its author stays, the
+/// committer becomes `identity`.
+pub fn amend(dir: &Path, message: &str, identity: Option<&Identity>) -> Result<(), Error> {
+    if message.trim().is_empty() {
+        return Err(Error::Command("A commit needs a message.".into()));
+    }
+    if !has_commits(dir)? {
+        return Err(Error::Command("There is no commit yet to amend.".into()));
+    }
+    git_as(dir, &["commit", "-q", "--amend", "--allow-empty", "-m", message], identity).map(drop)
+}
+
 /// Creates the branch `name` at `start` (a commit or branch; HEAD when `None`) and
 /// switches to it.
 pub fn create_branch(dir: &Path, name: &str, start: Option<&str>) -> Result<(), Error> {

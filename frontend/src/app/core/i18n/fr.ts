@@ -25,6 +25,8 @@ export const FR: Record<string, string> = {
   Added: 'Ajouté',
   'Already on {upstream}: once rewritten, the branch is pushed by force.':
     'Déjà sur {upstream} : une fois réécrite, la branche se pousse de force.',
+  'Amend and push': 'Modifier et pousser',
+  'Amend the last commit': 'Modifier le dernier commit',
   Apply: 'Appliquer',
   'Apply this stash': 'Appliquer ce stash',
   'As the system': 'Comme le système',
@@ -56,6 +58,8 @@ export const FR: Record<string, string> = {
     'Récupère les nouveautés des dépôts distants, dans chaque dépôt ouvert.',
   Cancel: 'Annuler',
   'Changed files': 'Fichiers modifiés',
+  'Characters left before the summary is cut in most tools':
+    'Caractères restants avant que la plupart des outils coupent le résumé',
   'Check out this commit': 'Basculer sur ce commit',
   'Check out {name}': 'Basculer sur {name}',
   'Cherry-pick this commit': 'Cherry-pick de ce commit',
@@ -67,6 +71,7 @@ export const FR: Record<string, string> = {
   'Commit 1 file': 'Committer 1 fichier',
   'Commit and push': 'Committer et pousser',
   'Commit message': 'Message',
+  'Commit summary': 'Résumé du commit',
   'Commit {n} files': 'Committer {n} fichiers',
   'Commits are signed by {name}': 'Les commits sont signés par {name}',
   'Commits in the history': 'Commits dans l’historique',
@@ -197,6 +202,7 @@ export const FR: Record<string, string> = {
   'Keep the open repository as': 'Garder le dépôt ouvert sous le nom',
   'Keep the open tabs as a workspace to reopen them together.':
     'Gardez les onglets ouverts comme espace de travail pour les rouvrir d’un coup.',
+  'Keep the open tabs in {name}': 'Garder les onglets ouverts dans {name}',
   'Keep the {n} open repositories as': 'Garder les {n} dépôts ouverts sous le nom',
   Language: 'Langue',
   Layout: 'Disposition',
@@ -227,7 +233,9 @@ export const FR: Record<string, string> = {
   'No branch by that name': 'Aucune branche de ce nom',
   'No commit changed this file.': 'Aucun commit n’a modifié ce fichier.',
   'No commit yet on this branch.': 'Aucun commit sur cette branche pour l’instant.',
+  'No repository by that name': 'Aucun dépôt de ce nom',
   'No stash': 'Aucun stash',
+  'No workspace': 'Aucun workspace',
   None: 'Aucune',
   none: 'aucun',
   'Not committed yet': 'Pas encore commité',
@@ -248,6 +256,7 @@ export const FR: Record<string, string> = {
   'Open a Git repository to see its branches and its history.':
     'Ouvrez un dépôt Git pour voir ses branches et son historique.',
   'Open a repository': 'Ouvrir un dépôt',
+  'Open a repository…': 'Ouvrir un dépôt…',
   'Open the file': 'Ouvrir le fichier',
   'Opening…': 'Ouverture…',
   parent: 'parent',
@@ -319,6 +328,7 @@ export const FR: Record<string, string> = {
   'Save the workspace': 'Enregistrer l’espace de travail',
   'Scrolling speed': 'Vitesse de défilement',
   'Search a branch': 'Rechercher une branche',
+  'Search a repository': 'Rechercher un dépôt',
   'Search the commits': 'Rechercher dans les commits',
   'Search the commits: message, author, id':
     'Rechercher dans les commits : message, auteur, identifiant',
@@ -350,6 +360,7 @@ export const FR: Record<string, string> = {
   'Tag name': 'Nom du tag',
   'Tag {name}': 'Tag {name}',
   Tags: 'Tags',
+  'the amend of the last commit': 'la modification du dernier commit',
   'The author needs a name and an email.': 'L’auteur a besoin d’un nom et d’un e-mail.',
   'The branch goes back to {id}: its later commits and every change in the working tree are thrown away.':
     'La branche revient à {id} : ses commits suivants et tous les changements de la copie de travail sont perdus.',
@@ -403,9 +414,7 @@ export const FR: Record<string, string> = {
   'Very fast': 'Très rapide',
   View: 'Vue',
   'What the history shows': 'Ce que montre l’historique',
-  'What this commit does': 'Ce que fait ce commit',
   'What to do with {id}': 'Que faire de {id}',
-  'Why, if it helps (optional)': 'Pourquoi, si c’est utile (facultatif)',
   'with {name}': 'avec {name}',
   'with {n} co-authors': 'avec {n} co-auteurs',
   'Work, personal…': 'Travail, perso…',

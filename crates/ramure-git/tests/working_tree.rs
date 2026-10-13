@@ -241,6 +241,31 @@ fn a_branch_following_no_remote_branch_is_not_pulled() {
 }
 
 #[test]
+fn an_amend_puts_the_staged_changes_into_the_last_commit_under_a_new_message() {
+    let dir = repository();
+    let d = dir.path();
+    write(d, "a.txt", "a\n");
+    actions::stage(d, &["a.txt".into()]).unwrap();
+    actions::commit(d, "First", None).unwrap();
+    write(d, "b.txt", "b\n");
+    actions::stage(d, &["b.txt".into()]).unwrap();
+
+    actions::amend(d, "First, with b", None).unwrap();
+
+    let commits = Repository::open(d).unwrap().snapshot(10).unwrap().commits;
+    assert_eq!(commits.len(), 1);
+    assert_eq!(commits[0].summary, "First, with b");
+    assert_eq!(commit_files(d, &commits[0].id).unwrap().len(), 2);
+    assert!(actions::amend(d, "  ", None).is_err());
+}
+
+#[test]
+fn nothing_is_amended_before_the_first_commit() {
+    let dir = repository();
+    assert!(actions::amend(dir.path(), "Nothing", None).is_err());
+}
+
+#[test]
 fn a_failing_command_reports_what_git_said() {
     let dir = repository();
     let error = actions::checkout(dir.path(), "nowhere", false).unwrap_err().to_string();

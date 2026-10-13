@@ -1,10 +1,7 @@
 @if (repository.snapshot(); as snapshot) {
   <div class="toolbar">
     <div class="where">
-      <div class="place">
-        <span class="caption">{{ 'Repository' | t }}</span>
-        <span class="value" [title]="snapshot.path">{{ snapshot.name }}</span>
-      </div>
+      <app-repository-picker />
       <svg class="chevron" viewBox="0 0 8 12" aria-hidden="true"><path d="M2 1l4 5-4 5" /></svg>
       <app-branch-picker />
     </div>

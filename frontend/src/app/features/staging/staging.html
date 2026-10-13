@@ -12,7 +12,7 @@
           <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M7 7v3.5M9 7v3.5" />
         </svg>
       </button>
-      <span class="summary">
+      <span class="changes">
         {{
           repository.changes() === 1
             ? ('1 file change' | t)
@@ -97,40 +97,63 @@
       }
     </section>
 
-    <form class="commit" (submit)="$event.preventDefault(); repository.commit(false)">
-      <label class="r-field">
-        <span>{{ 'Summary' | t }}</span>
+    <form class="commit" (submit)="$event.preventDefault(); commit(false)">
+      <label class="amend">
         <input
-          [value]="repository.summary()"
-          (input)="repository.summary.set($any($event.target).value)"
-          [placeholder]="'What this commit does' | t"
-          maxlength="200"
+          type="checkbox"
+          [checked]="repository.amending()"
+          [disabled]="!repository.headId()"
+          (change)="repository.amend($any($event.target).checked)"
         />
+        {{ 'Amend the last commit' | t }}
       </label>
-      <label class="r-field">
-        <span>{{ 'Description' | t }}</span>
+      <!-- the summary and the description in one block, as one message -->
+      <div class="message">
+        <div class="summary-line">
+          <input
+            class="summary"
+            [value]="repository.summary()"
+            (input)="repository.summary.set($any($event.target).value)"
+            [placeholder]="'Commit summary' | t"
+            [attr.aria-label]="'Summary' | t"
+            maxlength="200"
+          />
+          <span
+            class="left"
+            [class.over]="left() < 0"
+            [title]="'Characters left before the summary is cut in most tools' | t"
+            >{{ left() }}</span
+          >
+        </div>
         <textarea
-          rows="3"
+          class="description"
+          rows="4"
           [value]="repository.description()"
           (input)="repository.description.set($any($event.target).value)"
-          [placeholder]="'Why, if it helps (optional)' | t"
+          (keydown.control.enter)="commit(false)"
+          [placeholder]="'Description' | t"
+          [attr.aria-label]="'Description' | t"
         ></textarea>
-      </label>
+      </div>
       <button class="r-btn r-btn--primary" type="submit" [disabled]="!canCommit()">
-        {{
-          status.staged.length === 1
-            ? ('Commit 1 file' | t)
-            : ('Commit {n} files' | t: { n: status.staged.length })
-        }}
+        @if (repository.amending()) {
+          {{ 'Amend the last commit' | t }}
+        } @else {
+          {{
+            status.staged.length === 1
+              ? ('Commit 1 file' | t)
+              : ('Commit {n} files' | t: { n: status.staged.length })
+          }}
+        }
       </button>
       <button
         class="r-btn"
         type="button"
         [disabled]="!canCommit()"
-        (click)="repository.commit(true)"
+        (click)="commit(true)"
         [title]="'Then send it to the upstream' | t"
       >
-        {{ 'Commit and push' | t }}
+        {{ repository.amending() ? ('Amend and push' | t) : ('Commit and push' | t) }}
       </button>
     </form>
   </div>

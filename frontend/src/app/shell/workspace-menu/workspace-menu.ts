@@ -1,8 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { TabsService, splitPath } from '../../core/services/tabs.service';
 
-/** The workspaces: reopen one's repositories in tabs, or keep the open tabs as a new one. */
+/**
+ * The workspace in use, before the tabs it opened: switch to another (its repositories in
+ * the tabs), keep the open tabs in it, or as a new one.
+ */
 @Component({
   selector: 'app-workspace-menu',
   template: `
@@ -13,25 +16,33 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
       [title]="'Repositories opened together' | t"
     >
       <svg viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="2" y="2.5" width="5" height="5" rx="1" />
-        <rect x="9" y="2.5" width="5" height="5" rx="1" />
-        <rect x="2" y="9.5" width="5" height="5" rx="1" />
-        <rect x="9" y="9.5" width="5" height="5" rx="1" />
+        <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" />
+        <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" />
+        <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" />
+        <rect x="9" y="9" width="4.5" height="4.5" rx="1" />
       </svg>
-      <span>{{ 'Workspaces' | t }}</span>
+      <span class="label" [class.none]="!tabs.workspace()">{{
+        tabs.workspace()?.name ?? ('No workspace' | t)
+      }}</span>
+      <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
     </button>
     @if (open()) {
       <div class="backdrop" (click)="open.set(false)"></div>
       <div class="r-popover" (keydown.escape)="open.set(false)">
+        <h3>{{ 'Workspaces' | t }}</h3>
         @if (tabs.workspaces().length) {
           <ul>
             @for (workspace of tabs.workspaces(); track workspace.id) {
-              <li>
+              @let current = workspace.id === tabs.workspace()?.id;
+              <li [class.current]="current">
                 <button
                   class="item"
                   (click)="openWorkspace(workspace.id)"
                   [title]="names(workspace.paths)"
                 >
+                  <svg class="tick" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 8.5l3 3 7-7" />
+                  </svg>
                   <span class="name">{{ workspace.name }}</span>
                   <span class="count">{{ workspace.paths.length }}</span>
                 </button>
@@ -48,6 +59,11 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
           </ul>
         } @else {
           <p class="none">{{ 'Keep the open tabs as a workspace to reopen them together.' | t }}</p>
+        }
+        @if (changed(); as workspace) {
+          <button class="r-btn" (click)="tabs.updateWorkspace(workspace.id)">
+            {{ 'Keep the open tabs in {name}' | t: { name: workspace.name } }}
+          </button>
         }
         <form (submit)="$event.preventDefault(); save()">
           <label class="r-field">
@@ -78,12 +94,33 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
     :host {
       position: relative;
       display: flex;
+      align-items: center;
     }
     .trigger {
       height: 28px;
-      gap: 6px;
+      max-width: 220px;
+      gap: 7px;
       padding: 0 8px;
       line-height: 1;
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+      .caret {
+        width: 9px;
+        height: 6px;
+      }
+    }
+    .label {
+      overflow: hidden;
+      color: var(--r-text);
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      &.none {
+        color: var(--r-text-3);
+        font-weight: 400;
+      }
     }
     .backdrop {
       position: fixed;
@@ -92,8 +129,17 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
     }
     .r-popover {
       top: calc(100% + 8px);
-      right: 0;
+      left: 0;
       width: 300px;
+      gap: 10px;
+    }
+    h3 {
+      margin: 0;
+      color: var(--r-text-3);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     ul {
       margin: 0 -6px;
@@ -110,6 +156,12 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
       &:hover .remove {
         visibility: visible;
       }
+      &.current .tick {
+        stroke: var(--r-accent);
+      }
+      &.current .name {
+        font-weight: 600;
+      }
     }
     .item {
       flex: 1;
@@ -123,6 +175,16 @@ import { TabsService, splitPath } from '../../core/services/tabs.service';
       background: transparent;
       text-align: left;
       cursor: pointer;
+    }
+    .tick {
+      flex: none;
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: transparent;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .name {
       flex: 1;
@@ -175,6 +237,15 @@ export class WorkspaceMenu {
   protected readonly tabs = inject(TabsService);
   protected readonly open = signal(false);
   protected readonly name = signal('');
+
+  /** The workspace in use, when the open tabs are no longer what it holds. */
+  protected readonly changed = computed(() => {
+    const workspace = this.tabs.workspace();
+    const open = this.tabs.paths();
+    const same =
+      workspace?.paths.length === open.length && workspace.paths.every((p) => open.includes(p));
+    return workspace && !same ? workspace : null;
+  });
 
   protected openWorkspace(id: string) {
     this.tabs.openWorkspace(id);
