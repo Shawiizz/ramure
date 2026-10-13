@@ -2,7 +2,7 @@
 //! Every command names the repository by its path; those that change it answer with its
 //! new state.
 
-use ramure_git::actions::{Planned, Pull, Reset, Step};
+use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Step};
 use ramure_git::{
     actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, RefState, Repository, Side,
     Snapshot, View,
@@ -241,8 +241,14 @@ fn pull(path: PathBuf, how: Pull, identity: Option<Identity>) -> Answer<Snapshot
 }
 
 #[tauri::command(async)]
-fn push(path: PathBuf) -> Answer<Snapshot> {
-    actions::push(&path)?;
+fn push(path: PathBuf, force: bool) -> Answer<Snapshot> {
+    actions::push(&path, force)?;
+    snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn rewrite(path: PathBuf, id: String, to: Rewrite, identity: Option<Identity>) -> Answer<Snapshot> {
+    actions::rewrite(&path, &id, &to, identity.as_ref())?;
     snapshot(&path)
 }
 
@@ -560,6 +566,7 @@ pub fn run() {
             push_tag,
             rebase_plan,
             rebase_interactive,
+            rewrite,
             ref_state,
             restore,
             global_identity,

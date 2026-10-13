@@ -4,6 +4,7 @@ import { TabsService } from './core/services/tabs.service';
 import { RepositoryTab } from './features/repository-tab/repository-tab';
 import { SettingsDialog } from './shell/settings-dialog/settings-dialog';
 import { Titlebar } from './shell/titlebar/titlebar';
+import { Tooltip } from './shell/tooltip/tooltip';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +18,7 @@ import { Titlebar } from './shell/titlebar/titlebar';
     @if (preferences.open()) {
       <app-settings-dialog />
     }
+    <app-tooltip />
   `,
   styles: `
     :host {
@@ -29,7 +31,7 @@ import { Titlebar } from './shell/titlebar/titlebar';
       min-height: 0;
     }
   `,
-  imports: [Titlebar, RepositoryTab, SettingsDialog],
+  imports: [Titlebar, RepositoryTab, SettingsDialog, Tooltip],
 })
 export class App {
   constructor() {

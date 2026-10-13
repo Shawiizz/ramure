@@ -80,7 +80,7 @@
       </div>
       <button
         class="tool"
-        (click)="repository.exchangeWith('push')"
+        (click)="menus.push()"
         [disabled]="repository.working()"
         [title]="'Send this branch’s commits to its upstream' | t"
       >

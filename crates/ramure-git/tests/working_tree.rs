@@ -125,7 +125,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     actions::stage(mine.path(), &["a.txt".into()]).unwrap();
     actions::commit(mine.path(), "First", None).unwrap();
     // no upstream yet: the push sets it
-    actions::push(mine.path()).unwrap();
+    actions::push(mine.path(), false).unwrap();
     let upstream = status(mine.path()).unwrap().upstream.unwrap();
     assert_eq!((upstream.name.as_str(), upstream.ahead, upstream.behind), ("origin/main", 0, 0));
 
@@ -135,7 +135,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
     write(theirs.path(), "b.txt", "b\n");
     actions::stage(theirs.path(), &["b.txt".into()]).unwrap();
     actions::commit(theirs.path(), "Second", None).unwrap();
-    actions::push(theirs.path()).unwrap();
+    actions::push(theirs.path(), false).unwrap();
 
     actions::fetch(mine.path()).unwrap();
     assert_eq!(status(mine.path()).unwrap().upstream.unwrap().behind, 1);
@@ -145,7 +145,7 @@ fn work_goes_to_a_remote_and_comes_back_in_another_clone() {
 
     // a remote branch checked out gives a local branch following it
     git(theirs.path(), &["switch", "-q", "-c", "topic"]);
-    actions::push(theirs.path()).unwrap();
+    actions::push(theirs.path(), false).unwrap();
     actions::fetch(mine.path()).unwrap();
     actions::checkout(mine.path(), "origin/topic", true).unwrap();
     let snapshot = Repository::open(mine.path()).unwrap().snapshot(10).unwrap();
@@ -173,7 +173,7 @@ fn diverged() -> (tempfile::TempDir, tempfile::TempDir) {
     init(mine.path());
     git(mine.path(), &["remote", "add", "origin", url]);
     commit(mine.path(), "First", 0);
-    actions::push(mine.path()).unwrap();
+    actions::push(mine.path(), false).unwrap();
 
     let theirs = tempfile::tempdir().unwrap();
     git(theirs.path(), &["clone", "-q", url, "."]);

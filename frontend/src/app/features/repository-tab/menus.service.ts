@@ -3,6 +3,7 @@ import { t } from '../../core/i18n/i18n';
 import { Change, Commit, Planned, Where } from '../../core/models/repository';
 import { RepositoryService } from '../../core/services/repository.service';
 import { Ask } from '../../shared/ask-dialog';
+import { reaches } from '../../shared/ancestry';
 import { MenuEntry } from '../../shared/context-menu';
 import { branchUrl, commitUrl, remoteUrl } from '../../shared/web-url';
 
@@ -30,6 +31,8 @@ export class MenusService {
   readonly menu = signal<OpenMenu | null>(null);
   readonly asking = signal<Ask | null>(null);
   readonly rebasing = signal<Rebasing | null>(null);
+  /** The commit whose message, author and date are being told again. */
+  readonly rewriting = signal<Commit | null>(null);
 
   /** The branch checked out, if any. */
   private readonly current = computed(() => {
@@ -132,6 +135,11 @@ export class MenusService {
         children: this.resets(commit.id, id),
       },
       { label: t('Revert this commit'), run: () => r.revert(commit.id) },
+      {
+        label: t('Edit the commit…'),
+        disabled: !reaches(r.snapshot()?.commits ?? [], r.headId(), commit.id),
+        run: () => this.rewriting.set(commit),
+      },
       null,
       { label: t('Copy the commit’s id'), run: () => this.copy(commit.id) },
       ...(remote && link
@@ -170,7 +178,7 @@ export class MenusService {
               disabled: !r.snapshot()?.status.upstream,
               run: () => r.exchangeWith('pull'),
             },
-            { label: t('Push {name}', { name }), run: () => r.exchangeWith('push') },
+            { label: t('Push {name}', { name }), run: () => this.push() },
           ]
         : [{ label: t('Push {name}', { name }), run: () => r.pushBranch(name) }]),
       {
@@ -437,6 +445,27 @@ export class MenusService {
           }),
       },
     ];
+  }
+
+  /**
+   * Pushes the current branch; one that has parted from its upstream (its commits
+   * rewritten) only by force, once sure.
+   */
+  push() {
+    const r = this.repository;
+    const upstream = r.snapshot()?.status.upstream;
+    if (!upstream?.ahead || !upstream.behind) return void r.exchangeWith('push');
+    this.ask({
+      title: t('Force push to {upstream}?', { upstream: upstream.name }),
+      text: t(
+        '{upstream} has commits this branch no longer has, rewritten here or pushed from elsewhere: they are replaced. Refused if someone pushed there since the last fetch.',
+        { upstream: upstream.name },
+      ),
+      fields: [],
+      confirm: t('Force push'),
+      danger: true,
+      answered: () => r.exchangeWith('push', true),
+    });
   }
 
   /** Throws away every change of the working tree, once sure. */

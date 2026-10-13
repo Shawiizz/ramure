@@ -4,8 +4,10 @@ export const FR: Record<string, string> = {
   '1 file change': '1 fichier modifié',
   '1 repository': '1 dépôt',
   'A cherry-pick is under way.': 'Un cherry-pick est en cours.',
+  'A commit needs a summary.': 'Un commit a besoin d’un résumé.',
   'A free and open source Git client.': 'Un client Git libre et gratuit.',
   'A merge is under way.': 'Une fusion est en cours.',
+  'A name or an email cannot hold < or >.': 'Un nom ou un e-mail ne peut pas contenir < ou >.',
   'A new annotated tag at {id}': 'Un nouveau tag annoté sur {id}',
   'A new branch at the selected commit': 'Une nouvelle branche sur le commit sélectionné',
   'A new branch at {id}': 'Une nouvelle branche sur {id}',
@@ -21,6 +23,8 @@ export const FR: Record<string, string> = {
   'Add a remote': 'Ajouter un dépôt distant',
   'Add the remote': 'Ajouter le dépôt distant',
   Added: 'Ajouté',
+  'Already on {upstream}: once rewritten, the branch is pushed by force.':
+    'Déjà sur {upstream} : une fois réécrite, la branche se pousse de force.',
   Apply: 'Appliquer',
   'Apply this stash': 'Appliquer ce stash',
   'As the system': 'Comme le système',
@@ -127,6 +131,8 @@ export const FR: Record<string, string> = {
   Drop: 'Supprimer',
   'Each file with its path': 'Chaque fichier avec son chemin',
   Edit: 'Modifier',
+  'Edit the commit {id}': 'Modifier le commit {id}',
+  'Edit the commit…': 'Modifier le commit…',
   'Edit the file': 'Modifier le fichier',
   'Edit the profile': 'Modifier le profil',
   'Edit the remote {name}': 'Modifier le dépôt distant {name}',
@@ -151,6 +157,8 @@ export const FR: Record<string, string> = {
   'Filter the branches, tags and stashes': 'Filtrer les branches, tags et stashs',
   'Fix up the one below': 'Corriger celui du dessous',
   'Follow it': 'La suivre',
+  'Force push': 'Pousser de force',
+  'Force push to {upstream}?': 'Pousser de force vers {upstream} ?',
   General: 'Général',
   'git could not be found': 'git est introuvable',
   Graph: 'Graphe',
@@ -305,6 +313,7 @@ export const FR: Record<string, string> = {
   'Revert this commit': 'Revert de ce commit',
   'Revert under way': 'Revert en cours',
   Reword: 'Reformuler',
+  Rewrite: 'Réécrire',
   Save: 'Enregistrer',
   'Save (Ctrl+S)': 'Enregistrer (Ctrl+S)',
   'Save the workspace': 'Enregistrer l’espace de travail',
@@ -341,15 +350,19 @@ export const FR: Record<string, string> = {
   'Tag name': 'Nom du tag',
   'Tag {name}': 'Tag {name}',
   Tags: 'Tags',
+  'The author needs a name and an email.': 'L’auteur a besoin d’un nom et d’un e-mail.',
   'The branch goes back to {id}: its later commits and every change in the working tree are thrown away.':
     'La branche revient à {id} : ses commits suivants et tous les changements de la copie de travail sont perdus.',
   'The branch goes from the remote, for everyone working with it.':
     'La branche disparaît du dépôt distant, pour tous ceux qui l’utilisent.',
   'The changes alone, with a little context': 'Les changements seuls, avec un peu de contexte',
   'the cherry-pick of {id}': 'le cherry-pick de {id}',
+  'The commit date too, shown by most tools':
+    'La date de commit aussi, celle qu’affichent la plupart des outils',
   'the commit “{s}”': 'le commit « {s} »',
   'The commits of {branch} replayed onto {onto}, from the bottom up. Drag them to reorder.':
     'Les commits de {branch} rejoués sur {onto}, de bas en haut. Faites-les glisser pour les réordonner.',
+  'The date is not valid.': 'La date n’est pas valide.',
   'the deletion of {name}': 'la suppression de {name}',
   'The edits not saved are lost.': 'Les modifications non enregistrées sont perdues.',
   'The files in their folders': 'Les fichiers dans leurs dossiers',
@@ -367,6 +380,7 @@ export const FR: Record<string, string> = {
   'the renaming of {name}': 'le renommage de {name}',
   'the reset to {id}': 'le reset sur {id}',
   'the revert of {id}': 'le revert de {id}',
+  'the rewrite of {id}': 'la réécriture de {id}',
   'the switch to {id}': 'le passage sur {id}',
   'the tag {name}': 'le tag {name}',
   'The texts, the dates and the numbers.': 'Les textes, les dates et les nombres.',
@@ -405,6 +419,8 @@ export const FR: Record<string, string> = {
   '{n} changed files': '{n} fichiers modifiés',
   '{n} file changes': '{n} fichiers modifiés',
   '{n} repositories': '{n} dépôts',
+  '{upstream} has commits this branch no longer has, rewritten here or pushed from elsewhere: they are replaced. Refused if someone pushed there since the last fetch.':
+    '{upstream} a des commits que cette branche n’a plus, réécrits ici ou poussés d’ailleurs : ils sont remplacés. Refusé si quelqu’un y a poussé depuis le dernier fetch.',
   '“3 days ago” in the history, rather than the date.':
     '« il y a 3 jours » dans l’historique, plutôt que la date.',
 };

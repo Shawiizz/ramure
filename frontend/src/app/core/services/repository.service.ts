@@ -11,6 +11,7 @@ import {
   RefLabel,
   RefState,
   Reset,
+  Rewrite,
   Snapshot,
   Stash,
   Step,
@@ -437,6 +438,16 @@ export class RepositoryService {
     }
   }
 
+  /** Gives a commit of the current branch a new message, author and date. */
+  rewrite(id: string, to: Rewrite) {
+    const args = { id, to, identity: this.profiles.identity() };
+    return this.change(
+      'rewrite',
+      args,
+      this.undoing(t('the rewrite of {id}', { id: id.slice(0, 7) })),
+    );
+  }
+
   rebaseInteractive(onto: string, steps: Step[]) {
     const args = { onto, steps, identity: this.profiles.identity() };
     return this.change('rebase_interactive', args, this.undoing(t('the interactive rebase')));
@@ -536,7 +547,8 @@ export class RepositoryService {
     }
   }
 
-  async exchangeWith(kind: Exchange): Promise<void> {
+  /** Fetches, pulls or pushes; a forced push replaces what the upstream has. */
+  async exchangeWith(kind: Exchange, force = false): Promise<void> {
     this.exchange.set(kind);
     try {
       if (kind === 'pull') {
@@ -544,7 +556,7 @@ export class RepositoryService {
         const how = this.preferences.preferences().pull;
         await this.change(kind, { how, identity: this.profiles.identity() }, what);
       } else {
-        await this.change(kind, {});
+        await this.change(kind, kind === 'push' ? { force } : {});
       }
     } finally {
       this.exchange.set(null);

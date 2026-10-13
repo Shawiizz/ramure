@@ -135,7 +135,12 @@
                 </span>
               }
               @default {
-                <span [class]="column"></span>
+                <!-- the columns line up with the commits', the refs' overlap on the graph included -->
+                <span
+                  [class]="column"
+                  [class.tie-left]="column === 'refs' && tie() === 'left'"
+                  [class.after-graph]="column === 'refs' && tie() === 'right'"
+                ></span>
               }
             }
           }

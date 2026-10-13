@@ -92,6 +92,18 @@ export interface Commit {
   time: number;
 }
 
+/** What a commit becomes, rewritten (`ramure_git::actions::Rewrite`). */
+export interface Rewrite {
+  message: string;
+  authorName: string;
+  authorEmail: string;
+  /** Seconds since 1970, and the offset from UTC it is told in, in minutes. */
+  time: number;
+  offset: number;
+  /** The commit date set to the same as well. */
+  commitDateToo: boolean;
+}
+
 /** A commit that changed a file, and how (`ramure_git::FileCommit`). */
 export interface FileCommit {
   id: string;

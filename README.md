@@ -21,6 +21,8 @@ tags at hand, the commit you pick in detail.
 - Menus (right click or ⋯) for branches, remote branches, remotes and tags: merge, rebase,
   interactive rebase, rename, delete, push, set an upstream, hide from the history or solo;
   a local branch dropped on another merges or rebases them.
+- A commit of the current branch rewritten after the fact: its message, author and dates;
+  a branch that parted from its upstream force-pushed, once sure.
 - Undo and redo (Ctrl+Z, Ctrl+Y) of commits, merges, rebases, resets, branches and tags.
 - A search through the commits (Ctrl+F); the history's columns shown, hidden and reordered;
   the panels resized, the sidebar's sections reordered and resized.

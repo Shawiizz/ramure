@@ -21,6 +21,7 @@ import { FilePanel } from '../file/file-panel';
 import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
 import { RebaseDialog } from '../rebase/rebase-dialog';
+import { RewriteDialog } from '../rewrite/rewrite-dialog';
 import { Sidebar } from '../sidebar/sidebar';
 import { StatusBar } from '../status-bar/status-bar';
 import { Toolbar } from '../toolbar/toolbar';
@@ -78,6 +79,9 @@ import { follow } from '../../shared/drag';
     }
     @if (menus.rebasing(); as rebasing) {
       <app-rebase-dialog [rebasing]="rebasing" (closed)="menus.rebasing.set(null)" />
+    }
+    @if (menus.rewriting(); as commit) {
+      <app-rewrite-dialog [commit]="commit" (closed)="menus.rewriting.set(null)" />
     }
   `,
   styles: `
@@ -146,6 +150,7 @@ import { follow } from '../../shared/drag';
     ContextMenu,
     AskDialog,
     RebaseDialog,
+    RewriteDialog,
   ],
 })
 export class RepositoryTab {

@@ -3,7 +3,7 @@
 use crate::cli::{git, git_answer, git_as, git_with};
 use crate::{Error, Identity, Operation};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Stages `paths`: their changes go into the next commit.
 pub fn stage(dir: &Path, paths: &[String]) -> Result<(), Error> {
@@ -87,10 +87,15 @@ pub fn pull(dir: &Path, how: Pull, identity: Option<&Identity>) -> Result<(), Er
 }
 
 /// Sends the current branch to its upstream; without one, to `origin`, which it then
-/// follows.
-pub fn push(dir: &Path) -> Result<(), Error> {
+/// follows. `force` replaces what the upstream has, unless someone pushed there since the
+/// last fetch.
+pub fn push(dir: &Path, force: bool) -> Result<(), Error> {
     if has_upstream(dir)? {
-        git(dir, &["push"]).map(drop)
+        let mut args = vec!["push"];
+        if force {
+            args.push("--force-with-lease");
+        }
+        git(dir, &args).map(drop)
     } else {
         git(dir, &["push", "-u", "origin", "HEAD"]).map(drop)
     }
@@ -399,16 +404,7 @@ pub fn rebase_interactive(
             ));
         }
     }
-    let git_dir = String::from_utf8_lossy(&git(dir, &["rev-parse", "--absolute-git-dir"])?).trim().to_owned();
-    let work = Path::new(&git_dir).join("ramure-rebase");
-    let _ = std::fs::remove_dir_all(&work);
-    std::fs::create_dir_all(&work).map_err(|e| Error::Command(format!("{}: {e}", work.display())))?;
-    let write = |name: &str, text: &str| {
-        let path = work.join(name);
-        std::fs::write(&path, text).map_err(|e| Error::Command(format!("{}: {e}", path.display())))?;
-        // the shell git runs the commands in reads forward slashes
-        Ok::<_, Error>(path.to_string_lossy().replace('\\', "/"))
-    };
+    let work = rebase_folder(dir)?;
     let mut todo = String::new();
     for (i, step) in steps.iter().enumerate() {
         let word = match step.action {
@@ -419,13 +415,120 @@ pub fn rebase_interactive(
         };
         todo.push_str(&format!("{word} {}\n", step.id));
         if let (StepAction::Reword, Some(message)) = (step.action, &step.message) {
-            let file = write(&format!("message-{i}"), message)?;
+            let file = write_in(&work, &format!("message-{i}"), message)?;
             todo.push_str(&format!("exec git commit --amend --only --quiet -F \"{file}\"\n"));
         }
     }
-    let todo = write("todo", &todo)?;
+    replay(dir, Some(onto), &work, &todo, identity)
+}
+
+/// What a commit becomes, rewritten: its message, its author and its date.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Rewrite {
+    pub message: String,
+    pub author_name: String,
+    pub author_email: String,
+    /// Seconds since 1970, and the offset from UTC it is told in, in minutes.
+    pub time: i64,
+    pub offset: i32,
+    /// The commit date set to the same as well: most tools show that one.
+    pub commit_date_too: bool,
+}
+
+impl Rewrite {
+    /// The date as git reads it: `1700000000 +0200`.
+    fn date(&self) -> String {
+        let sign = if self.offset < 0 { '-' } else { '+' };
+        let minutes = self.offset.unsigned_abs();
+        format!("{} {sign}{:02}{:02}", self.time, minutes / 60, minutes % 60)
+    }
+}
+
+/// Gives the commit `id` of the current branch a new message, author and date; the commits
+/// after it are replayed on top, unchanged.
+pub fn rewrite(dir: &Path, id: &str, to: &Rewrite, identity: Option<&Identity>) -> Result<(), Error> {
+    let fields = [&to.author_name, &to.author_email];
+    if to.message.trim().is_empty() || fields.iter().any(|f| f.trim().is_empty()) {
+        return Err(Error::Command("A commit needs a message, an author name and an email.".into()));
+    }
+    if fields.iter().any(|f| f.contains(['<', '>', '\n'])) {
+        return Err(Error::Command("An author's name or email cannot hold <, > or a line break.".into()));
+    }
+    if git_answer(dir, &["merge-base", "--is-ancestor", id, "HEAD"])?.is_none() {
+        return Err(Error::Command("Only the commits of the current branch can be rewritten.".into()));
+    }
+    let id = String::from_utf8_lossy(&git(dir, &["rev-parse", id])?).trim().to_owned();
+    let parent = git_answer(dir, &["rev-parse", "--verify", "-q", &format!("{id}^")])?
+        .map(|p| String::from_utf8_lossy(&p).trim().to_owned());
+    let range = parent.as_ref().map_or_else(|| "HEAD".to_owned(), |p| format!("{p}..HEAD"));
+    if !git(dir, &["rev-list", "--merges", "-n", "1", &range])?.is_empty() {
+        return Err(Error::Command("A merge comes after this commit: it cannot be replayed.".into()));
+    }
+    let work = rebase_folder(dir)?;
+    let message = write_in(&work, "message", &to.message)?;
+    let author = format!("{} <{}>", to.author_name.trim(), to.author_email.trim());
+    let date = to.date();
+    let head = String::from_utf8_lossy(&git(dir, &["rev-parse", "HEAD"])?).trim().to_owned();
+    if head == id {
+        let env: &[(&str, &str)] = if to.commit_date_too { &[("GIT_COMMITTER_DATE", &date)] } else { &[] };
+        let amend =
+            ["commit", "--amend", "--only", "--quiet", "--allow-empty", "-F", &message, "--author", &author];
+        return git_with(dir, &[&amend[..], &["--date", &date]].concat(), identity, env).map(drop);
+    }
+    let committed =
+        if to.commit_date_too { format!("GIT_COMMITTER_DATE={} ", quoted(&date)) } else { String::new() };
+    let amend = format!(
+        "exec {committed}git commit --amend --only --quiet --allow-empty -F \"{message}\" --author={} --date={}\n",
+        quoted(&author),
+        quoted(&date)
+    );
+    let mut todo = String::new();
+    for commit in String::from_utf8_lossy(&git(dir, &["rev-list", "--reverse", &range])?).lines() {
+        todo.push_str(&format!("pick {commit}\n"));
+        if commit == id {
+            todo.push_str(&amend);
+        }
+    }
+    replay(dir, parent.as_deref(), &work, &todo, identity)
+}
+
+/// The folder, in the repository's own, where a rebase's todo and messages are written: a
+/// rebase stopped on conflicts still finds them when it goes on. Emptied first.
+fn rebase_folder(dir: &Path) -> Result<PathBuf, Error> {
+    let git_dir = String::from_utf8_lossy(&git(dir, &["rev-parse", "--absolute-git-dir"])?).trim().to_owned();
+    let work = Path::new(&git_dir).join("ramure-rebase");
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(&work).map_err(|e| Error::Command(format!("{}: {e}", work.display())))?;
+    Ok(work)
+}
+
+/// Writes `text` in the rebase's folder; its path as the shell git runs commands in reads it.
+fn write_in(work: &Path, name: &str, text: &str) -> Result<String, Error> {
+    let path = work.join(name);
+    std::fs::write(&path, text).map_err(|e| Error::Command(format!("{}: {e}", path.display())))?;
+    Ok(path.to_string_lossy().replace('\\', "/"))
+}
+
+/// Replays the commits `todo` lists on top of `onto` (from the very first one without),
+/// the changes being worked on set aside meanwhile.
+fn replay(
+    dir: &Path,
+    onto: Option<&str>,
+    work: &Path,
+    todo: &str,
+    identity: Option<&Identity>,
+) -> Result<(), Error> {
+    let todo = write_in(work, "todo", todo)?;
     let editor = format!("cp \"{todo}\"");
-    git_with(dir, &["rebase", "-i", onto], identity, &[("GIT_SEQUENCE_EDITOR", &editor)]).map(drop)
+    let base = onto.unwrap_or("--root");
+    git_with(dir, &["rebase", "-i", "--autostash", base], identity, &[("GIT_SEQUENCE_EDITOR", &editor)])
+        .map(drop)
+}
+
+/// `text` as one word for the shell, whatever it holds.
+fn quoted(text: &str) -> String {
+    format!("'{}'", text.replace('\'', "'\\''"))
 }
 
 fn has_commits(dir: &Path) -> Result<bool, Error> {

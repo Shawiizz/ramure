@@ -19,7 +19,7 @@ import { BranchPicker } from './branch-picker';
 })
 export class Toolbar {
   protected readonly repository = inject(RepositoryService);
-  private readonly menus = inject(MenusService);
+  protected readonly menus = inject(MenusService);
   private readonly preferences = inject(PreferencesService);
   protected readonly branching = signal(false);
   protected readonly branchName = signal('');
