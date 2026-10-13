@@ -3,10 +3,15 @@
   @if (repository.snapshot()) {
     <div class="workspace">
       <app-sidebar />
-      <app-history />
+      @if (repository.diff()) {
+        <app-diff-view />
+      } @else {
+        <app-history />
+      }
       <app-details />
     </div>
   } @else {
     <app-welcome />
   }
 </main>
+<app-toast />

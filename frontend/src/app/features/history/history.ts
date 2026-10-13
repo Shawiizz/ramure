@@ -1,9 +1,9 @@
 import { Component, computed, effect, inject } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow } from '../../core/models/repository';
-import { RepositoryService } from '../../core/services/repository.service';
+import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { when } from '../../shared/when';
-import { GraphCell, graphWidth, laneColor } from './graph-cell';
+import { GraphCell, ROW, graphWidth, laneColor, laneX } from './graph-cell';
 
 /** Lanes the graph column shows before it scrolls them out of view. */
 const MAX_LANES = 14;
@@ -26,6 +26,18 @@ interface Line {
 export class History {
   protected readonly repository = inject(RepositoryService);
   protected readonly when = when;
+  protected readonly wipId = WIP;
+  protected readonly row = ROW;
+
+  /** The working tree's changes above the history, joined to HEAD's commit when it is the first. */
+  protected readonly wip = computed(() => {
+    if (!this.repository.changes()) return null;
+    const snapshot = this.repository.snapshot();
+    const head = this.repository.headId();
+    const linked = !!snapshot && snapshot.commits[0]?.id === head;
+    const lane = linked ? snapshot.graph[0].lane : 0;
+    return { x: laneX(lane), color: laneColor(lane), linked };
+  });
 
   protected readonly lines = computed<Line[]>(() => {
     const snapshot = this.repository.snapshot();

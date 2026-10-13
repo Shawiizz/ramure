@@ -6,8 +6,37 @@
     <span class="date">{{ 'Date' | t }}</span>
     <span class="sha">SHA</span>
   </div>
-  @if (lines().length) {
+  @if (lines().length || wip()) {
     <div class="rows" role="listbox" [attr.aria-label]="'History' | t">
+      @if (wip(); as wip) {
+        <button
+          role="option"
+          class="row wip"
+          [id]="'commit-' + wipId"
+          [class.selected]="repository.selectedId() === wipId"
+          [attr.aria-selected]="repository.selectedId() === wipId"
+          (click)="repository.select(wipId)"
+        >
+          <svg class="graph" [attr.width]="graphWidth()" [attr.height]="row" aria-hidden="true">
+            @if (wip.linked) {
+              <path
+                class="wip-link"
+                [attr.d]="'M' + wip.x + ' ' + (row / 2 + 5) + 'V' + row"
+                [style.stroke]="wip.color"
+              />
+            }
+            <circle class="wip-dot" [attr.cx]="wip.x" [attr.cy]="row / 2" r="5" />
+          </svg>
+          <span class="message">
+            <span class="wip-tag">WIP</span>
+            <span class="summary">{{
+              repository.changes() === 1
+                ? ('1 changed file' | t)
+                : ('{n} changed files' | t: { n: repository.changes() })
+            }}</span>
+          </span>
+        </button>
+      }
       @for (line of lines(); track line.commit.id) {
         <button
           role="option"
@@ -15,9 +44,14 @@
           [id]="'commit-' + line.commit.id"
           [class.selected]="line.commit.id === repository.selectedId()"
           [attr.aria-selected]="line.commit.id === repository.selectedId()"
-          (click)="repository.selectedId.set(line.commit.id)"
+          (click)="repository.select(line.commit.id)"
         >
-          <app-graph-cell class="graph" [row]="line.row" [width]="graphWidth()" />
+          <app-graph-cell
+            class="graph"
+            [row]="line.row"
+            [width]="graphWidth()"
+            [fromWip]="$first && !!wip()?.linked"
+          />
           <span class="message">
             @for (
               label of repository.labels().get(line.commit.id) ?? [];

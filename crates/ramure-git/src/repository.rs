@@ -2,6 +2,7 @@
 //! with the graph to draw it.
 
 use crate::graph::{layout, Row};
+use crate::status::{status, Status};
 use crate::Error;
 use gix::bstr::ByteSlice;
 use gix::ObjectId;
@@ -25,6 +26,8 @@ pub struct Snapshot {
     pub tags: Vec<Branch>,
     pub commits: Vec<Commit>,
     pub graph: Vec<Row>,
+    /// The working tree; empty for a repository without one.
+    pub status: Status,
 }
 
 #[derive(Debug, Serialize)]
@@ -90,6 +93,7 @@ impl Repository {
             )
             .collect();
         let commits = self.history(&tips, limit)?;
+        let status = if self.repo.workdir().is_some() { status(&path)? } else { Status::default() };
         let graph = layout(&commits.iter().map(|c| (c.id.clone(), c.parents.clone())).collect::<Vec<_>>());
         Ok(Snapshot {
             name,
@@ -100,6 +104,7 @@ impl Repository {
             tags,
             commits,
             graph,
+            status,
         })
     }
 

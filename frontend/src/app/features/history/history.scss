@@ -129,3 +129,33 @@
   margin: 40px auto;
   color: var(--r-text-3);
 }
+
+.wip {
+  .summary {
+    color: var(--r-text-2);
+    font-style: italic;
+  }
+}
+
+.wip-tag {
+  flex: none;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px dashed var(--r-text-3);
+  border-radius: 4px;
+  color: var(--r-text-2);
+  font: 600 11px/18px var(--r-mono);
+}
+
+.wip-dot {
+  fill: var(--r-void);
+  stroke: var(--r-text-2);
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
+}
+
+.wip-link {
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+}

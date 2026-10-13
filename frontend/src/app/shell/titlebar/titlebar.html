@@ -25,6 +25,78 @@
         </span>
       }
     </div>
+
+    <div class="tools">
+      <button
+        class="tool"
+        (click)="repository.exchangeWith('fetch')"
+        [disabled]="repository.working()"
+        [title]="'Fetch every remote' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 9a5 5 0 1 0 1.5-3.6M3 3v3h3" />
+        </svg>
+        {{ repository.exchange() === 'fetch' ? ('Fetching…' | t) : ('Fetch' | t) }}
+      </button>
+      <button
+        class="tool"
+        (click)="repository.exchangeWith('pull')"
+        [disabled]="repository.working()"
+        [title]="'Bring the upstream’s commits here' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v10M4 8l4 4 4-4M3 14h10" /></svg>
+        {{ repository.exchange() === 'pull' ? ('Pulling…' | t) : ('Pull' | t) }}
+        @if (upstream()?.behind) {
+          <span class="count">{{ upstream()?.behind }}</span>
+        }
+      </button>
+      <button
+        class="tool"
+        (click)="repository.exchangeWith('push')"
+        [disabled]="repository.working()"
+        [title]="'Send this branch’s commits to its upstream' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14V4M4 8l4-4 4 4M3 2h10" /></svg>
+        {{ repository.exchange() === 'push' ? ('Pushing…' | t) : ('Push' | t) }}
+        @if (upstream()?.ahead) {
+          <span class="count">{{ upstream()?.ahead }}</span>
+        }
+      </button>
+      <div class="branching">
+        <button
+          class="tool"
+          (click)="branching.set(!branching())"
+          [disabled]="repository.working()"
+          [title]="'A new branch at the selected commit' | t"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="5" cy="3.5" r="1.6" />
+            <circle cx="5" cy="12.5" r="1.6" />
+            <circle cx="11" cy="5.5" r="1.6" />
+            <path d="M5 5.1v5.8M11 7.1c0 2.4-3 2.6-5.4 4" />
+          </svg>
+          {{ 'Branch' | t }}
+        </button>
+        @if (branching()) {
+          <div class="backdrop" (click)="branching.set(false)"></div>
+          <form class="popover" (submit)="$event.preventDefault(); createBranch()">
+            <label>
+              <span>{{ 'New branch name' | t }}</span>
+              <input
+                #name
+                [value]="branchName()"
+                (input)="branchName.set($any($event.target).value)"
+                (keydown.escape)="branching.set(false)"
+                spellcheck="false"
+              />
+            </label>
+            <button class="r-btn r-btn--primary" type="submit" [disabled]="!branchName().trim()">
+              {{ 'Create and switch' | t }}
+            </button>
+          </form>
+        }
+      </div>
+    </div>
   }
 
   <div class="spacer" data-tauri-drag-region></div>

@@ -1,0 +1,55 @@
+@if (open(); as open) {
+  <section class="diff">
+    <header>
+      <div class="file">
+        <span class="path r-mono">{{ open.change.path }}</span>
+        @if (open.change.oldPath) {
+          <span class="from r-mono">← {{ open.change.oldPath }}</span>
+        }
+      </div>
+      <span class="where">{{ where() }}</span>
+      @if (open.diff) {
+        <span class="counts r-mono">
+          <span class="plus">+{{ counts().added }}</span>
+          <span class="minus">−{{ counts().removed }}</span>
+        </span>
+      }
+      <button
+        class="r-btn r-btn--ghost"
+        (click)="close()"
+        [title]="'Back to the history (Esc)' | t"
+      >
+        {{ 'Close' | t }}
+      </button>
+    </header>
+
+    <div class="body">
+      @if (!open.diff) {
+        <p class="note">{{ 'Reading…' | t }}</p>
+      } @else if (open.diff.binary) {
+        <p class="note">{{ 'A binary file: no lines to show.' | t }}</p>
+      } @else if (!open.diff.hunks.length) {
+        <p class="note">{{ 'No change in its content (its mode or its name only).' | t }}</p>
+      } @else {
+        <div class="hunks r-mono">
+          @for (hunk of open.diff.hunks; track $index) {
+            <div class="hunk">{{ hunk.header }}</div>
+            @for (line of hunk.lines; track $index) {
+              <div class="line" [class]="line.kind">
+                <span class="n">{{ line.old }}</span>
+                <span class="n">{{ line.new }}</span>
+                <span class="sign">{{
+                  line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ''
+                }}</span>
+                <span class="text">{{ line.text }}</span>
+              </div>
+            }
+          }
+        </div>
+        @if (open.diff.truncated) {
+          <p class="note">{{ 'The rest is too long to show here.' | t }}</p>
+        }
+      }
+    </div>
+  </section>
+}

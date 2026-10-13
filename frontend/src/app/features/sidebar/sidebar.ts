@@ -6,12 +6,14 @@ import { RepositoryService } from '../../core/services/repository.service';
 
 interface Section {
   title: string;
-  /** Local branches: the one checked out is marked. */
-  local: boolean;
+  kind: 'local' | 'remote' | 'tag';
   items: Branch[];
 }
 
-/** The branches, remote branches and tags: a click shows their commit. */
+/**
+ * The branches, remote branches and tags: a click shows their commit, a double click on a
+ * branch switches to it.
+ */
 @Component({
   selector: 'app-sidebar',
   templateUrl: './sidebar.html',
@@ -28,9 +30,16 @@ export class Sidebar {
     const s = this.repository.snapshot();
     if (!s) return [];
     return [
-      { title: t('Branches'), local: true, items: s.branches },
-      { title: t('Remote'), local: false, items: s.remoteBranches },
-      { title: t('Tags'), local: false, items: s.tags },
+      { title: t('Branches'), kind: 'local', items: s.branches },
+      { title: t('Remote'), kind: 'remote', items: s.remoteBranches },
+      { title: t('Tags'), kind: 'tag', items: s.tags },
     ];
   });
+  protected readonly switchHint = t('Double-click to switch to it');
+
+  protected switchTo(section: Section, item: Branch) {
+    if (section.kind !== 'tag' && !(section.kind === 'local' && item.name === this.head())) {
+      this.repository.checkout(item.name, section.kind === 'remote');
+    }
+  }
 }

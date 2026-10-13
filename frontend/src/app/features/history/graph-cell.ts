@@ -11,6 +11,11 @@ export function laneColor(lane: number): string {
   return `var(--r-lane-${lane % LANE_COLORS})`;
 }
 
+/** The middle of a lane, from the graph's left edge. */
+export function laneX(lane: number): number {
+  return PAD + lane * LANE;
+}
+
 /** Width of a graph column holding `lanes` lanes. */
 export function graphWidth(lanes: number): number {
   return PAD * 2 + Math.max(lanes - 1, 0) * LANE;
@@ -28,6 +33,13 @@ interface Line {
     <svg [attr.width]="width()" [attr.height]="height" aria-hidden="true">
       @for (line of lines(); track $index) {
         <path [attr.d]="line.d" [style.stroke]="line.color" />
+      }
+      @if (fromWip()) {
+        <path
+          class="wip"
+          [attr.d]="'M' + x(row().lane) + ' 0V' + height / 2"
+          [style.stroke]="color()"
+        />
       }
       <circle [attr.cx]="x(row().lane)" [attr.cy]="height / 2" r="4.5" [style.stroke]="color()" />
     </svg>
@@ -47,11 +59,16 @@ interface Line {
       fill: var(--r-commit);
       stroke-width: 2;
     }
+    .wip {
+      stroke-dasharray: 3 3;
+    }
   `,
 })
 export class GraphCell {
   readonly row = input.required<GraphRow>();
   readonly width = input.required<number>();
+  /** The working tree's changes sit above this commit (HEAD): a dashed line from them. */
+  readonly fromWip = input(false);
   protected readonly height = ROW;
   protected readonly color = computed(() => laneColor(this.row().lane));
 
@@ -78,6 +95,6 @@ export class GraphCell {
   });
 
   protected x(lane: number): number {
-    return PAD + lane * LANE;
+    return laneX(lane);
   }
 }

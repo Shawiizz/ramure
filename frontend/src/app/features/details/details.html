@@ -1,39 +1,59 @@
-<aside class="details" [attr.aria-label]="'Commit' | t">
-  @if (repository.selected(); as commit) {
-    <h2>{{ commit.summary }}</h2>
-    @if (labels().length) {
-      <div class="labels">
-        @for (label of labels(); track label.kind + label.name) {
-          <span class="label" [class.head]="label.head">{{ label.name }}</span>
-        }
-      </div>
-    }
-    <dl>
-      <dt>{{ 'Author' | t }}</dt>
-      <dd>
-        {{ commit.author }}
-        <span class="email">{{ commit.email }}</span>
-      </dd>
-      <dt>{{ 'Date' | t }}</dt>
-      <dd>{{ fullDate(commit.time) }}</dd>
-      <dt>SHA</dt>
-      <dd class="sha">
-        <span class="r-mono">{{ commit.id }}</span>
-        <button class="r-btn r-btn--ghost copy" (click)="copy(commit.id)">
-          {{ copied() ? ('Copied' | t) : ('Copy' | t) }}
-        </button>
-      </dd>
-      <dt>{{ 'Parents' | t }}</dt>
-      <dd>
-        @for (parent of commit.parents; track parent) {
-          <button class="parent r-mono" (click)="repository.selectedId.set(parent)">
-            {{ parent.slice(0, 7) }}
+<aside class="details" [attr.aria-label]="'Details' | t">
+  @if (repository.selectedId() === wip) {
+    <app-staging />
+  } @else if (repository.selected(); as commit) {
+    <div class="commit">
+      <h2>{{ commit.summary }}</h2>
+      @if (labels().length) {
+        <div class="labels">
+          @for (label of labels(); track label.kind + label.name) {
+            <span class="label" [class.head]="label.head">{{ label.name }}</span>
+          }
+        </div>
+      }
+      <dl>
+        <dt>{{ 'Author' | t }}</dt>
+        <dd>
+          {{ commit.author }}
+          <span class="email">{{ commit.email }}</span>
+        </dd>
+        <dt>{{ 'Date' | t }}</dt>
+        <dd>{{ fullDate(commit.time) }}</dd>
+        <dt>SHA</dt>
+        <dd class="sha">
+          <span class="r-mono">{{ commit.id }}</span>
+          <button class="r-btn r-btn--ghost copy" (click)="copy(commit.id)">
+            {{ copied() ? ('Copied' | t) : ('Copy' | t) }}
           </button>
-        } @empty {
-          <span class="none">{{ 'None: the first commit' | t }}</span>
+        </dd>
+        <dt>{{ 'Parents' | t }}</dt>
+        <dd>
+          @for (parent of commit.parents; track parent) {
+            <button class="parent r-mono" (click)="repository.select(parent)">
+              {{ parent.slice(0, 7) }}
+            </button>
+          } @empty {
+            <span class="none">{{ 'None: the first commit' | t }}</span>
+          }
+        </dd>
+      </dl>
+
+      <h3>
+        {{ 'Changed files' | t }}
+        @if (files(); as files) {
+          <span>{{ files.length }}</span>
         }
-      </dd>
-    </dl>
+      </h3>
+      @if (files(); as files) {
+        <app-file-list
+          [changes]="files"
+          [openPath]="openPath()"
+          (opened)="repository.showDiff($event, { kind: 'commit', id: commit.id })"
+        />
+      } @else {
+        <p class="none">{{ 'Reading…' | t }}</p>
+      }
+    </div>
   } @else {
     <p class="none">{{ 'Select a commit.' | t }}</p>
   }

@@ -33,12 +33,16 @@ button {
   font-weight: 500;
   cursor: pointer;
   transition: background var(--r-fast);
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--r-hover);
   }
   &:focus-visible {
     outline: 2px solid var(--r-accent);
     outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 }
 
@@ -46,7 +50,7 @@ button {
   border-color: transparent;
   background: var(--r-accent);
   color: var(--r-on-accent);
-  &:hover {
+  &:hover:not(:disabled) {
     background: #79ddb8;
   }
 }

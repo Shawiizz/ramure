@@ -8,6 +8,7 @@ export interface Snapshot {
   tags: Branch[];
   commits: Commit[];
   graph: GraphRow[];
+  status: Status;
 }
 
 export type Head =
@@ -45,4 +46,56 @@ export interface RefLabel {
   name: string;
   kind: 'branch' | 'remote' | 'tag';
   head: boolean;
+}
+
+export interface Status {
+  upstream: Upstream | null;
+  staged: Change[];
+  unstaged: Change[];
+  conflicted: Change[];
+}
+
+export interface Upstream {
+  name: string;
+  /** Commits to push. */
+  ahead: number;
+  /** Commits to pull. */
+  behind: number;
+}
+
+export type ChangeKind =
+  | 'added'
+  | 'modified'
+  | 'deleted'
+  | 'renamed'
+  | 'copied'
+  | 'typeChanged'
+  | 'untracked'
+  | 'conflicted';
+
+export interface Change {
+  path: string;
+  oldPath: string | null;
+  kind: ChangeKind;
+}
+
+/** Where a change lies: in the working tree, in the index, or in a commit. */
+export type Where = { kind: 'unstaged' } | { kind: 'staged' } | { kind: 'commit'; id: string };
+
+export interface FileDiff {
+  binary: boolean;
+  hunks: Hunk[];
+  truncated: boolean;
+}
+
+export interface Hunk {
+  header: string;
+  lines: DiffLine[];
+}
+
+export interface DiffLine {
+  kind: 'context' | 'added' | 'removed';
+  old: number | null;
+  new: number | null;
+  text: string;
 }

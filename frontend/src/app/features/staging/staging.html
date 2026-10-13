@@ -1,0 +1,96 @@
+@if (status(); as status) {
+  <div class="staging">
+    @if (status.conflicted.length) {
+      <section>
+        <header>
+          <h3 class="conflict">
+            {{ 'Conflicts' | t }} <span>{{ status.conflicted.length }}</span>
+          </h3>
+        </header>
+        <app-file-list
+          [changes]="status.conflicted"
+          [action]="stageLabel"
+          [openPath]="openPath()"
+          (opened)="show($event, false)"
+          (acted)="repository.stage([$event.path])"
+        />
+      </section>
+    }
+
+    <section class="grow">
+      <header>
+        <h3>
+          {{ 'Unstaged' | t }} <span>{{ status.unstaged.length }}</span>
+        </h3>
+        @if (status.unstaged.length) {
+          <button class="r-btn r-btn--ghost small" (click)="stageAll()">
+            {{ 'Stage all' | t }}
+          </button>
+        }
+      </header>
+      @if (status.unstaged.length) {
+        <app-file-list
+          [changes]="status.unstaged"
+          [action]="stageLabel"
+          [openPath]="openPath()"
+          (opened)="show($event, false)"
+          (acted)="repository.stage([$event.path])"
+        />
+      } @else {
+        <p class="none">{{ 'Nothing changed.' | t }}</p>
+      }
+    </section>
+
+    <section class="grow">
+      <header>
+        <h3>
+          {{ 'Staged' | t }} <span>{{ status.staged.length }}</span>
+        </h3>
+        @if (status.staged.length) {
+          <button class="r-btn r-btn--ghost small" (click)="unstageAll()">
+            {{ 'Unstage all' | t }}
+          </button>
+        }
+      </header>
+      @if (status.staged.length) {
+        <app-file-list
+          [changes]="status.staged"
+          [action]="unstageLabel"
+          [openPath]="openPath()"
+          (opened)="show($event, true)"
+          (acted)="repository.unstage([$event.path])"
+        />
+      } @else {
+        <p class="none">{{ 'Stage files to commit them.' | t }}</p>
+      }
+    </section>
+
+    <form class="commit" (submit)="$event.preventDefault(); commit()">
+      <label class="field">
+        <span>{{ 'Summary' | t }}</span>
+        <input
+          [value]="summary()"
+          (input)="summary.set($any($event.target).value)"
+          [placeholder]="'What this commit does' | t"
+          maxlength="200"
+        />
+      </label>
+      <label class="field">
+        <span>{{ 'Description' | t }}</span>
+        <textarea
+          rows="3"
+          [value]="description()"
+          (input)="description.set($any($event.target).value)"
+          [placeholder]="'Why, if it helps (optional)' | t"
+        ></textarea>
+      </label>
+      <button class="r-btn r-btn--primary" type="submit" [disabled]="!canCommit()">
+        {{
+          status.staged.length === 1
+            ? ('Commit 1 file' | t)
+            : ('Commit {n} files' | t: { n: status.staged.length })
+        }}
+      </button>
+    </form>
+  </div>
+}

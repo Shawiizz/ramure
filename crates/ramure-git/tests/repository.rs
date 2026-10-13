@@ -1,44 +1,9 @@
-//! Reading real repositories, made with the git command in a temporary folder.
+//! Reading real repositories.
 
+mod common;
+
+use common::{commit, git, git_at, repository};
 use ramure_git::{Head, Repository};
-use std::path::Path;
-use std::process::Command;
-
-fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .env("GIT_AUTHOR_NAME", "Ada")
-        .env("GIT_AUTHOR_EMAIL", "ada@example.com")
-        .env("GIT_COMMITTER_NAME", "Ada")
-        .env("GIT_COMMITTER_EMAIL", "ada@example.com")
-        .status()
-        .expect("git runs");
-    assert!(status.success(), "git {args:?}");
-}
-
-/// A commit at a given time, so the history's order does not depend on the clock.
-fn commit(dir: &Path, message: &str, time: u32) {
-    let date = format!("{} +0000", 1_700_000_000 + time);
-    let status = Command::new("git")
-        .args(["commit", "--allow-empty", "-q", "-m", message])
-        .current_dir(dir)
-        .env("GIT_AUTHOR_NAME", "Ada")
-        .env("GIT_AUTHOR_EMAIL", "ada@example.com")
-        .env("GIT_COMMITTER_NAME", "Ada")
-        .env("GIT_COMMITTER_EMAIL", "ada@example.com")
-        .env("GIT_AUTHOR_DATE", &date)
-        .env("GIT_COMMITTER_DATE", &date)
-        .status()
-        .expect("git runs");
-    assert!(status.success());
-}
-
-fn repository() -> tempfile::TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    git(dir.path(), &["init", "-q", "-b", "main"]);
-    dir
-}
 
 #[test]
 fn a_branch_merged_back_draws_two_lanes_joining() {
@@ -49,19 +14,7 @@ fn a_branch_merged_back_draws_two_lanes_joining() {
     commit(d, "Feature work", 2);
     git(d, &["switch", "-q", "main"]);
     commit(d, "Main work", 3);
-    let date = "1700000004 +0000";
-    let status = Command::new("git")
-        .args(["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"])
-        .current_dir(d)
-        .env("GIT_AUTHOR_NAME", "Ada")
-        .env("GIT_AUTHOR_EMAIL", "ada@example.com")
-        .env("GIT_COMMITTER_NAME", "Ada")
-        .env("GIT_COMMITTER_EMAIL", "ada@example.com")
-        .env("GIT_AUTHOR_DATE", date)
-        .env("GIT_COMMITTER_DATE", date)
-        .status()
-        .unwrap();
-    assert!(status.success());
+    git_at(d, &["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"], 4);
     git(d, &["tag", "v1"]);
 
     let snapshot = Repository::open(d).unwrap().snapshot(100).unwrap();
