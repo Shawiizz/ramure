@@ -1,4 +1,4 @@
-//! Who signs the commits Ramure makes.
+//! Who signs the commits Ramure makes, and which git does the work.
 
 use crate::cli::git_global;
 use crate::Error;
@@ -8,6 +8,12 @@ use serde::{Deserialize, Serialize};
 pub struct Identity {
     pub name: String,
     pub email: String,
+}
+
+/// The git command's version, as it gives it (`git version 2.46.2.windows.1`).
+pub fn git_version() -> Result<String, Error> {
+    let out = git_global(&["--version"])?.unwrap_or_default();
+    Ok(String::from_utf8_lossy(&out).trim().to_owned())
 }
 
 /// The identity git uses outside any repository (`user.name`, `user.email`); empty where

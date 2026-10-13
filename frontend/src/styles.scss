@@ -55,7 +55,7 @@ button {
   background: var(--r-accent);
   color: var(--r-on-accent);
   &:hover:not(:disabled) {
-    background: #79ddb8;
+    background: color-mix(in srgb, var(--r-accent) 82%, var(--r-text));
   }
 }
 

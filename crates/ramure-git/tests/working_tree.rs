@@ -34,17 +34,17 @@ fn a_change_goes_from_the_working_tree_to_the_index_to_a_commit() {
         [change("a.txt", ChangeKind::Modified), change("notes/new.md", ChangeKind::Untracked)]
     );
 
-    let diff = file_diff(d, &unstaged[0], Side::Unstaged).unwrap();
+    let diff = file_diff(d, &unstaged[0], Side::Unstaged, false).unwrap();
     let lines: Vec<_> = diff.hunks[0].lines.iter().map(|l| (l.kind, l.text.as_str())).collect();
     assert_eq!(lines, [(LineKind::Context, "one"), (LineKind::Removed, "two"), (LineKind::Added, "2")]);
-    let new = file_diff(d, &unstaged[1], Side::Unstaged).unwrap();
+    let new = file_diff(d, &unstaged[1], Side::Unstaged, false).unwrap();
     assert_eq!(new.hunks[0].lines[0].text, "hello");
 
     actions::stage(d, &["a.txt".into(), "notes/new.md".into()]).unwrap();
     let (staged, unstaged) = staged_and_unstaged(d);
     assert_eq!(staged, [change("a.txt", ChangeKind::Modified), change("notes/new.md", ChangeKind::Added)]);
     assert!(unstaged.is_empty());
-    assert_eq!(file_diff(d, &staged[0], Side::Staged).unwrap().hunks[0].lines.len(), 3);
+    assert_eq!(file_diff(d, &staged[0], Side::Staged, false).unwrap().hunks[0].lines.len(), 3);
 
     actions::unstage(d, &["notes/new.md".into()]).unwrap();
     let (staged, unstaged) = staged_and_unstaged(d);
@@ -55,7 +55,7 @@ fn a_change_goes_from_the_working_tree_to_the_index_to_a_commit() {
     let (staged, _) = staged_and_unstaged(d);
     assert!(staged.is_empty());
     assert_eq!(commit_files(d, &id).unwrap(), [change("a.txt", ChangeKind::Modified)]);
-    let in_commit = file_diff(d, &change("a.txt", ChangeKind::Modified), Side::Commit(&id)).unwrap();
+    let in_commit = file_diff(d, &change("a.txt", ChangeKind::Modified), Side::Commit(&id), false).unwrap();
     assert_eq!(in_commit.hunks[0].lines.len(), 3);
 }
 
@@ -205,7 +205,7 @@ fn a_stash_puts_work_aside_and_brings_it_back() {
     let files = stash_files(d, &stash.id).unwrap();
     assert_eq!(files, [change("a.txt", ChangeKind::Modified), change("b.txt", ChangeKind::Untracked)]);
     let texts = |c: &Change| -> Vec<String> {
-        let diff = file_diff(d, c, Side::Stash(&stash.id)).unwrap();
+        let diff = file_diff(d, c, Side::Stash(&stash.id), false).unwrap();
         diff.hunks[0].lines.iter().map(|l| l.text.clone()).collect()
     };
     assert_eq!(texts(&files[0]), ["one", "two"]);
@@ -242,7 +242,7 @@ fn a_merge_lists_what_it_brought_to_its_first_parent_once() {
     git(d, &["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"]);
     let merge = Repository::open(d).unwrap().snapshot(10).unwrap().commits[0].id.clone();
     assert_eq!(commit_files(d, &merge).unwrap(), [change("f.txt", ChangeKind::Added)]);
-    let diff = file_diff(d, &change("f.txt", ChangeKind::Added), Side::Commit(&merge)).unwrap();
+    let diff = file_diff(d, &change("f.txt", ChangeKind::Added), Side::Commit(&merge), false).unwrap();
     assert_eq!(diff.hunks.len(), 1);
 }
 
@@ -258,4 +258,20 @@ fn line_endings_changed_alone_are_no_change() {
     write(d, "same.txt", "one\r\ntwo\r\n");
     write(d, "real.txt", "two\n");
     assert_eq!(staged_and_unstaged(d).1, [change("real.txt", ChangeKind::Modified)]);
+}
+
+#[test]
+fn a_diff_can_leave_out_changes_of_spaces_alone() {
+    let dir = repository();
+    let d = dir.path();
+    write(d, "a.txt", "if x {\n    go();\n}\n");
+    git(d, &["add", "a.txt"]);
+    commit(d, "Add a", 1);
+    write(d, "a.txt", "if x {\n        go();\n}\nstop();\n");
+    let changed = |ignore| {
+        let diff = file_diff(d, &change("a.txt", ChangeKind::Modified), Side::Unstaged, ignore).unwrap();
+        diff.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.kind != LineKind::Context).count()
+    };
+    assert_eq!(changed(false), 3);
+    assert_eq!(changed(true), 1);
 }

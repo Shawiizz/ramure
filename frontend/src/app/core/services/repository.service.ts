@@ -1,6 +1,7 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { Change, Commit, FileDiff, RefLabel, Snapshot, Stash, Where } from '../models/repository';
+import { PreferencesService } from './preferences.service';
 import { ProfilesService } from './profiles.service';
 
 /** The selection standing for the working tree's changes, above the history. */
@@ -28,6 +29,7 @@ function sourceOf(where: Where): string | null {
 @Injectable()
 export class RepositoryService {
   private readonly profiles = inject(ProfilesService);
+  private readonly preferences = inject(PreferencesService);
   readonly snapshot = signal<Snapshot | null>(null);
   readonly loading = signal(false);
   /** The last failure, as git told it. */
@@ -111,6 +113,17 @@ export class RepositoryService {
     }
     return labels;
   });
+
+  constructor() {
+    // the diff on screen read again when spaces start or stop counting
+    effect(() => {
+      this.preferences.preferences().ignoreWhitespace;
+      untracked(() => {
+        const open = this.diff();
+        if (open) this.showDiff(open.change, open.where);
+      });
+    });
+  }
 
   /** Opens the repository holding `path`; false when it cannot. */
   async open(path: string): Promise<boolean> {
@@ -205,6 +218,17 @@ export class RepositoryService {
       await this.checkout(label.name, label.kind === 'remote');
   }
 
+  /** A fetch nobody asked for (the settings' timer): a failure, offline say, stays quiet. */
+  async fetchQuietly(): Promise<void> {
+    const path = this.snapshot()?.path;
+    if (!path || this.working()) return;
+    try {
+      this.apply(await invoke<Snapshot>('fetch', { path }));
+    } catch (e) {
+      console.warn('background fetch failed', e);
+    }
+  }
+
   async exchangeWith(kind: Exchange): Promise<void> {
     this.exchange.set(kind);
     try {
@@ -238,7 +262,13 @@ export class RepositoryService {
     const same = before && this.isOpen(change, where);
     this.diff.set({ change, where, diff: same ? before.diff : null });
     try {
-      const diff = await invoke<FileDiff>('file_diff', { path, change, side: where });
+      const ignoreWhitespace = this.preferences.preferences().ignoreWhitespace;
+      const diff = await invoke<FileDiff>('file_diff', {
+        path,
+        change,
+        side: where,
+        ignoreWhitespace,
+      });
       if (this.diff()?.change === change) this.diff.set({ change, where, diff });
     } catch (e) {
       this.error.set(String(e));

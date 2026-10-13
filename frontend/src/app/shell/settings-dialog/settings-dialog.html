@@ -1,0 +1,204 @@
+<div class="backdrop" (click)="close()">
+  <div
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="'Settings' | t"
+    (click)="$event.stopPropagation()"
+    (keydown.escape)="close()"
+  >
+    <aside class="pages">
+      <h2>{{ 'Settings' | t }}</h2>
+      <nav>
+        @for (p of pages; track p.id) {
+          <button
+            class="page"
+            [class.current]="page() === p.id"
+            [attr.aria-current]="page() === p.id ? 'page' : null"
+            (click)="page.set(p.id)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              @switch (p.id) {
+                @case ('general') {
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"
+                  />
+                }
+                @case ('git') {
+                  <circle cx="7" cy="5.5" r="2" />
+                  <circle cx="7" cy="18.5" r="2" />
+                  <circle cx="17" cy="8.5" r="2" />
+                  <path d="M7 7.5v9M17 10.5c0 3.5-4.5 4-8.2 6.4" />
+                }
+                @case ('about') {
+                  <circle cx="12" cy="12" r="8.5" />
+                  <path d="M12 11v5M12 8h.01" />
+                }
+              }
+            </svg>
+            {{ p.label }}
+          </button>
+        }
+      </nav>
+    </aside>
+
+    <section class="content">
+      <header>
+        <h3>{{ title() }}</h3>
+        <button class="r-bar-btn close" (click)="close()" [attr.aria-label]="'Close' | t">
+          <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+        </button>
+      </header>
+
+      <div class="rows">
+        @switch (page()) {
+          @case ('general') {
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Language' | t }}</span>
+                <span class="help">{{ 'The interface starts again in it.' | t }}</span>
+              </div>
+              <div class="seg" role="radiogroup" [attr.aria-label]="'Language' | t">
+                @for (l of languages; track l.id) {
+                  <button
+                    role="radio"
+                    [attr.aria-checked]="language === l.id"
+                    (click)="chooseLanguage(l.id)"
+                  >
+                    {{ l.name }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Theme' | t }}</span>
+                <span class="help">{{ 'Dark, light, or as the system is.' | t }}</span>
+              </div>
+              <div class="seg" role="radiogroup" [attr.aria-label]="'Theme' | t">
+                @for (theme of themes; track theme) {
+                  <button
+                    role="radio"
+                    [attr.aria-checked]="prefs().theme === theme"
+                    (click)="set('theme', theme)"
+                  >
+                    {{ themeNames[theme] }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Reopen the tabs' | t }}</span>
+                <span class="help">{{
+                  'At startup, the repositories open when Ramure closed.' | t
+                }}</span>
+              </div>
+              <button
+                class="switch"
+                role="switch"
+                [attr.aria-checked]="prefs().reopenTabs"
+                [attr.aria-label]="'Reopen the tabs' | t"
+                (click)="set('reopenTabs', !prefs().reopenTabs)"
+              ></button>
+            </div>
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Relative dates' | t }}</span>
+                <span class="help">{{
+                  '“3 days ago” in the history, rather than the date.' | t
+                }}</span>
+              </div>
+              <button
+                class="switch"
+                role="switch"
+                [attr.aria-checked]="prefs().relativeDates"
+                [attr.aria-label]="'Relative dates' | t"
+                (click)="set('relativeDates', !prefs().relativeDates)"
+              ></button>
+            </div>
+          }
+          @case ('git') {
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Fetch on its own' | t }}</span>
+                <span class="help">{{
+                  'Brings what the remotes have new, in every open repository.' | t
+                }}</span>
+              </div>
+              <div class="seg" role="radiogroup" [attr.aria-label]="'Fetch on its own' | t">
+                @for (n of autoFetch; track n) {
+                  <button
+                    role="radio"
+                    [attr.aria-checked]="prefs().autoFetchMinutes === n"
+                    (click)="set('autoFetchMinutes', n)"
+                  >
+                    {{ minutes(n) }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Commits in the history' | t }}</span>
+                <span class="help">{{
+                  'More reach further back, and take longer to read.' | t
+                }}</span>
+              </div>
+              <div class="seg" role="radiogroup" [attr.aria-label]="'Commits in the history' | t">
+                @for (n of historyLimits; track n) {
+                  <button
+                    role="radio"
+                    [attr.aria-checked]="prefs().historyLimit === n"
+                    (click)="set('historyLimit', n)"
+                  >
+                    {{ n.toLocaleString() }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <span class="name">{{ 'Ignore spaces in diffs' | t }}</span>
+                <span class="help">{{
+                  'Lines whose indentation or spaces alone changed are left out.' | t
+                }}</span>
+              </div>
+              <button
+                class="switch"
+                role="switch"
+                [attr.aria-checked]="prefs().ignoreWhitespace"
+                [attr.aria-label]="'Ignore spaces in diffs' | t"
+                (click)="set('ignoreWhitespace', !prefs().ignoreWhitespace)"
+              ></button>
+            </div>
+          }
+          @case ('about') {
+            <div class="about">
+              <img src="logo.svg" alt="" />
+              <div>
+                <p class="title">
+                  ramure <span class="r-mono">{{ version() }}</span>
+                </p>
+                <p>{{ 'A free and open source Git client.' | t }}</p>
+              </div>
+            </div>
+            <div class="row">
+              <span class="name">Git</span>
+              <span class="value r-mono">{{ gitVersion() }}</span>
+            </div>
+            <div class="row">
+              <span class="name">{{ 'License' | t }}</span>
+              <span class="value r-mono">GPL-3.0-or-later</span>
+            </div>
+            <div class="row">
+              <span class="name">{{ 'Source code' | t }}</span>
+              <span class="value r-mono selectable">github.com/Shawiizz/ramure</span>
+            </div>
+          }
+        }
+      </div>
+    </section>
+  </div>
+</div>

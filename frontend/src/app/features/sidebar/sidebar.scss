@@ -104,7 +104,7 @@ ul {
     font-weight: 600;
     .dot {
       background: var(--r-accent);
-      box-shadow: 0 0 0 3px rgb(95 211 168 / 0.2);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--r-accent) 22%, transparent);
     }
   }
 }

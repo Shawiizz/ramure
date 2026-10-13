@@ -18,6 +18,36 @@ export interface Workspace {
   paths: string[];
 }
 
+export type Theme = 'dark' | 'light' | 'system';
+
+/** How Ramure behaves, as set in the settings. */
+export interface Preferences {
+  theme: Theme;
+  /** The tabs of the last run open again at startup. */
+  reopenTabs: boolean;
+  /** "3 days ago" rather than the date, in the history. */
+  relativeDates: boolean;
+  /** Every remote fetched this often, in minutes; never at 0. */
+  autoFetchMinutes: number;
+  /** Commits read for the history. */
+  historyLimit: number;
+  /** Diffs leave out the lines whose spaces alone changed. */
+  ignoreWhitespace: boolean;
+}
+
+export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
+export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
+export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
+
+export const DEFAULT_PREFERENCES: Preferences = {
+  theme: 'dark',
+  reopenTabs: true,
+  relativeDates: true,
+  autoFetchMinutes: 0,
+  historyLimit: 5000,
+  ignoreWhitespace: false,
+};
+
 /** What Ramure remembers from one run to the next. */
 export interface Settings {
   profiles: Profile[];
@@ -29,6 +59,7 @@ export interface Settings {
   recent: string[];
   /** The sidebar's sections and groups folded away, by key. */
   collapsed: string[];
+  preferences: Preferences;
 }
 
 export const NO_SETTINGS: Settings = {
@@ -39,6 +70,7 @@ export const NO_SETTINGS: Settings = {
   activeTab: 0,
   recent: [],
   collapsed: [],
+  preferences: DEFAULT_PREFERENCES,
 };
 
 /** Settings read back from disk: whatever does not fit is left out. */
@@ -77,6 +109,26 @@ export function parseSettings(value: unknown): Settings {
     activeTab: typeof activeTab === 'number' && Number.isInteger(activeTab) ? activeTab : 0,
     recent: strings(value['recent']),
     collapsed: strings(value['collapsed']),
+    preferences: parsePreferences(value['preferences']),
+  };
+}
+
+function parsePreferences(value: unknown): Preferences {
+  const saved = isRecord(value) ? value : {};
+  const d = DEFAULT_PREFERENCES;
+  const flag = (key: string, fallback: boolean): boolean => {
+    const v = saved[key];
+    return typeof v === 'boolean' ? v : fallback;
+  };
+  const among = <T>(key: string, choices: readonly T[], fallback: T): T =>
+    choices.includes(saved[key] as T) ? (saved[key] as T) : fallback;
+  return {
+    theme: among('theme', THEMES, d.theme),
+    reopenTabs: flag('reopenTabs', d.reopenTabs),
+    relativeDates: flag('relativeDates', d.relativeDates),
+    autoFetchMinutes: among('autoFetchMinutes', AUTO_FETCH_MINUTES, d.autoFetchMinutes),
+    historyLimit: among('historyLimit', HISTORY_LIMITS, d.historyLimit),
+    ignoreWhitespace: flag('ignoreWhitespace', d.ignoreWhitespace),
   };
 }
 

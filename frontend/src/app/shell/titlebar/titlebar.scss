@@ -127,8 +127,19 @@
 }
 
 app-workspace-menu,
-app-profile-menu {
+app-profile-menu,
+.settings {
   align-self: center;
+}
+
+.settings {
+  width: 30px;
+  padding: 0;
+  justify-content: center;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .window {

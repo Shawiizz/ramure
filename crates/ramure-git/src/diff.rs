@@ -59,8 +59,14 @@ pub enum Side<'a> {
     Stash(&'a str),
 }
 
-/// The diff of the file `change` in the repository at `dir`.
-pub fn file_diff(dir: &Path, change: &Change, side: Side) -> Result<FileDiff, Error> {
+/// The diff of the file `change` in the repository at `dir`; lines whose only change is
+/// in their spaces left out when `ignore_whitespace`.
+pub fn file_diff(
+    dir: &Path,
+    change: &Change,
+    side: Side,
+    ignore_whitespace: bool,
+) -> Result<FileDiff, Error> {
     let untracked_side = match side {
         Side::Stash(id) => format!("{id}^3"),
         _ => String::new(),
@@ -78,6 +84,9 @@ pub fn file_diff(dir: &Path, change: &Change, side: Side) -> Result<FileDiff, Er
             vec!["show", "--no-ext-diff", "--format=", "--diff-merges=first-parent", "-p", "-M", id]
         }
     };
+    if ignore_whitespace {
+        args.push("--ignore-all-space");
+    }
     args.push("--");
     args.extend(paths);
     Ok(parse(&String::from_utf8_lossy(&git(dir, &args)?)))

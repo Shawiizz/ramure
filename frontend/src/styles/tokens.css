@@ -4,6 +4,7 @@
  * white dots, as in the logo.
  */
 :root {
+  color-scheme: dark;
   --r-void: #070908;
   --r-base: #0e1211;
   --r-raised: #161b18;
@@ -29,6 +30,9 @@
   --r-lane-5: #e88ad6;
   --r-lane-6: #b4dc5a;
   --r-lane-7: #4fd0d6;
+  /* the tints of added and removed lines, as r g b for their alpha */
+  --r-added-rgb: 95 211 168;
+  --r-removed-rgb: 239 111 108;
 
   --r-font: 'Geist Variable', 'Segoe UI', sans-serif;
   --r-mono: 'Geist Mono Variable', 'Cascadia Mono', monospace;
@@ -39,4 +43,35 @@
   --r-radius: 6px;
   --r-radius-panel: 8px;
   --r-fast: 120ms;
+}
+
+/* the light theme: the same structure on near-white, the lanes darkened to read on it */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --r-void: #eef1ef;
+  --r-base: #f8faf9;
+  --r-raised: #ffffff;
+  --r-hover: #e3e9e5;
+  --r-line: #d9dfdb;
+  --r-line-strong: #c1cac4;
+
+  --r-text: #111713;
+  --r-text-2: #3a443e;
+  --r-text-3: #626e67;
+  --r-commit: #111713;
+
+  --r-accent: #12875f;
+  --r-on-accent: #ffffff;
+  --r-danger: #c63d39;
+
+  --r-lane-0: #12875f;
+  --r-lane-1: #b97a0c;
+  --r-lane-2: #5550d0;
+  --r-lane-3: #cc433d;
+  --r-lane-4: #2479bd;
+  --r-lane-5: #a9408f;
+  --r-lane-6: #5f8a12;
+  --r-lane-7: #0f8a91;
+  --r-added-rgb: 40 170 120;
+  --r-removed-rgb: 220 80 75;
 }

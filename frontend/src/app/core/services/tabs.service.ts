@@ -20,10 +20,10 @@ export class TabsService {
   /** The repositories open in tabs. */
   readonly paths = computed(() => this.tabs().flatMap((tab) => (tab.path ? [tab.path] : [])));
 
-  /** The tabs the last run left open. */
+  /** The tabs the last run left open, unless the settings say to start afresh. */
   restore() {
-    const { tabs, activeTab } = this.store.settings();
-    const restored = tabs.map(newTab);
+    const { tabs, activeTab, preferences } = this.store.settings();
+    const restored = preferences.reopenTabs ? tabs.map(newTab) : [];
     this.tabs.set(restored.length ? restored : [newTab(null)]);
     this.activeId.set((restored[activeTab] ?? this.tabs()[0]).id);
   }

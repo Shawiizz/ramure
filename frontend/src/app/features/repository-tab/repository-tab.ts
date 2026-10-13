@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, effect, inject, input, untracked } from '@angular/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { Tab, TabsService } from '../../core/services/tabs.service';
 import { Toast } from '../../shell/toast/toast';
@@ -86,6 +87,19 @@ export class RepositoryTab {
     // back in front, or back from an editor or a terminal: the repository may have changed
     effect(() => {
       if (this.active()) untracked(() => this.repository.refresh());
+    });
+    const preferences = inject(PreferencesService);
+    // the settings' timer fetches the remotes, the tab in front or not
+    effect((onCleanup) => {
+      const minutes = preferences.preferences().autoFetchMinutes;
+      if (!minutes) return;
+      const timer = setInterval(() => this.repository.fetchQuietly(), minutes * 60_000);
+      onCleanup(() => clearInterval(timer));
+    });
+    // a longer or shorter history once the settings change it (nothing to read at first)
+    effect(() => {
+      preferences.preferences().historyLimit;
+      untracked(() => this.repository.refresh());
     });
     const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
       if (focused && this.active()) this.repository.refresh();

@@ -5,11 +5,12 @@
 use ramure_git::{actions, Change, FileDiff, Identity, Repository, Side, Snapshot};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
-/// Commits read at once.
-const HISTORY_LIMIT: usize = 5000;
+/// Commits read at once, as the settings say.
+static HISTORY_LIMIT: AtomicUsize = AtomicUsize::new(5000);
 
 #[derive(Debug, thiserror::Error)]
 enum CommandError {
@@ -28,7 +29,7 @@ impl serde::Serialize for CommandError {
 type Answer<T> = Result<T, CommandError>;
 
 fn snapshot(path: &Path) -> Answer<Snapshot> {
-    Ok(Repository::open(path)?.snapshot(HISTORY_LIMIT)?)
+    Ok(Repository::open(path)?.snapshot(HISTORY_LIMIT.load(Ordering::Relaxed))?)
 }
 
 /// The repository holding `path`: its branches, tags, history and working tree.
@@ -48,14 +49,14 @@ enum Where {
 }
 
 #[tauri::command(async)]
-fn file_diff(path: PathBuf, change: Change, side: Where) -> Answer<FileDiff> {
+fn file_diff(path: PathBuf, change: Change, side: Where, ignore_whitespace: bool) -> Answer<FileDiff> {
     let side = match &side {
         Where::Unstaged => Side::Unstaged,
         Where::Staged => Side::Staged,
         Where::Commit { id } => Side::Commit(id),
         Where::Stash { id } => Side::Stash(id),
     };
-    Ok(ramure_git::file_diff(&path, &change, side)?)
+    Ok(ramure_git::file_diff(&path, &change, side, ignore_whitespace)?)
 }
 
 #[tauri::command(async)]
@@ -140,6 +141,17 @@ fn push(path: PathBuf) -> Answer<Snapshot> {
     snapshot(&path)
 }
 
+/// How many commits the history reads, from the settings.
+#[tauri::command]
+fn set_history_limit(limit: usize) {
+    HISTORY_LIMIT.store(limit.clamp(100, 100_000), Ordering::Relaxed);
+}
+
+#[tauri::command(async)]
+fn git_version() -> Answer<String> {
+    Ok(ramure_git::git_version()?)
+}
+
 /// The identity git uses when no profile says otherwise.
 #[tauri::command(async)]
 fn global_identity() -> Answer<Identity> {
@@ -188,11 +200,41 @@ fn save_settings(app: AppHandle, file: State<'_, SettingsFile>, settings: serde_
     std::fs::rename(&aside, &path).map_err(fail)
 }
 
+/// The page is an application, not a web page: no browser menu on a right click, no
+/// browser shortcuts (reload, print, find, the inspector).
+#[cfg(windows)]
+fn lock_down(app: &tauri::App) -> tauri::Result<()> {
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+    use windows_core::Interface;
+    let Some(window) = app.get_webview_window("main") else {
+        return Ok(());
+    };
+    window.with_webview(|webview| {
+        // SAFETY: COM calls on the window's own WebView2, on the thread that owns it
+        let locked = unsafe {
+            webview.controller().CoreWebView2().and_then(|core| core.Settings()).and_then(|settings| {
+                settings.SetAreDefaultContextMenusEnabled(false)?;
+                settings.cast::<ICoreWebView2Settings3>()?.SetAreBrowserAcceleratorKeysEnabled(false)
+            })
+        };
+        if let Err(e) = locked {
+            tracing::warn!("the browser menu and shortcuts stay: {e}");
+        }
+    })
+}
+
+/// Only WebView2 is locked down so far.
+#[cfg(not(windows))]
+fn lock_down(_app: &tauri::App) -> tauri::Result<()> {
+    Ok(())
+}
+
 pub fn run() {
     tracing_subscriber::fmt().init();
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(SettingsFile::default())
+        .setup(|app| Ok(lock_down(app)?))
         .invoke_handler(tauri::generate_handler![
             open_repository,
             file_diff,
@@ -211,6 +253,8 @@ pub fn run() {
             stash_pop,
             stash_drop,
             global_identity,
+            git_version,
+            set_history_limit,
             load_settings,
             save_settings,
         ])

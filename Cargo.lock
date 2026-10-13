@@ -3655,6 +3655,8 @@ dependencies = [
  "thiserror 2.0.21",
  "tracing",
  "tracing-subscriber",
+ "webview2-com",
+ "windows-core",
 ]
 
 [[package]]

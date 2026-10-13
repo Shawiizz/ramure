@@ -13,7 +13,7 @@ mod status;
 
 pub use diff::{commit_files, file_diff, FileDiff, Hunk, Line, LineKind, Side};
 pub use graph::{layout, Row};
-pub use identity::{global_identity, Identity};
+pub use identity::{git_version, global_identity, Identity};
 pub use repository::{Branch, Commit, Head, Repository, Snapshot};
 pub use stash::{stash_files, Stash};
 pub use status::{status, Change, ChangeKind, Status, Upstream};

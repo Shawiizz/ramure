@@ -10,9 +10,10 @@ import {
 } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
 import { initials } from '../../shared/avatar';
-import { when } from '../../shared/when';
+import { fullDate, shortDate, when } from '../../shared/when';
 import { GraphCell, NODE, ROW, graphWidth, laneColor, laneX } from './graph-cell';
 import { RefPill } from './ref-pill';
 
@@ -58,6 +59,10 @@ interface Unfolded {
 export class History {
   protected readonly repository = inject(RepositoryService);
   protected readonly when = when;
+  protected readonly shortDate = shortDate;
+  protected readonly fullDate = fullDate;
+  private readonly preferences = inject(PreferencesService);
+  protected readonly relativeDates = computed(() => this.preferences.preferences().relativeDates);
   protected readonly wipId = WIP;
   protected readonly row = ROW;
   protected readonly node = NODE;

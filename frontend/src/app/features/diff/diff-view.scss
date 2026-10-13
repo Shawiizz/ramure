@@ -84,11 +84,11 @@ header {
   content-visibility: auto;
   contain-intrinsic-size: auto 21px;
   &.added {
-    --tint: 95 211 168;
+    --tint: var(--r-added-rgb);
     --ink: var(--r-lane-0);
   }
   &.removed {
-    --tint: 239 111 108;
+    --tint: var(--r-removed-rgb);
     --ink: var(--r-lane-3);
   }
   &.added,

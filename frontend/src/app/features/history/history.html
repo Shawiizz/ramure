@@ -98,7 +98,9 @@
             }
           </span>
           <span class="author" [title]="line.commit.email">{{ line.commit.author }}</span>
-          <span class="date">{{ when(line.commit.time) }}</span>
+          <span class="date" [title]="fullDate(line.commit.time)">{{
+            relativeDates() ? when(line.commit.time) : shortDate(line.commit.time)
+          }}</span>
           <span class="sha r-mono">{{ line.commit.id.slice(0, 7) }}</span>
         </button>
       }

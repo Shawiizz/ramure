@@ -41,6 +41,20 @@
   </div>
 
   <app-workspace-menu />
+  <button
+    class="r-bar-btn settings"
+    [class.open]="preferences.open()"
+    (click)="preferences.open.set(true)"
+    [attr.aria-label]="'Settings (Ctrl+,)' | t"
+    [title]="'Settings (Ctrl+,)' | t"
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path
+        d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"
+      />
+    </svg>
+  </button>
   <app-profile-menu />
 
   <div class="window">
