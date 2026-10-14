@@ -212,6 +212,14 @@ export interface DiffLine {
   text: string;
 }
 
+/** A move of HEAD: the commit it went to, what moved it, when. */
+export interface RefLogEntry {
+  id: string;
+  action: string;
+  message: string;
+  time: number;
+}
+
 /** One side of a conflict: the branch checked out's, or what was brought in. */
 export type Version = 'current' | 'incoming';
 

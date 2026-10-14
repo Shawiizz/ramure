@@ -10,6 +10,7 @@ mod files;
 mod graph;
 mod identity;
 mod partial;
+mod reflog;
 mod repository;
 mod stash;
 mod status;
@@ -30,6 +31,7 @@ pub use identity::{
     SigningFormat,
 };
 pub use partial::{apply_lines, Part, Picked};
+pub use reflog::{reflog, RefLogEntry};
 pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};
 pub use stash::{stash_files, Stash};
 pub use status::{status, Change, ChangeKind, Status, Upstream};

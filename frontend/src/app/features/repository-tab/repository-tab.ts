@@ -24,6 +24,7 @@ import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
 import { RebaseDialog } from '../rebase/rebase-dialog';
 import { Palette } from '../palette/palette';
+import { Reflog } from '../reflog/reflog';
 import { RewriteDialog } from '../rewrite/rewrite-dialog';
 import { Sidebar } from '../sidebar/sidebar';
 import { StatusBar } from '../status-bar/status-bar';
@@ -60,6 +61,8 @@ import { follow } from '../../shared/drag';
             <app-history />
             @if (repository.filePanel()) {
               <app-file-panel />
+            } @else if (repository.reflogOpen()) {
+              <app-reflog />
             } @else if (repository.diff()) {
               <app-diff-view />
             }
@@ -206,7 +209,8 @@ import { follow } from '../../shared/drag';
       height: 100%;
     }
     app-diff-view,
-    app-file-panel {
+    app-file-panel,
+    app-reflog {
       position: absolute;
       inset: 0;
       background: var(--r-void);
@@ -265,6 +269,7 @@ import { follow } from '../../shared/drag';
     RebaseDialog,
     RewriteDialog,
     Palette,
+    Reflog,
   ],
 })
 export class RepositoryTab {

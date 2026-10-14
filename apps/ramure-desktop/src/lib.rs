@@ -4,8 +4,8 @@
 
 use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Sides, Step, Version};
 use ramure_git::{
-    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, RefState,
-    Repository, Side, Snapshot, View,
+    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, RefLogEntry,
+    RefState, Repository, Side, Snapshot, View,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -266,6 +266,11 @@ fn discard(path: PathBuf, files: Vec<String>, staged: bool) -> Answer<Snapshot> 
 fn discard_all(path: PathBuf) -> Answer<Snapshot> {
     actions::discard_all(&path)?;
     snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn reflog(path: PathBuf) -> Answer<Vec<RefLogEntry>> {
+    Ok(ramure_git::reflog(&path)?)
 }
 
 #[tauri::command(async)]
@@ -704,6 +709,7 @@ pub fn run() {
             stash_files,
             compare_files,
             files,
+            reflog,
             apply_lines,
             take,
             conflict_sides,

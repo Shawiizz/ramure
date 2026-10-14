@@ -373,6 +373,8 @@ export class History {
         label: t('Put the columns back as they were'),
         run: () => p.set('columns', [...DEFAULT_COLUMNS]),
       },
+      null,
+      { label: t('Show the reflog'), run: () => this.repository.openReflog() },
     ]);
   }
 

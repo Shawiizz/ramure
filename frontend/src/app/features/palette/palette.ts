@@ -323,6 +323,7 @@ export class Palette extends Picker<Choice> {
       ...command(t('Undo'), () => void r.undo(), r.undoable().length > 0),
       ...command(t('Redo'), () => void r.redo(), r.redoable().length > 0),
       ...command(t('Terminal'), () => r.toggleTerminal()),
+      ...command(t('Show the reflog'), () => r.openReflog()),
       ...command(t('Open in {editor}', { editor: m.editor() }), () => void r.openInEditor(null)),
       ...app,
     ];

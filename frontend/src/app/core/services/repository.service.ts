@@ -109,6 +109,8 @@ export class RepositoryService {
   readonly diff = signal<OpenDiff | null>(null);
   readonly filePanel = signal<FilePanel | null>(null);
   readonly comparison = signal<Comparison | null>(null);
+  /** Where HEAD has been, in place of the history. */
+  readonly reflogOpen = signal(false);
   /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
   readonly terminalOpen = signal(false);
   /** Older commits are being read, or none is left to read. */
@@ -467,7 +469,14 @@ export class RepositoryService {
   /** A file's history, blame or editor, in place of any diff. */
   openFile(panel: FilePanel) {
     this.diff.set(null);
+    this.reflogOpen.set(false);
     this.filePanel.set(panel);
+  }
+
+  openReflog() {
+    this.diff.set(null);
+    this.filePanel.set(null);
+    this.reflogOpen.set(true);
   }
 
   /** Runs a command about one file of the working tree, telling a failure. */
@@ -774,6 +783,7 @@ export class RepositoryService {
   /** Opens a file's diff, or closes it when it is the one on screen. */
   toggleDiff(change: Change, where: Where) {
     this.filePanel.set(null);
+    this.reflogOpen.set(false);
     if (this.isOpen(change, where)) this.diff.set(null);
     else this.showDiff(change, where);
   }

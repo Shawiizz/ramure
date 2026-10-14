@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { t } from '../../core/i18n/i18n';
 import { Pull } from '../../core/models/github';
-import { Change, Commit, Planned, Where } from '../../core/models/repository';
+import { Change, Commit, Planned, RefLogEntry, Where } from '../../core/models/repository';
 import { GithubService } from '../../core/services/github.service';
 import { editorName } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
@@ -582,6 +582,24 @@ export class MenusService {
   }
 
   /** Merge, rebase and interactive rebase of the current branch with `name`. */
+  /** What can be done from where HEAD once was. */
+  forReflog(entry: RefLogEntry): MenuEntry[] {
+    const r = this.repository;
+    const branch = this.current();
+    const id = entry.id.slice(0, 7);
+    return [
+      { label: t('Check out this commit'), run: () => r.checkoutCommit(entry.id) },
+      this.createBranchAt(entry.id, id),
+      {
+        label: branch ? t('Reset {branch} to this commit', { branch }) : t('Reset to this commit'),
+        disabled: !branch,
+        children: this.resets(entry.id, id),
+      },
+      null,
+      { label: t('Copy the commit’s id'), run: () => this.copy(entry.id) },
+    ];
+  }
+
   /** Compares the commit `target`, named `name`, with what is checked out. */
   private comparing(target: string | null, name: string): MenuEntry[] {
     const r = this.repository;
