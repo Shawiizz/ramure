@@ -267,26 +267,34 @@ export class RepositoryService {
     }
   }
 
-  /** Reads the repository again (it may have changed outside). */
   /**
-   * Reads the history further back, once its end is in sight; until a read brings no more
-   * commits.
+   * Reads the history further back, once its end is in sight, or to its first commit with
+   * `all`; until a read brings no more commits.
    */
-  async readMore(): Promise<void> {
+  async readMore(all = false): Promise<void> {
     const path = this.snapshot()?.path;
     if (!path || this.reading || this.readAll || this.working()) return;
     this.reading = true;
     this.activity.set('read_more');
     const before = this.snapshot()!.commits.length;
     try {
-      this.apply(await invoke<Snapshot>('read_more', { path }));
-      this.readAll = this.snapshot()!.commits.length === before;
+      this.apply(await invoke<Snapshot>('read_more', { path, all }));
+      this.readAll = all || this.snapshot()!.commits.length === before;
     } catch (e) {
       this.error.set(String(e));
     } finally {
       this.reading = false;
       this.activity.set(null);
     }
+  }
+
+  /** Selects the commit `id`, reading older commits until the history shows it. */
+  async reveal(id: string): Promise<void> {
+    const shown = () => this.snapshot()?.commits.some((c) => c.id === id) ?? false;
+    // the next page, then the rest at once: page after page, a long history reads slowly
+    if (!shown()) await this.readMore();
+    if (!shown()) await this.readMore(true);
+    if (shown()) this.select(id);
   }
 
   /** Opens the repository, or one of its files, in the editor the settings name. */
@@ -304,6 +312,7 @@ export class RepositoryService {
     }
   }
 
+  /** Reads the repository again (it may have changed outside). */
   async refresh(): Promise<void> {
     const path = this.snapshot()?.path;
     if (!path || this.working()) return;

@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import {
   Component,
   ElementRef,
@@ -131,7 +132,13 @@ export class History {
   protected readonly pictures = computed(() => this.preferences.preferences().pictures);
 
   /** The commits the search finds, by id, newest first. */
+  /** Whether the search looks in the commits' code rather than in their messages. */
+  protected readonly inCode = signal(false);
+  /** The last search in the code, and the commits it found. */
+  protected readonly found = signal<{ query: string; ids: string[] } | null>(null);
+  protected readonly seeking = signal(false);
   protected readonly matches = computed(() => {
+    if (this.inCode()) return this.found()?.ids ?? [];
     const words = this.query().toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length) return [];
     return this.lines()
@@ -394,12 +401,52 @@ export class History {
     if (!matches.length) return;
     const at = (this.at() + step + matches.length) % matches.length;
     this.at.set(at);
-    this.repository.select(matches[at]);
+    void this.repository.reveal(matches[at]);
+  }
+
+  protected typed(query: string) {
+    this.query.set(query);
+    this.at.set(0);
+    // the code is searched on Enter: through the whole history, it takes a while
+    if (!this.inCode()) this.go(0);
+  }
+
+  protected enter(back: boolean) {
+    const query = this.query().trim();
+    if (this.inCode() && query && this.found()?.query !== query) void this.searchCode(query);
+    else this.go(back ? -1 : 1);
+  }
+
+  protected searchIn(code: boolean) {
+    this.inCode.set(code);
+    this.at.set(0);
+    this.searchBox()?.nativeElement.focus();
+    if (!code) this.go(0);
+    else if (this.query().trim()) void this.searchCode(this.query().trim());
+  }
+
+  private async searchCode(query: string) {
+    const path = this.repository.snapshot()?.path;
+    if (!path) return;
+    this.seeking.set(true);
+    try {
+      const ids = await invoke<string[]>('commits_changing', { path, text: query });
+      // a later search, or none, makes this one moot
+      if (this.query().trim() !== query || !this.inCode()) return;
+      this.found.set({ query, ids });
+      this.at.set(0);
+      this.go(0);
+    } catch (e) {
+      this.repository.error.set(String(e));
+    } finally {
+      this.seeking.set(false);
+    }
   }
 
   protected closeSearch() {
     this.searching.set(false);
     this.query.set('');
+    this.found.set(null);
   }
 
   /** Several names on a commit: all of them, over the rows below, under the pointer. */

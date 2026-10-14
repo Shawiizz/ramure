@@ -104,6 +104,9 @@ export const FR: Record<string, string> = {
   'Close the tab': 'Fermer l’onglet',
   'Close the tab (Ctrl+W)': 'Fermer l’onglet (Ctrl+W)',
   'Close without saving?': 'Fermer sans enregistrer ?',
+  Code: 'Code',
+  'Code added or removed by a commit, then Enter':
+    'Du code ajouté ou retiré par un commit, puis Entrée',
   'Code coloured as its language is.': 'Le code coloré selon son langage.',
   Command: 'Commande',
   'Command palette': 'Palette de commandes',
@@ -321,6 +324,7 @@ export const FR: Record<string, string> = {
   'Merge {name} into {branch}': 'Fusionner {name} dans {branch}',
   'Merging…': 'Fusion…',
   Message: 'Message',
+  Messages: 'Messages',
   Minimize: 'Réduire',
   'Mixed: keep the changes, unstaged': 'Mixed : garder les changements, non indexés',
   Modified: 'Modifié',
@@ -474,10 +478,12 @@ export const FR: Record<string, string> = {
   'Scrolling speed': 'Vitesse de défilement',
   'Search a branch': 'Rechercher une branche',
   'Search a repository': 'Rechercher un dépôt',
+  'Search in': 'Chercher dans',
   'Search the commits': 'Rechercher dans les commits',
   'Search the commits: message, author, id':
     'Rechercher dans les commits : message, auteur, identifiant',
   'Search your GitHub repositories': 'Rechercher dans vos dépôts GitHub',
+  'Searching…': 'Recherche…',
   'Select a commit.': 'Sélectionnez un commit.',
   'Send this branch’s commits to its upstream': 'Envoyer les commits de cette branche',
   'Set the upstream of {name}…': 'Définir la branche distante de {name}…',
@@ -547,6 +553,8 @@ export const FR: Record<string, string> = {
   'the commit “{s}”': 'le commit « {s} »',
   'The commits of {branch} replayed onto {onto}, from the bottom up. Drag them to reorder.':
     'Les commits de {branch} rejoués sur {onto}, de bas en haut. Faites-les glisser pour les réordonner.',
+  'The commits that add or remove the text in their files':
+    'Les commits qui ajoutent ou retirent ce texte dans leurs fichiers',
   'The current version deletes this file.': 'La version actuelle supprime ce fichier.',
   'The date is not valid.': 'La date n’est pas valide.',
   'the deletion of {name}': 'la suppression de {name}',

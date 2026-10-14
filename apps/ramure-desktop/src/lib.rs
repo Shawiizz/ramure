@@ -59,10 +59,15 @@ fn history_length(path: &Path) -> usize {
     READ.lock().unwrap_or_else(|e| e.into_inner()).get(path).map_or(first, |&read| read.max(first))
 }
 
-/// The history of `path` read further back, by as many commits as the settings say.
+/// The history of `path` read further back, by as many commits as the settings say; to its
+/// first commit with `all`.
 #[tauri::command(async)]
-fn read_more(path: PathBuf) -> Answer<Snapshot> {
-    let more = history_length(&path) + HISTORY_LIMIT.load(Ordering::Relaxed);
+fn read_more(path: PathBuf, all: bool) -> Answer<Snapshot> {
+    let more = if all {
+        usize::MAX
+    } else {
+        history_length(&path).saturating_add(HISTORY_LIMIT.load(Ordering::Relaxed))
+    };
     READ.lock().unwrap_or_else(|e| e.into_inner()).insert(path.clone(), more);
     snapshot(&path)
 }
@@ -266,6 +271,11 @@ fn discard(path: PathBuf, files: Vec<String>, staged: bool) -> Answer<Snapshot> 
 fn discard_all(path: PathBuf) -> Answer<Snapshot> {
     actions::discard_all(&path)?;
     snapshot(&path)
+}
+
+#[tauri::command(async)]
+fn commits_changing(path: PathBuf, text: String) -> Answer<Vec<String>> {
+    Ok(ramure_git::commits_changing(&path, &text)?)
 }
 
 #[tauri::command(async)]
@@ -724,6 +734,7 @@ pub fn run() {
             compare_files,
             files,
             reflog,
+            commits_changing,
             apply_lines,
             take,
             save_files,

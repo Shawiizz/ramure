@@ -8,15 +8,34 @@
       <input
         #search
         [value]="query()"
-        (input)="query.set($any($event.target).value); at.set(0); go(0)"
-        (keydown.enter)="go($any($event).shiftKey ? -1 : 1)"
+        (input)="typed($any($event.target).value)"
+        (keydown.enter)="enter($any($event).shiftKey)"
         (keydown.escape)="closeSearch(); $event.stopPropagation()"
-        [placeholder]="'Search the commits: message, author, id' | t"
+        [placeholder]="
+          inCode()
+            ? ('Code added or removed by a commit, then Enter' | t)
+            : ('Search the commits: message, author, id' | t)
+        "
         [attr.aria-label]="'Search the commits' | t"
         spellcheck="false"
       />
+      <div class="r-seg" role="radiogroup" [attr.aria-label]="'Search in' | t">
+        <button role="radio" [attr.aria-checked]="!inCode()" (click)="searchIn(false)">
+          {{ 'Messages' | t }}
+        </button>
+        <button
+          role="radio"
+          [attr.aria-checked]="inCode()"
+          (click)="searchIn(true)"
+          [title]="'The commits that add or remove the text in their files' | t"
+        >
+          {{ 'Code' | t }}
+        </button>
+      </div>
       <span class="found r-mono">
-        @if (query().trim()) {
+        @if (seeking()) {
+          {{ 'Searching…' | t }}
+        } @else if (query().trim() && (!inCode() || found()?.query === query().trim())) {
           {{ matches().length ? at() + 1 + ' / ' + matches().length : ('None' | t) }}
         }
       </span>

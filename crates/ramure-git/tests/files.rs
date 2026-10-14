@@ -148,3 +148,28 @@ fn the_files_are_those_git_follows_or_could() {
     write(d, ".gitignore", "build/\n");
     assert_eq!(ramure_git::files(d).unwrap(), [".gitignore", "b.txt", "new.md", "src/a.rs"]);
 }
+
+#[test]
+fn the_commits_adding_or_removing_a_text_are_found_on_every_branch() {
+    let dir = repository();
+    let d = dir.path();
+    write(d, "a.rs", "fn main() {}\n");
+    git(d, &["add", "."]);
+    commit(d, "First", 1);
+    write(d, "a.rs", "fn main() { needle(); }\n");
+    git_at(d, &["commit", "-q", "-am", "Add the needle"], 2);
+    git(d, &["switch", "-q", "-c", "side"]);
+    write(d, "a.rs", "fn main() { needle(); }\n// more\n");
+    git_at(d, &["commit", "-q", "-am", "Unrelated"], 3);
+    write(d, "a.rs", "fn main() {}\n// more\n");
+    git_at(d, &["commit", "-q", "-am", "Remove the needle"], 4);
+    git(d, &["switch", "-q", "main"]);
+
+    let found = ramure_git::commits_changing(d, "needle()").unwrap();
+    let rev = |name: &str| {
+        let out = std::process::Command::new("git").args(["rev-parse", name]).current_dir(d).output();
+        String::from_utf8(out.unwrap().stdout).unwrap().trim().to_owned()
+    };
+    assert_eq!(found, [rev("side"), rev("main")]);
+    assert!(ramure_git::commits_changing(d, "nowhere").unwrap().is_empty());
+}

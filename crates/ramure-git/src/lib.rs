@@ -23,8 +23,8 @@ pub use diff::{
     commit_files, compare_files, file_diff, file_versions, FileDiff, Hunk, Line, LineKind, Side, Versions,
 };
 pub use files::{
-    blame, delete_file, file_history, files, full_path, ignore, read_file, signature, verify, write_file,
-    Blame, BlameCommit, FileCommit, Signature, Verification,
+    blame, commits_changing, delete_file, file_history, files, full_path, ignore, read_file, signature,
+    verify, write_file, Blame, BlameCommit, FileCommit, Signature, Verification,
 };
 pub use graph::{layout, Row};
 pub use identity::{

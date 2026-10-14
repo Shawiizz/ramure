@@ -25,6 +25,17 @@ pub struct FileCommit {
 /// The commits a history of one file goes back over, at most.
 const MAX_FILE_COMMITS: &str = "--max-count=2000";
 
+/// The commits found at most by a search in the code: a word that common is searched better.
+const MAX_FOUND: &str = "--max-count=1000";
+
+/// The commits, the newest first, that add or remove `text` somewhere: those that change how
+/// many times it appears, on any branch.
+pub fn commits_changing(dir: &Path, text: &str) -> Result<Vec<String>, Error> {
+    let pickaxe = format!("-S{text}");
+    let out = git(dir, &["log", "--all", "--format=%H", MAX_FOUND, &pickaxe])?;
+    Ok(String::from_utf8_lossy(&out).lines().map(str::to_owned).collect())
+}
+
 /// The commits that changed `path`, newest first, following it through its renames.
 pub fn file_history(dir: &Path, path: &str) -> Result<Vec<FileCommit>, Error> {
     let format = "--format=%x1e%H%x1f%at%x1f%an%x1f%ae%x1f%s";
