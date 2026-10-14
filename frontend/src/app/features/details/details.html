@@ -1,18 +1,25 @@
 <aside class="details" [attr.aria-label]="'Details' | t">
   @if (repository.comparison(); as comparison) {
     <header class="bar compare-bar">
-      <span class="caption">{{ 'Comparing' | t }}</span>
+      <span class="caption">{{
+        comparison.commits
+          ? ('{n} commits, their changes together' | t: { n: comparison.commits.length })
+          : ('Comparing' | t)
+      }}</span>
       <span class="space"></span>
-      <button
-        class="r-bar-btn icon"
-        (click)="repository.compare(comparison.to, comparison.from)"
-        [attr.aria-label]="'Swap them' | t"
-        [title]="'Swap them' | t"
-      >
-        <svg viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M3 5.5h10M10.5 3L13 5.5 10.5 8M13 10.5H3M5.5 8L3 10.5 5.5 13" />
-        </svg>
-      </button>
+      <!-- a span of commits reads one way only -->
+      @if (!comparison.commits) {
+        <button
+          class="r-bar-btn icon"
+          (click)="repository.compare(comparison.to, comparison.from)"
+          [attr.aria-label]="'Swap them' | t"
+          [title]="'Swap them' | t"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 5.5h10M10.5 3L13 5.5 10.5 8M13 10.5H3M5.5 8L3 10.5 5.5 13" />
+          </svg>
+        </button>
+      }
       <button
         class="r-bar-btn icon"
         (click)="repository.endComparison()"
@@ -25,7 +32,11 @@
     <div class="scroll">
       <div class="ends">
         <span class="caption">{{ 'from' | t }}</span>
-        <button class="end r-mono" (click)="repository.select(comparison.from.id)">
+        <button
+          class="end r-mono"
+          [disabled]="!inHistory(comparison.from.id)"
+          (click)="repository.select(comparison.from.id)"
+        >
           {{ comparison.from.name }}
         </button>
         <span class="caption">{{ 'to' | t }}</span>

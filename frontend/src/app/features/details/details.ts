@@ -91,6 +91,11 @@ export class Details {
   /** How many files of each kind, in the order of the list's letters. */
   protected readonly kinds = computed(() => countKinds(this.files() ?? []));
   protected readonly countKinds = countKinds;
+
+  /** Whether the history shows the commit `id`: it can be selected. */
+  protected inHistory(id: string): boolean {
+    return this.repository.snapshot()?.commits.some((c) => c.id === id) ?? false;
+  }
   protected readonly hub = inject(GithubService);
   protected readonly stateName = stateName;
   protected readonly comparedPath = computed(() => {

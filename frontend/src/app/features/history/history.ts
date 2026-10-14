@@ -76,6 +76,9 @@ interface Unfolded {
  * The history: one line per commit, its branches and tags on the left, then the graph.
  * Only the rows in view are drawn, between two spacers as tall as the rows left out.
  */
+/** git's tree with nothing in it: what the first commit's changes start from. */
+const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+
 @Component({
   selector: 'app-history',
   templateUrl: './history.html',
@@ -284,15 +287,25 @@ export class History {
   /** The commits compared, lit like the one selected. */
   protected readonly compared = computed(() => {
     const comparison = this.repository.comparison();
-    return new Set(comparison ? [comparison.from.id, comparison.to.id] : []);
+    if (!comparison) return new Set<string>();
+    return new Set(comparison.commits ?? [comparison.from.id, comparison.to.id]);
   });
 
-  /** Selects a commit; with Ctrl, compares the one selected with it. */
+  /**
+   * Selects a commit; with Ctrl, compares the one selected with it; with Shift, picks every
+   * commit from the one selected to it, their changes together.
+   */
   protected pick(event: MouseEvent, commit: Commit) {
     const r = this.repository;
     const selected = r.selected();
-    if (!(event.ctrlKey || event.metaKey) || !selected || selected.id === commit.id) {
+    const together = event.shiftKey;
+    const compared = event.ctrlKey || event.metaKey;
+    if (!(together || compared) || !selected || selected.id === commit.id) {
       r.select(commit.id);
+      return;
+    }
+    if (together) {
+      this.pickSpan(selected, commit);
       return;
     }
     // from the older to the newer, as the history lists them
@@ -302,6 +315,30 @@ export class History {
     void r.compare(
       { id: from.id, name: from.id.slice(0, 7) },
       { id: to.id, name: to.id.slice(0, 7) },
+    );
+  }
+
+  /**
+   * The commits from `one` to `other` as the history lists them, stashes left out; their
+   * changes together, from before the oldest to the newest.
+   */
+  private pickSpan(one: Commit, other: Commit) {
+    const r = this.repository;
+    const lines = this.lines();
+    const place = (c: Commit) => lines.findIndex((l) => l.commit.id === c.id);
+    const [first, last] = [place(one), place(other)].sort((a, b) => a - b);
+    const span = lines
+      .slice(first, last + 1)
+      .map((l) => l.commit)
+      .filter((c) => !r.stashes().has(c.id));
+    const newest = span[0];
+    const oldest = span[span.length - 1];
+    // the first commit of all came from nothing: its files are all new
+    const before = oldest.parents[0] ?? EMPTY_TREE;
+    void r.compare(
+      { id: before, name: oldest.parents[0] ? `${oldest.id.slice(0, 7)}^` : t('nothing') },
+      { id: newest.id, name: newest.id.slice(0, 7) },
+      span.map((c) => c.id),
     );
   }
 

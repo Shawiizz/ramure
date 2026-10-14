@@ -311,8 +311,11 @@ app-file-list {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--r-hover);
+  }
+  &:disabled {
+    cursor: default;
   }
 }
 

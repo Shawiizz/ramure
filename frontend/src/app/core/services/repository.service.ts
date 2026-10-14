@@ -59,6 +59,8 @@ export interface Comparison {
   from: Named;
   to: Named;
   files: Change[] | null;
+  /** The commits picked from one to the other (Shift+click), their changes together. */
+  commits?: string[];
 }
 
 /** An exchange with a remote, under way. */
@@ -381,13 +383,16 @@ export class RepositoryService {
     return this.change('unstage', { files });
   }
 
-  /** Compares the commit `from` with `to`: the files that differ, each diff a click away. */
-  async compare(from: Named, to: Named): Promise<void> {
+  /**
+   * Compares the commit `from` with `to`: the files that differ, each diff a click away;
+   * `commits` when they are those of a span of the history, picked together.
+   */
+  async compare(from: Named, to: Named, commits?: string[]): Promise<void> {
     const path = this.snapshot()?.path;
     if (!path) return;
     this.filePanel.set(null);
     this.diff.set(null);
-    const comparison: Comparison = { from, to, files: null };
+    const comparison: Comparison = { from, to, files: null, commits };
     this.comparison.set(comparison);
     try {
       const files = await invoke<Change[]>('compare_files', { path, from: from.id, to: to.id });
