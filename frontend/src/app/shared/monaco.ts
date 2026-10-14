@@ -173,3 +173,34 @@ export function languageOf(monaco: MonacoApi, path: string): string {
     );
   return found?.id ?? 'plaintext';
 }
+
+/** A button of a bar laid between an editor's lines. */
+export interface BarAction {
+  label: string;
+  run: () => void;
+  danger?: boolean;
+}
+
+/**
+ * A bar to lay between an editor's lines in a view zone: what it is about, then buttons.
+ * Monaco sets the zone's own display and takes the pointer from what is in it: the bar
+ * sits inside, and keeps its clicks.
+ */
+export function zoneBar(text: string, actions: BarAction[]): HTMLElement {
+  const zone = document.createElement('div');
+  zone.className = 'r-zone';
+  zone.addEventListener('pointerdown', (e) => e.stopPropagation());
+  zone.addEventListener('mousedown', (e) => e.stopPropagation());
+  const bar = zone.appendChild(document.createElement('div'));
+  bar.className = 'r-zone-bar';
+  const header = bar.appendChild(document.createElement('span'));
+  header.className = 'header';
+  header.textContent = text;
+  for (const action of actions) {
+    const button = bar.appendChild(document.createElement('button'));
+    button.textContent = action.label;
+    button.classList.toggle('danger', !!action.danger);
+    button.addEventListener('click', action.run);
+  }
+  return zone;
+}

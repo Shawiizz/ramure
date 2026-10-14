@@ -32,6 +32,8 @@ export class Staging {
 
   protected readonly status = computed(() => this.repository.snapshot()?.status);
   protected readonly openPath = computed(() => {
+    const panel = this.repository.filePanel();
+    if (panel?.mode === 'resolve') return panel.path;
     const diff = this.repository.diff();
     const kind = diff?.where.kind;
     return kind === 'staged' || kind === 'unstaged' ? diff!.change.path : null;
@@ -47,7 +49,9 @@ export class Staging {
   protected readonly left = computed(() => SUMMARY_WIDTH - this.repository.summary().length);
 
   protected show(change: Change, staged: boolean) {
-    this.repository.toggleDiff(change, { kind: staged ? 'staged' : 'unstaged' });
+    if (change.kind === 'conflicted')
+      this.repository.openFile({ mode: 'resolve', path: change.path });
+    else this.repository.toggleDiff(change, { kind: staged ? 'staged' : 'unstaged' });
   }
 
   /** Commits, then pushes: by force, once sure, when the last commit was pushed and amended. */

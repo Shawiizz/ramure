@@ -419,7 +419,17 @@ export class MenusService {
     ];
     if (!inTree) return looks;
     const staged = where.kind === 'staged';
+    const conflicted: MenuEntry[] =
+      change.kind === 'conflicted'
+        ? [
+            { label: t('Resolve the conflicts'), run: () => r.openFile({ mode: 'resolve', path }) },
+            { label: t('Keep the current version'), run: () => r.takeVersion(path, 'current') },
+            { label: t('Keep the incoming version'), run: () => r.takeVersion(path, 'incoming') },
+            null,
+          ]
+        : [];
     return [
+      ...conflicted,
       staged
         ? { label: t('Unstage'), run: () => r.unstage([path]) }
         : { label: t('Stage'), run: () => r.stage([path]) },

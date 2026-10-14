@@ -18,6 +18,7 @@ import {
   Snapshot,
   Stash,
   Step,
+  Version,
   View,
   Where,
 } from '../models/repository';
@@ -41,7 +42,7 @@ export interface OpenDiff {
 /** A file looked at on its own in the middle of the window: its history, its blame (as
  * the working tree has it, or as the commit `at` had it), or itself, edited. */
 export interface FilePanel {
-  mode: 'history' | 'blame' | 'edit';
+  mode: 'history' | 'blame' | 'edit' | 'resolve';
   path: string;
   at?: string;
 }
@@ -319,6 +320,11 @@ export class RepositoryService {
 
   unstage(files: string[]) {
     return this.change('unstage', { files });
+  }
+
+  /** Resolves a conflict with one side's version of the whole file. */
+  takeVersion(file: string, version: Version) {
+    return this.change('take', { file, version });
   }
 
   /** Stages, unstages or throws away some of a file's changed lines. */

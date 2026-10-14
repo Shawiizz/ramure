@@ -259,11 +259,11 @@ button {
     width: 3px !important;
     background: rgb(var(--r-added-rgb));
   }
-  /* above each hunk: its header and what can become of it */
-  .r-hunk-zone {
+  /* a bar between the lines (above a hunk, a conflict): what it is about, and buttons */
+  .r-zone {
     z-index: 5;
   }
-  .r-hunk-bar {
+  .r-zone-bar {
     height: 100%;
     box-sizing: border-box;
     display: flex;
@@ -302,9 +302,28 @@ button {
       }
     }
   }
-  .r-hunk-gap {
+  .r-zone-gap {
     border-block: 1px solid var(--r-line);
     background: var(--r-base);
+  }
+  /* a conflict in a file: each side tinted, its marker more */
+  .r-conflict-current {
+    background: color-mix(in srgb, var(--r-lane-4) 14%, transparent);
+  }
+  .r-conflict-current-marker {
+    background: color-mix(in srgb, var(--r-lane-4) 30%, transparent);
+  }
+  .r-conflict-incoming {
+    background: color-mix(in srgb, var(--r-lane-2) 14%, transparent);
+  }
+  .r-conflict-incoming-marker {
+    background: color-mix(in srgb, var(--r-lane-2) 30%, transparent);
+  }
+  .r-conflict-base {
+    background: color-mix(in srgb, var(--r-text-3) 8%, transparent);
+  }
+  .r-conflict-marker {
+    background: color-mix(in srgb, var(--r-text-3) 16%, transparent);
   }
   .r-gutter-removed {
     margin-left: 4px;

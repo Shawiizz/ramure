@@ -64,17 +64,17 @@ interface Opened {
   imports: [TPipe],
 })
 export class FileEditor {
-  private readonly repository = inject(RepositoryService);
-  private readonly prefs = inject(PreferencesService).preferences;
+  protected readonly repository = inject(RepositoryService);
+  protected readonly prefs = inject(PreferencesService).preferences;
   readonly path = input.required<string>();
-  private readonly loaded = injectMonaco();
+  protected readonly loaded = injectMonaco();
   private readonly readFailure = signal<string | null>(null);
   protected readonly failure = computed(() => this.loaded.failure() ?? this.readFailure());
   protected readonly opened = signal<Opened | null>(null);
   /** Edits made since the file was read or saved. */
   readonly dirty = signal(false);
   private readonly host = viewChild<ElementRef<HTMLElement>>('host');
-  private editor: Monaco.editor.IStandaloneCodeEditor | null = null;
+  protected editor: Monaco.editor.IStandaloneCodeEditor | null = null;
   /** The model's version as last saved. */
   private saved = 0;
 
@@ -154,6 +154,14 @@ export class FileEditor {
     this.saved = model.getAlternativeVersionId();
     this.dirty.set(false);
     model.onDidChangeContent(() => this.dirty.set(model.getAlternativeVersionId() !== this.saved));
+    this.opening(monaco, this.editor, model);
     this.editor.focus();
   }
+
+  /** What an editor made for a purpose adds once the file is shown. */
+  protected opening(
+    monaco: MonacoApi,
+    editor: Monaco.editor.IStandaloneCodeEditor,
+    model: Monaco.editor.ITextModel,
+  ): void {}
 }

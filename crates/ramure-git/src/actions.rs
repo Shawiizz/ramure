@@ -172,6 +172,50 @@ pub fn discard(dir: &Path, paths: &[String], staged: bool) -> Result<(), Error> 
     with_paths(dir, &["clean", "-f", "-q"], &untracked)
 }
 
+/// One side of a conflict.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Version {
+    /// What the branch checked out had: "ours".
+    Current,
+    /// What was brought in: "theirs".
+    Incoming,
+}
+
+/// Which sides of a conflict still have the file: one deleted it when the other changed it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Sides {
+    pub current: bool,
+    pub incoming: bool,
+}
+
+/// The sides of the conflict on `path` that have the file.
+pub fn conflict_sides(dir: &Path, path: &str) -> Result<Sides, Error> {
+    // `mode object stage\tpath`, a line for each side that has the file: 2 ours, 3 theirs
+    let entries = git(dir, &["ls-files", "--unmerged", "--", path])?;
+    let text = String::from_utf8_lossy(&entries);
+    let has = |stage: &str| {
+        text.lines().any(|line| line.split('\t').next().and_then(|e| e.split(' ').nth(2)) == Some(stage))
+    };
+    Ok(Sides { current: has("2"), incoming: has("3") })
+}
+
+/// Resolves the conflict on `path` with one side's version of the whole file, gone if that
+/// side deleted it; staged.
+pub fn take(dir: &Path, path: &str, version: Version) -> Result<(), Error> {
+    let sides = conflict_sides(dir, path)?;
+    let (kept, from) = match version {
+        Version::Current => (sides.current, "--ours"),
+        Version::Incoming => (sides.incoming, "--theirs"),
+    };
+    if !kept {
+        return git(dir, &["rm", "-q", "--", path]).map(drop);
+    }
+    git(dir, &["checkout", from, "--", path])?;
+    git(dir, &["add", "--", path]).map(drop)
+}
+
 /// Throws away every change, staged or not, new files included: the working tree as HEAD
 /// has it.
 pub fn discard_all(dir: &Path) -> Result<(), Error> {

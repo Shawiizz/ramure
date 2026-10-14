@@ -3,6 +3,7 @@ import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
 import { MenusService } from '../repository-tab/menus.service';
+import { ConflictEditor } from './conflict-editor';
 import { FileBlame } from './file-blame';
 import { FileEditor } from './file-editor';
 import { FileHistory } from './file-history';
@@ -53,6 +54,9 @@ import { FileHistory } from './file-history';
             }
             @case ('edit') {
               <app-file-editor [path]="panel.path" />
+            }
+            @case ('resolve') {
+              <app-conflict-editor [path]="panel.path" />
             }
           }
         </div>
@@ -125,7 +129,7 @@ import { FileHistory } from './file-history';
       inset: 0;
     }
   `,
-  imports: [TPipe, FileHistory, FileBlame, FileEditor],
+  imports: [TPipe, FileHistory, FileBlame, FileEditor, ConflictEditor],
 })
 export class FilePanel {
   protected readonly repository = inject(RepositoryService);
@@ -138,6 +142,8 @@ export class FilePanel {
         return t('File history');
       case 'blame':
         return t('File blame');
+      case 'resolve':
+        return t('Conflict');
       default:
         return t('Editing');
     }

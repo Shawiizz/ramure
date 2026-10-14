@@ -4,7 +4,7 @@
 mod common;
 
 use common::{commit, git, repository, write};
-use ramure_git::actions::{self, Reset};
+use ramure_git::actions::{self, Reset, Sides, Version};
 use ramure_git::{status, ChangeKind, Head, Operation, Repository, Snapshot};
 use std::path::Path;
 
@@ -152,4 +152,33 @@ fn a_clone_knows_where_its_remote_is() {
     let remotes = snapshot(clone.path()).remotes;
     assert_eq!(remotes.len(), 1);
     assert_eq!(remotes[0].name, "origin");
+}
+
+#[test]
+fn a_conflict_is_resolved_with_one_side_of_the_file() {
+    let dir = repository();
+    let d = dir.path();
+    clashing(d);
+    assert!(actions::merge(d, "feature", None, None).is_err());
+    actions::take(d, "a.txt", Version::Incoming).unwrap();
+    assert_eq!(std::fs::read_to_string(d.join("a.txt")).unwrap().trim_end(), "feature");
+    let s = status(d).unwrap();
+    assert!(s.conflicted.is_empty());
+    assert_eq!(s.staged[0].path, "a.txt");
+}
+
+#[test]
+fn a_conflict_with_a_deleted_file_is_resolved_by_deleting_it() {
+    let dir = repository();
+    let d = dir.path();
+    clashing(d);
+    git(d, &["switch", "-q", "feature"]);
+    git(d, &["rm", "-q", "a.txt"]);
+    git(d, &["commit", "-q", "-m", "Delete a"]);
+    git(d, &["switch", "-q", "main"]);
+    assert!(actions::merge(d, "feature", None, None).is_err());
+    assert_eq!(actions::conflict_sides(d, "a.txt").unwrap(), Sides { current: true, incoming: false });
+    actions::take(d, "a.txt", Version::Incoming).unwrap();
+    assert!(!d.join("a.txt").exists());
+    assert!(status(d).unwrap().conflicted.is_empty());
 }

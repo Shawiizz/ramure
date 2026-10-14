@@ -26,6 +26,7 @@ import {
   editorOptions,
   injectMonaco,
   restyle,
+  zoneBar,
 } from '../../shared/monaco';
 import { MenusService } from '../repository-tab/menus.service';
 
@@ -335,36 +336,25 @@ export class DiffView {
   }
 
   private bar(hunk: Hunk, parts: Part[]): HTMLElement {
-    // Monaco sets the zone's own display, and takes the pointer from what is in it
-    const zone = document.createElement('div');
-    zone.className = 'r-hunk-zone';
-    zone.addEventListener('pointerdown', (e) => e.stopPropagation());
-    zone.addEventListener('mousedown', (e) => e.stopPropagation());
-    const bar = zone.appendChild(document.createElement('div'));
-    bar.className = 'r-hunk-bar';
-    const header = document.createElement('span');
-    header.className = 'header';
-    header.textContent = hunk.header;
-    bar.append(header);
     const lines = hunk.lines
       .filter((l) => l.kind !== 'context')
       .map((l) => ({
         old: l.kind === 'removed' ? l.old : null,
         new: l.kind === 'added' ? l.new : null,
       }));
-    for (const part of parts) {
-      const button = document.createElement('button');
-      button.textContent =
-        part === 'stage'
-          ? t('Stage hunk')
-          : part === 'unstage'
-            ? t('Unstage hunk')
-            : t('Discard hunk');
-      button.classList.toggle('danger', part === 'discard');
-      button.addEventListener('click', () => this.applyLines(part, lines));
-      bar.append(button);
-    }
-    return zone;
+    const labels: Record<Part, () => string> = {
+      stage: () => t('Stage hunk'),
+      unstage: () => t('Unstage hunk'),
+      discard: () => t('Discard hunk'),
+    };
+    return zoneBar(
+      hunk.header,
+      parts.map((part) => ({
+        label: labels[part](),
+        danger: part === 'discard',
+        run: () => this.applyLines(part, lines),
+      })),
+    );
   }
 
   /** Follows the selection: the changed lines it covers, on the side it is in. */
@@ -520,7 +510,7 @@ function lineBefore(hunk: Hunk, old: boolean): number {
 /** A bar's place on the side without it, so that both sides stay level. */
 function gap(): HTMLElement {
   const gap = document.createElement('div');
-  gap.className = 'r-hunk-gap';
+  gap.className = 'r-zone-gap';
   return gap;
 }
 

@@ -208,6 +208,15 @@ export interface DiffLine {
   text: string;
 }
 
+/** One side of a conflict: the branch checked out's, or what was brought in. */
+export type Version = 'current' | 'incoming';
+
+/** Which sides of a conflict still have the file. */
+export interface Sides {
+  current: boolean;
+  incoming: boolean;
+}
+
 /** What becomes of a hunk, or of lines picked in it. */
 export type Part = 'stage' | 'unstage' | 'discard';
 

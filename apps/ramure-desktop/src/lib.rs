@@ -2,7 +2,7 @@
 //! Every command names the repository by its path; those that change it answer with its
 //! new state.
 
-use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Step};
+use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Sides, Step, Version};
 use ramure_git::{
     actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, RefState,
     Repository, Side, Snapshot, View,
@@ -354,6 +354,18 @@ fn unstage(path: PathBuf, files: Vec<String>) -> Answer<Snapshot> {
     snapshot(&path)
 }
 
+#[tauri::command(async)]
+fn conflict_sides(path: PathBuf, file: String) -> Answer<Sides> {
+    Ok(actions::conflict_sides(&path, &file)?)
+}
+
+/// Resolves a conflict with one side's version of the whole file.
+#[tauri::command(async)]
+fn take(path: PathBuf, file: String, version: Version) -> Answer<Snapshot> {
+    actions::take(&path, &file, version)?;
+    snapshot(&path)
+}
+
 /// Stages, unstages or throws away some of a file's changed lines.
 #[tauri::command(async)]
 fn apply_lines(path: PathBuf, file: String, part: Part, lines: Vec<Picked>) -> Answer<Snapshot> {
@@ -679,6 +691,8 @@ pub fn run() {
             commit_files,
             stash_files,
             apply_lines,
+            take,
+            conflict_sides,
             stage,
             unstage,
             commit,
