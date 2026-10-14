@@ -319,26 +319,41 @@ export class History {
   }
 
   /**
-   * The commits from `one` to `other` as the history lists them, stashes left out; their
-   * changes together, from before the oldest to the newest.
+   * The commits from `one` to `other` along the newer one's line, as GitKraken picks them:
+   * those it comes from that come from the older one, the other branches between left out;
+   * their changes together, from before the oldest to the newest.
    */
   private pickSpan(one: Commit, other: Commit) {
     const r = this.repository;
-    const lines = this.lines();
-    const place = (c: Commit) => lines.findIndex((l) => l.commit.id === c.id);
-    const [first, last] = [place(one), place(other)].sort((a, b) => a - b);
-    const span = lines
-      .slice(first, last + 1)
+    const commits = this.lines()
       .map((l) => l.commit)
       .filter((c) => !r.stashes().has(c.id));
+    const place = (c: Commit) => commits.findIndex((x) => x.id === c.id);
+    const [first, last] = [place(one), place(other)].sort((a, b) => a - b);
+    if (first < 0) return;
+    const span = commits.slice(first, last + 1);
     const newest = span[0];
-    const oldest = span[span.length - 1];
+    // what the newest comes from, down the span: a commit's parents follow it in the list
+    const line = new Set([newest.id]);
+    for (const commit of span) {
+      if (line.has(commit.id)) commit.parents.forEach((p) => line.add(p));
+    }
+    const older = span[span.length - 1];
+    // what comes from the older one, back up the span, when it is on that line
+    const from = new Set(line.has(older.id) ? [older.id] : []);
+    if (from.size) {
+      for (const commit of [...span].reverse()) {
+        if (commit.parents.some((p) => from.has(p))) from.add(commit.id);
+      }
+    }
+    const picked = span.filter((c) => line.has(c.id) && (!from.size || from.has(c.id)));
+    const oldest = picked[picked.length - 1];
     // the first commit of all came from nothing: its files are all new
     const before = oldest.parents[0] ?? EMPTY_TREE;
     void r.compare(
       { id: before, name: oldest.parents[0] ? `${oldest.id.slice(0, 7)}^` : t('nothing') },
       { id: newest.id, name: newest.id.slice(0, 7) },
-      span.map((c) => c.id),
+      picked.map((c) => c.id),
     );
   }
 
