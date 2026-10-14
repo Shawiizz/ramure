@@ -86,7 +86,12 @@ export interface FileMenu {
             [class.open]="change.path === openPath()"
             (contextmenu)="menu.emit({ event: $event, change })"
           >
-            <button class="file" (click)="opened.emit(change)" [title]="titleOf(change)">
+            <button
+              class="file"
+              (click)="opened.emit(change)"
+              (pointerenter)="pointed.emit(change)"
+              [title]="titleOf(change)"
+            >
               <span class="kind" [style.color]="kind(change).color">{{ kind(change).letter }}</span>
               <span class="name">{{ nameOf(change.path) }}</span>
               @if (!tree()) {
@@ -211,6 +216,8 @@ export class FileList {
   /** The file whose diff is on screen. */
   readonly openPath = input<string | null>(null);
   readonly opened = output<Change>();
+  /** A file under the pointer: its diff may be read ahead. */
+  readonly pointed = output<Change>();
   /** The action asked on a file, or on every file of a folder. */
   readonly acted = output<Change[]>();
   readonly menu = output<FileMenu>();

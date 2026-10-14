@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, afterNextRender, inject } from '@angular/core';
 import { PreferencesService } from './core/services/preferences.service';
 import { TabsService } from './core/services/tabs.service';
 import { RepositoryTab } from './features/repository-tab/repository-tab';
@@ -8,6 +8,7 @@ import { CloneDialog } from './shell/new-repository/clone-dialog';
 import { CreateDialog } from './shell/new-repository/create-dialog';
 import { Titlebar } from './shell/titlebar/titlebar';
 import { Tooltip } from './shell/tooltip/tooltip';
+import { warmMonaco } from './shared/monaco';
 
 @Component({
   selector: 'app-root',
@@ -53,6 +54,8 @@ import { Tooltip } from './shell/tooltip/tooltip';
 })
 export class App {
   constructor() {
+    // the editor the diffs are shown in, made ready while nothing else is going on
+    afterNextRender(() => requestIdleCallback(() => warmMonaco()));
     // Ctrl and the wheel zoom, as in a browser
     document.addEventListener(
       'wheel',

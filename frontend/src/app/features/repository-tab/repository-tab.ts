@@ -60,6 +60,14 @@ import { follow } from '../../shared/drag';
         <div class="center">
           <div class="main">
             <app-history />
+            <!-- the diff's editor stays between diffs, out of sight: the next one opens at once -->
+            @defer (on idle; when !!repository.diff()) {
+              <app-diff-view
+                [follows]="diffShown()"
+                [class.gone]="!diffShown()"
+                [inert]="!diffShown()"
+              />
+            }
             @if (repository.filePanel()) {
               @defer {
                 <app-file-panel />
@@ -73,8 +81,6 @@ import { follow } from '../../shared/drag';
               @defer {
                 <app-reflog />
               }
-            } @else if (repository.diff()) {
-              <app-diff-view />
             }
           </div>
           <!-- out of sight, the terminal keeps its shell -->
@@ -224,6 +230,11 @@ import { follow } from '../../shared/drag';
       display: block;
       height: 100%;
     }
+    /* kept laid out, which Monaco needs to draw at once once shown */
+    app-diff-view.gone {
+      opacity: 0;
+      pointer-events: none;
+    }
     app-diff-view,
     app-file-panel,
     app-reflog,
@@ -292,6 +303,14 @@ import { follow } from '../../shared/drag';
 })
 export class RepositoryTab {
   readonly tab = input.required<Tab>();
+  /** The diff shown in the middle: none while a panel covers it. */
+  protected readonly diffShown = computed(
+    () =>
+      !!this.repository.diff() &&
+      !this.repository.filePanel() &&
+      !this.repository.pullOpen() &&
+      !this.repository.reflogOpen(),
+  );
   /** The repository being opened, by its folder's name. */
   protected readonly opening = computed(() => splitPath(this.tab().path ?? '').name);
   readonly active = input(false);

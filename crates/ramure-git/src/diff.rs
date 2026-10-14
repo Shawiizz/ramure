@@ -4,6 +4,8 @@
 use crate::cli::{git, git_answer};
 use crate::status::{Change, ChangeKind};
 use crate::Error;
+use gix::diff::blob::{self, Algorithm, Diff, InternedInput};
+use gix::index::entry::Stage;
 use serde::Serialize;
 use std::path::Path;
 
@@ -71,23 +73,16 @@ pub fn file_diff(
     side: Side,
     ignore_whitespace: bool,
 ) -> Result<FileDiff, Error> {
-    let untracked_side = match side {
-        Side::Stash(id) => format!("{id}^3"),
-        _ => String::new(),
-    };
     let paths: Vec<&str> = change.old_path.iter().map(String::as_str).chain([change.path.as_str()]).collect();
     let mut args = match side {
         Side::Unstaged if change.kind == ChangeKind::Untracked => return untracked(dir, &change.path),
         Side::Unstaged => vec!["diff", "--no-ext-diff", "-M"],
         Side::Staged => vec!["diff", "--no-ext-diff", "-M", "--cached"],
-        // a stash keeps the new files it took along in a parent of their own, with no parent
-        Side::Stash(_) if change.kind == ChangeKind::Untracked => {
-            vec!["diff-tree", "-p", "--root", "--no-commit-id", &untracked_side]
+        // what never changes is reckoned here from its two versions, with no git to start
+        Side::Commit(_) | Side::Stash(_) | Side::Compare(..) => {
+            let versions = file_versions(dir, change, side)?;
+            return Ok(reckon(versions.old.as_deref(), versions.new.as_deref(), ignore_whitespace));
         }
-        Side::Commit(id) | Side::Stash(id) => {
-            vec!["show", "--no-ext-diff", "--format=", "--diff-merges=first-parent", "-p", "-M", id]
-        }
-        Side::Compare(from, to) => vec!["diff", "--no-ext-diff", "-M", from, to],
     };
     if ignore_whitespace {
         args.push("--ignore-space-change");
@@ -111,7 +106,9 @@ pub fn file_versions(dir: &Path, change: &Change, side: Side) -> Result<Versions
     let old_path = change.old_path.as_deref().unwrap_or(path);
     let added = matches!(change.kind, ChangeKind::Added | ChangeKind::Untracked);
     let deleted = change.kind == ChangeKind::Deleted;
-    let blob_unless = |gone: bool, spec: String| if gone { Ok(None) } else { blob(dir, &spec) };
+    // read here rather than by a git started for each version: a diff opens at once
+    let repo = gix::open(dir).map_err(Error::git)?;
+    let blob_unless = |gone: bool, spec: String| if gone { Ok(None) } else { blob(&repo, &spec) };
     let (old, new) = match side {
         Side::Unstaged => {
             // in a conflict, the index holds our side as stage 2
@@ -126,7 +123,7 @@ pub fn file_versions(dir: &Path, change: &Change, side: Side) -> Result<Versions
             (blob_unless(added, format!("{id}^:{old_path}"))?, blob_unless(deleted, format!("{id}:{path}"))?)
         }
         Side::Stash(id) if change.kind == ChangeKind::Untracked => {
-            (None, blob(dir, &format!("{id}^3:{path}"))?)
+            (None, blob(&repo, &format!("{id}^3:{path}"))?)
         }
         Side::Stash(id) => {
             (blob_unless(added, format!("{id}^1:{old_path}"))?, blob_unless(deleted, format!("{id}:{path}"))?)
@@ -138,10 +135,32 @@ pub fn file_versions(dir: &Path, change: &Change, side: Side) -> Result<Versions
     Ok(Versions { old, new })
 }
 
-/// The blob `spec` names (`HEAD:src/a.rs`), none when there is no such blob.
-fn blob(dir: &Path, spec: &str) -> Result<Option<Vec<u8>>, Error> {
-    let bytes = git_answer(dir, &["cat-file", "blob", spec])?;
-    bytes.map(too_big).transpose()
+/// The blob `spec` names, in a tree (`HEAD:src/a.rs`) or at a stage of the index
+/// (`:2:src/a.rs`); none when there is no such blob.
+fn blob(repo: &gix::Repository, spec: &str) -> Result<Option<Vec<u8>>, Error> {
+    let id = match spec.strip_prefix(':').and_then(|rest| rest.split_once(':')) {
+        Some((stage, path)) => {
+            let stage = match stage {
+                "1" => Stage::Base,
+                "2" => Stage::Ours,
+                "3" => Stage::Theirs,
+                _ => Stage::Unconflicted,
+            };
+            let index = repo.index_or_empty().map_err(Error::git)?;
+            match index.entry_by_path_and_stage(path.into(), stage) {
+                Some(entry) => entry.id,
+                None => return Ok(None),
+            }
+        }
+        None => match repo.rev_parse_single(spec) {
+            Ok(id) => id.detach(),
+            Err(_) => return Ok(None),
+        },
+    };
+    match repo.find_object(id) {
+        Ok(object) if object.kind == gix::object::Kind::Blob => too_big(object.detach().data).map(Some),
+        _ => Ok(None),
+    }
 }
 
 /// The file in the working tree, none when it is not there.
@@ -254,6 +273,130 @@ fn untracked(dir: &Path, path: &str) -> Result<FileDiff, Error> {
     let header = format!("@@ -0,0 +1,{total} @@");
     let hunks = if lines.is_empty() { Vec::new() } else { vec![Hunk { header, lines }] };
     Ok(FileDiff { binary: false, hunks, truncated: total > MAX_LINES })
+}
+
+/// Lines of context around each change, as git's diffs show them.
+const CONTEXT: u32 = 3;
+
+/// The changes from `old` to `new` as git would list them: Myers' algorithm, its lines slid
+/// to read well, three lines of context, hunks that close joined; spaces changed in amount
+/// left out with `ignore_whitespace`, as git's `--ignore-space-change` does.
+fn reckon(old: Option<&[u8]>, new: Option<&[u8]>, ignore_whitespace: bool) -> FileDiff {
+    let (old, new) = (old.unwrap_or_default(), new.unwrap_or_default());
+    if old.contains(&0) || new.contains(&0) {
+        return FileDiff { binary: true, ..FileDiff::default() };
+    }
+    let (old, new) = (String::from_utf8_lossy(old), String::from_utf8_lossy(new));
+    let (old, new): (Vec<&str>, Vec<&str>) = (old.lines().collect(), new.lines().collect());
+    let key = |line: &&str| if ignore_whitespace { spaces_as_one(line) } else { (*line).to_owned() };
+    let mut input = InternedInput::default();
+    input.update_before(old.iter().map(key));
+    input.update_after(new.iter().map(key));
+    let mut diff = Diff::compute(Algorithm::Myers, &input);
+    diff.postprocess_lines(&input);
+    // the changes, joined when the context of one reaches the next's
+    let mut groups: Vec<Vec<blob::Hunk>> = Vec::new();
+    for change in diff.hunks() {
+        match groups.last_mut() {
+            Some(group) if change.before.start - group.last().map_or(0, |c| c.before.end) <= 2 * CONTEXT => {
+                group.push(change)
+            }
+            _ => groups.push(vec![change]),
+        }
+    }
+    let mut file = FileDiff::default();
+    let mut count = 0;
+    for group in groups {
+        let (first, last) = (&group[0], &group[group.len() - 1]);
+        let from = first.before.start.saturating_sub(CONTEXT);
+        let to = (last.before.end + CONTEXT).min(old.len() as u32);
+        // where the new version is at the hunk's first line: as far from the change as the old
+        let shift = first.after.start as i64 - first.before.start as i64;
+        let mut lines = Vec::new();
+        let (mut o, mut n) = (from, (from as i64 + shift) as u32);
+        let context_to = |end: u32, lines: &mut Vec<Line>, o: &mut u32, n: &mut u32| {
+            while *o < end {
+                lines.push(Line {
+                    kind: LineKind::Context,
+                    old: Some(*o + 1),
+                    new: Some(*n + 1),
+                    text: old[*o as usize].to_owned(),
+                });
+                *o += 1;
+                *n += 1;
+            }
+        };
+        for change in &group {
+            context_to(change.before.start, &mut lines, &mut o, &mut n);
+            for i in change.before.clone() {
+                lines.push(Line {
+                    kind: LineKind::Removed,
+                    old: Some(i + 1),
+                    new: None,
+                    text: old[i as usize].to_owned(),
+                });
+            }
+            for i in change.after.clone() {
+                lines.push(Line {
+                    kind: LineKind::Added,
+                    old: None,
+                    new: Some(i + 1),
+                    text: new[i as usize].to_owned(),
+                });
+            }
+            (o, n) = (change.before.end, change.after.end);
+        }
+        context_to(to, &mut lines, &mut o, &mut n);
+        if count + lines.len() > MAX_LINES {
+            file.truncated = true;
+            lines.truncate(MAX_LINES - count);
+        }
+        count += lines.len();
+        let old_count = lines.iter().filter(|l| l.old.is_some()).count();
+        let new_count = lines.iter().filter(|l| l.new.is_some()).count();
+        let start = |first: Option<u32>, count: usize| {
+            if count == 0 {
+                first.map_or(0, |f| f - 1)
+            } else {
+                first.unwrap_or(0)
+            }
+        };
+        let old_start = start(lines.iter().find_map(|l| l.old).or(Some(from + 1)), old_count);
+        let new_start = start(lines.iter().find_map(|l| l.new).or(Some(n + 1)), new_count);
+        // a range of one line is its number alone, as git writes it
+        let range = |start: u32, count: usize| {
+            if count == 1 {
+                start.to_string()
+            } else {
+                format!("{start},{count}")
+            }
+        };
+        let header = format!("@@ -{} +{} @@", range(old_start, old_count), range(new_start, new_count));
+        file.hunks.push(Hunk { header, lines });
+        if file.truncated {
+            break;
+        }
+    }
+    file
+}
+
+/// A line as `--ignore-space-change` compares it: no spaces at its end, every run of them
+/// as one.
+fn spaces_as_one(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut spaces = false;
+    for c in line.trim_end().chars() {
+        if c.is_whitespace() {
+            spaces = true;
+            continue;
+        }
+        if spaces {
+            out.push(' ');
+            spaces = false;
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// Reads a unified diff of one file.

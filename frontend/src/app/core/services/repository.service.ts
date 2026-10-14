@@ -84,6 +84,9 @@ const MAX_CHECKED = 40;
 /** How long checks still running are left before being asked for again. */
 const CHECKS_AGAIN_MS = 30_000;
 
+/** The diffs and versions of files that never change kept at most, as read ahead. */
+const READ_AHEAD = 60;
+
 /** Actions undone at most, back from the last. */
 const UNDO_DEPTH = 50;
 
@@ -121,6 +124,11 @@ export class RepositoryService {
   readonly diff = signal<OpenDiff | null>(null);
   readonly filePanel = signal<FilePanel | null>(null);
   readonly comparison = signal<Comparison | null>(null);
+  /**
+   * Files of commits, stashes and comparisons, their diffs and versions read ahead or
+   * before: they never change. The last ones only, by what they are read with.
+   */
+  private readonly readAhead = new Map<string, Promise<unknown>>();
   /** Where HEAD has been, in place of the history. */
   readonly reflogOpen = signal(false);
   /** A pull request read, in place of the history. */
@@ -889,6 +897,57 @@ export class RepositoryService {
     }
   }
 
+  /** A file's changes as git lists them, as `where` holds them. */
+  fileDiff(change: Change, where: Where): Promise<FileDiff> {
+    const ignoreWhitespace = this.preferences.preferences().ignoreWhitespace;
+    return this.once(`diff ${ignoreWhitespace}`, change, where, () =>
+      invoke<FileDiff>('file_diff', {
+        path: this.snapshot()?.path,
+        change,
+        side: where,
+        ignoreWhitespace,
+      }),
+    );
+  }
+
+  /** A file's two versions, as `file_versions` answers them, as `where` holds them. */
+  fileVersions(change: Change, where: Where): Promise<ArrayBuffer> {
+    return this.once('versions', change, where, () =>
+      invoke<ArrayBuffer>('file_versions', { path: this.snapshot()?.path, change, side: where }),
+    );
+  }
+
+  /** Starts reading a file's diff before it is asked for: under the pointer, it soon is. */
+  readAheadOf(change: Change, where: Where) {
+    if (!sourceOf(where)) return;
+    void this.fileDiff(change, where).catch(() => {});
+    void this.fileVersions(change, where).catch(() => {});
+  }
+
+  /**
+   * What `read` answers, read once for a file that never changes (one of a commit, a stash,
+   * a comparison) and kept a while; read each time for one of the working tree.
+   */
+  private once<T>(what: string, change: Change, where: Where, read: () => Promise<T>): Promise<T> {
+    const source = sourceOf(where);
+    if (!source) return read();
+    const key = `${this.snapshot()?.path}|${source}|${change.oldPath}|${change.path}|${what}`;
+    const kept = this.readAhead.get(key) as Promise<T> | undefined;
+    if (kept) {
+      // the last asked for goes to the end: the first ones go first
+      this.readAhead.delete(key);
+      this.readAhead.set(key, kept);
+      return kept;
+    }
+    const reading = read();
+    reading.catch(() => this.readAhead.delete(key));
+    this.readAhead.set(key, reading);
+    while (this.readAhead.size > READ_AHEAD) {
+      this.readAhead.delete(this.readAhead.keys().next().value!);
+    }
+    return reading;
+  }
+
   /** Opens a file's diff, or closes it when it is the one on screen. */
   toggleDiff(change: Change, where: Where) {
     this.filePanel.set(null);
@@ -915,13 +974,7 @@ export class RepositoryService {
     const same = before && this.isOpen(change, where);
     this.diff.set({ change, where, diff: same ? before.diff : null });
     try {
-      const ignoreWhitespace = this.preferences.preferences().ignoreWhitespace;
-      const diff = await invoke<FileDiff>('file_diff', {
-        path,
-        change,
-        side: where,
-        ignoreWhitespace,
-      });
+      const diff = await this.fileDiff(change, where);
       if (this.diff()?.change === change) this.diff.set({ change, where, diff });
     } catch (e) {
       this.error.set(String(e));

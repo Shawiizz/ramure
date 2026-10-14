@@ -17,9 +17,43 @@ export function loadMonaco(): Promise<MonacoApi> {
     style.href = `${BASE}/editor/editor.main.css`;
     document.head.append(style);
     loader.config({ paths: { vs: BASE } });
-    return (await loader.init()) as MonacoApi;
+    const monaco = (await loader.init()) as MonacoApi;
+    // code only read, or edited a moment, needs no language service checking it: TypeScript's
+    // would start a worker of its own and keep the processor busy for nothing
+    const quiet = {
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
+      noSuggestionDiagnostics: true,
+    };
+    monaco.typescript.typescriptDefaults.setDiagnosticsOptions(quiet);
+    monaco.typescript.javascriptDefaults.setDiagnosticsOptions(quiet);
+    return monaco;
   })();
   return loading;
+}
+
+/**
+ * Loads Monaco and starts its diff worker ahead, out of sight, once the app is idle: the
+ * first diff opens as fast as the next ones.
+ */
+export function warmMonaco(): void {
+  void loadMonaco().then((monaco) => {
+    const host = document.createElement('div');
+    host.style.cssText = 'position: fixed; left: -10000px; top: 0; width: 400px; height: 200px';
+    document.body.append(host);
+    const editor = monaco.editor.createDiffEditor(host, { readOnly: true, automaticLayout: false });
+    const original = monaco.editor.createModel('a\n', 'plaintext');
+    const modified = monaco.editor.createModel('b\n', 'plaintext');
+    const computed = editor.onDidUpdateDiff(() => {
+      if (!editor.getLineChanges()) return;
+      computed.dispose();
+      editor.dispose();
+      original.dispose();
+      modified.dispose();
+      host.remove();
+    });
+    editor.setModel({ original, modified });
+  });
 }
 
 /**

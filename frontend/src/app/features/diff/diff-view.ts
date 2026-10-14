@@ -6,18 +6,19 @@ import {
   computed,
   effect,
   inject,
+  input,
+  linkedSignal,
   signal,
   untracked,
   viewChild,
 } from '@angular/core';
-import { invoke } from '@tauri-apps/api/core';
 import type * as Monaco from 'monaco-editor';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Change, FileDiff, Hunk, Part, Picked, Where } from '../../core/models/repository';
 import { DiffLayout, DiffMode, Preferences } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
-import { RepositoryService } from '../../core/services/repository.service';
+import { OpenDiff, RepositoryService } from '../../core/services/repository.service';
 import { ENCODINGS, Encoding, decode, guessEncoding } from '../../shared/encoding';
 import {
   MonacoApi,
@@ -92,7 +93,14 @@ export class DiffView {
   private readonly menus = inject(MenusService);
   private readonly preferences = inject(PreferencesService);
   protected readonly prefs = this.preferences.preferences;
-  protected readonly open = this.repository.diff;
+  /** Whether this view shows the repository's diff: one kept out of sight follows none. */
+  readonly follows = input(true);
+  protected readonly open = computed(() => (this.follows() ? this.repository.diff() : null));
+  /** The diff on screen, or the last one while out of sight: its editor stays for the next. */
+  protected readonly current = linkedSignal<OpenDiff | null, OpenDiff | null>({
+    source: this.open,
+    computation: (open, previous) => open ?? previous?.value ?? null,
+  });
   protected readonly encodings = ENCODINGS;
   /** The encoding picked for this file; guessed until then. */
   protected readonly picked = signal<Encoding | null>(null);
@@ -184,11 +192,18 @@ export class DiffView {
       const diff = this.open()?.diff ?? null;
       if (monaco && host && texts) untracked(() => this.show(monaco, host, texts, prefs, diff));
     });
+    // the editor made before any diff, while nothing is shown: the first one opens at once
+    effect(() => {
+      const monaco = this.monaco();
+      const host = this.host()?.nativeElement;
+      if (monaco && host) untracked(() => (this.shown ??= this.create(monaco, host, this.prefs())));
+    });
     inject(DestroyRef).onDestroy(() => this.dispose());
   }
 
   @HostListener('document:keydown.escape', ['$event'])
   protected escape(event: Event) {
+    if (!this.open()) return;
     // Escape in the editor's search closes the search first
     if ((event.target as HTMLElement).closest('.find-widget')) return;
     if (!this.repository.active()) return;
@@ -260,11 +275,7 @@ export class DiffView {
       return;
     }
     try {
-      const buffer = await invoke<ArrayBuffer>('file_versions', {
-        path,
-        change: target.change,
-        side: target.where,
-      });
+      const buffer = await this.repository.fileVersions(target.change, target.where);
       if (this.target() !== target) return;
       // the last file stays on screen until this one is read
       if (this.versions()?.target.change.path !== target.change.path) this.picked.set(null);

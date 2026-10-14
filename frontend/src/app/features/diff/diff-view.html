@@ -1,5 +1,5 @@
-@if (open(); as open) {
-  <section class="diff">
+<section class="diff">
+  @if (current(); as open) {
     <header class="head">
       <div class="file">
         <span class="path r-mono">{{ open.change.path }}</span>
@@ -168,17 +168,17 @@
         </div>
       </div>
     }
+  }
 
-    <div class="body">
-      <div class="editor" #editor [hidden]="!!image()"></div>
-      @if (image(); as image) {
-        <app-image-diff [path]="image.target.change.path" [old]="image.old" [new]="image.new" />
-      }
-      @if (failure(); as failure) {
-        <p class="note error">{{ failure }}</p>
-      } @else if (!ready()) {
-        <p class="note">{{ 'Reading…' | t }}</p>
-      }
-    </div>
-  </section>
-}
+  <div class="body">
+    <div class="editor" #editor [hidden]="!!image()"></div>
+    @if (image(); as image) {
+      <app-image-diff [path]="image.target.change.path" [old]="image.old" [new]="image.new" />
+    }
+    @if (failure(); as failure) {
+      <p class="note error">{{ failure }}</p>
+    } @else if (!ready()) {
+      <p class="note">{{ 'Reading…' | t }}</p>
+    }
+  </div>
+</section>

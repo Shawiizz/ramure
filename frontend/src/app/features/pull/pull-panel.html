@@ -152,6 +152,7 @@
               [tree]="tree()"
               [openPath]="openPath()"
               (opened)="openFile($event)"
+              (pointed)="repository.readAheadOf($event, $any(where))"
               (menu)="menus.open($event.event, menus.forFile($event.change, $any(where)))"
             />
           } @else if (failure(); as failure) {

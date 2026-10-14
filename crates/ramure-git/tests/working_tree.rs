@@ -444,3 +444,88 @@ fn two_commits_are_compared_file_by_file() {
     let versions = file_versions(d, &files[2], Side::Compare("HEAD~1", "HEAD")).unwrap();
     assert_eq!((versions.old, versions.new), (None, Some(b"hi\n".to_vec())));
 }
+
+/// The hunks' `@@ -a,b +c,d @@` and their lines, from git itself.
+fn git_hunks(
+    dir: &std::path::Path,
+    id: &str,
+    path: &str,
+    ignore_whitespace: bool,
+) -> Vec<(String, Vec<String>)> {
+    let mut args = vec!["show", "--format=", "--no-ext-diff", "-U3", id];
+    if ignore_whitespace {
+        args.push("--ignore-space-change");
+    }
+    args.extend(["--", path]);
+    let out = std::process::Command::new("git").args(&args).current_dir(dir).output().unwrap();
+    let mut hunks: Vec<(String, Vec<String>)> = Vec::new();
+    for line in String::from_utf8(out.stdout).unwrap().lines() {
+        if line.starts_with("@@") {
+            let header = line.split(' ').take(4).collect::<Vec<_>>().join(" ");
+            hunks.push((header, Vec::new()));
+        } else if let Some((_, lines)) = hunks.last_mut() {
+            if !line.starts_with('\\') {
+                lines.push(line.to_owned());
+            }
+        }
+    }
+    hunks
+}
+
+#[test]
+fn a_commits_diff_reckoned_here_is_gits_own() {
+    let dir = repository();
+    let d = dir.path();
+    git(d, &["config", "core.autocrlf", "false"]);
+    let before: Vec<String> = (1..=60).map(|i| format!("line {i}")).collect();
+    write(d, "a.txt", &(before.join("\n") + "\n"));
+    write(d, "gone.txt", "bye\n");
+    git(d, &["add", "."]);
+    commit(d, "First", 1);
+    let mut after = before.clone();
+    after[2] = "line three".into();
+    after[9] = "line  10   ".into();
+    after.insert(20, "new A".into());
+    after.insert(21, "new B".into());
+    after.remove(36);
+    after[50] = "near the end".into();
+    after[52] = "and again".into();
+    write(d, "a.txt", &(after.join("\n") + "\n"));
+    std::fs::remove_file(d.join("gone.txt")).unwrap();
+    write(d, "new.txt", "one\ntwo");
+    git(d, &["add", "-A"]);
+    commit(d, "Second", 2);
+    let id = String::from_utf8(
+        std::process::Command::new("git").args(["rev-parse", "HEAD"]).current_dir(d).output().unwrap().stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+
+    for change in commit_files(d, &id).unwrap() {
+        for ignore_whitespace in [false, true] {
+            let reckoned = file_diff(d, &change, Side::Commit(&id), ignore_whitespace).unwrap();
+            let ours: Vec<(String, Vec<String>)> = reckoned
+                .hunks
+                .iter()
+                .map(|h| {
+                    let lines = h.lines.iter().map(|l| {
+                        let sign = match l.kind {
+                            LineKind::Added => '+',
+                            LineKind::Removed => '-',
+                            LineKind::Context => ' ',
+                        };
+                        format!("{sign}{}", l.text)
+                    });
+                    (h.header.clone(), lines.collect())
+                })
+                .collect();
+            assert_eq!(
+                ours,
+                git_hunks(d, &id, &change.path, ignore_whitespace),
+                "{} {ignore_whitespace}",
+                change.path
+            );
+        }
+    }
+}
