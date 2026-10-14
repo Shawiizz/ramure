@@ -11,15 +11,18 @@ fn home() -> Option<PathBuf> {
 }
 
 /// A program of git's run with no window, its output gathered.
+#[cfg(windows)]
 fn quiet(program: PathBuf) -> Command {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let mut command = Command::new(program);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        command.creation_flags(CREATE_NO_WINDOW);
-    }
+    command.creation_flags(CREATE_NO_WINDOW);
     command
+}
+
+#[cfg(not(windows))]
+fn quiet(program: PathBuf) -> Command {
+    Command::new(program)
 }
 
 /// The private key every git command, and the terminals opened from now on, sign in with;
