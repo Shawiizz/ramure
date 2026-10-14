@@ -133,3 +133,8 @@
 .r-bar-btn.danger:hover {
   color: rgb(var(--r-removed-rgb));
 }
+
+app-image-diff {
+  position: absolute;
+  inset: 0;
+}

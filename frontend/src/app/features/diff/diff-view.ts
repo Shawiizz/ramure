@@ -29,6 +29,7 @@ import {
   zoneBar,
 } from '../../shared/monaco';
 import { MenusService } from '../repository-tab/menus.service';
+import { ImageDiff, isImage } from './image-diff';
 
 type CodeEditor = Monaco.editor.ICodeEditor;
 
@@ -84,7 +85,7 @@ const LAYOUTS: Record<DiffLayout, Monaco.editor.IDiffEditorOptions> = {
   selector: 'app-diff-view',
   templateUrl: './diff-view.html',
   styleUrl: './diff-view.scss',
-  imports: [TPipe],
+  imports: [TPipe, ImageDiff],
 })
 export class DiffView {
   protected readonly repository = inject(RepositoryService);
@@ -156,10 +157,15 @@ export class DiffView {
   });
   protected readonly encoding = computed(() => this.picked() ?? this.guessed());
   protected readonly ready = computed(() => !!this.versions() && !!this.monaco());
+  /** The versions of an image, shown as images rather than as text. */
+  protected readonly image = computed(() => {
+    const v = this.versions();
+    return v && isImage(v.target.change.path) ? v : null;
+  });
 
   private readonly texts = computed(() => {
     const v = this.versions();
-    if (!v) return null;
+    if (!v || this.image()) return null;
     const encoding = this.encoding();
     const text = (bytes: Uint8Array | null) => (bytes ? decode(bytes, encoding) : '');
     return { old: text(v.old), new: text(v.new) };

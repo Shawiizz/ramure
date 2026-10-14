@@ -8,27 +8,29 @@
         }
       </div>
       <span class="where">{{ where() }}</span>
-      @if (open.diff) {
+      @if (open.diff && !open.diff.binary) {
         <span class="counts r-mono">
           <span class="plus">+{{ counts().added }}</span>
           <span class="minus">−{{ counts().removed }}</span>
         </span>
       }
-      <select
-        class="encoding"
-        [value]="picked() ?? 'guess'"
-        (change)="pickEncoding($any($event.target).value)"
-        [title]="'How the file’s bytes are read' | t"
-      >
-        <option value="guess">
-          {{ 'Guess' | t }} ({{
-            guessed() === 'binary' ? ('Binary' | t) : guessed().toUpperCase()
-          }})
-        </option>
-        @for (e of encodings; track e.id) {
-          <option [value]="e.id">{{ e.id === 'binary' ? ('Binary' | t) : e.name }}</option>
-        }
-      </select>
+      @if (!image()) {
+        <select
+          class="encoding"
+          [value]="picked() ?? 'guess'"
+          (change)="pickEncoding($any($event.target).value)"
+          [title]="'How the file’s bytes are read' | t"
+        >
+          <option value="guess">
+            {{ 'Guess' | t }} ({{
+              guessed() === 'binary' ? ('Binary' | t) : guessed().toUpperCase()
+            }})
+          </option>
+          @for (e of encodings; track e.id) {
+            <option [value]="e.id">{{ e.id === 'binary' ? ('Binary' | t) : e.name }}</option>
+          }
+        </select>
+      }
       <button
         class="r-bar-btn icon"
         (click)="close()"
@@ -39,134 +41,139 @@
       </button>
     </header>
 
-    <div class="tools">
-      <div class="r-seg" role="radiogroup" [attr.aria-label]="'View' | t">
-        <button
-          role="radio"
-          [attr.aria-checked]="prefs().diffMode === 'file'"
-          (click)="set('diffMode', 'file')"
-        >
-          {{ 'File view' | t }}
-        </button>
-        <button
-          role="radio"
-          [attr.aria-checked]="prefs().diffMode === 'diff'"
-          (click)="set('diffMode', 'diff')"
-        >
-          {{ 'Diff view' | t }}
-        </button>
-      </div>
+    @if (!image()) {
+      <div class="tools">
+        <div class="r-seg" role="radiogroup" [attr.aria-label]="'View' | t">
+          <button
+            role="radio"
+            [attr.aria-checked]="prefs().diffMode === 'file'"
+            (click)="set('diffMode', 'file')"
+          >
+            {{ 'File view' | t }}
+          </button>
+          <button
+            role="radio"
+            [attr.aria-checked]="prefs().diffMode === 'diff'"
+            (click)="set('diffMode', 'diff')"
+          >
+            {{ 'Diff view' | t }}
+          </button>
+        </div>
 
-      <div class="group">
-        <button
-          class="r-bar-btn icon"
-          (click)="go(false)"
-          [attr.aria-label]="'Previous change' | t"
-          [title]="'Previous change' | t"
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
-        </button>
-        <button
-          class="r-bar-btn icon"
-          (click)="go(true)"
-          [attr.aria-label]="'Next change' | t"
-          [title]="'Next change' | t"
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4" /></svg>
-        </button>
-      </div>
-
-      @if (selected().length) {
         <div class="group">
-          @for (part of parts(); track part) {
+          <button
+            class="r-bar-btn icon"
+            (click)="go(false)"
+            [attr.aria-label]="'Previous change' | t"
+            [title]="'Previous change' | t"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>
+          </button>
+          <button
+            class="r-bar-btn icon"
+            (click)="go(true)"
+            [attr.aria-label]="'Next change' | t"
+            [title]="'Next change' | t"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4" /></svg>
+          </button>
+        </div>
+
+        @if (selected().length) {
+          <div class="group">
+            @for (part of parts(); track part) {
+              <button
+                class="r-bar-btn"
+                [class.danger]="part === 'discard'"
+                (click)="applyLines(part, selected())"
+              >
+                {{ partLabel(part) }}
+              </button>
+            }
+          </div>
+        }
+
+        <span class="space"></span>
+
+        @if (prefs().diffMode === 'diff') {
+          <div class="group" role="radiogroup" [attr.aria-label]="'Layout' | t">
             <button
-              class="r-bar-btn"
-              [class.danger]="part === 'discard'"
-              (click)="applyLines(part, selected())"
+              class="r-bar-btn icon"
+              role="radio"
+              [class.open]="prefs().diffLayout === 'hunks'"
+              [attr.aria-checked]="prefs().diffLayout === 'hunks'"
+              (click)="set('diffLayout', 'hunks')"
+              [title]="'The changes alone, with a little context' | t"
             >
-              {{ partLabel(part) }}
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="11" height="4" rx="1" />
+                <rect x="2.5" y="9.5" width="11" height="4" rx="1" />
+              </svg>
+            </button>
+            <button
+              class="r-bar-btn icon"
+              role="radio"
+              [class.open]="prefs().diffLayout === 'inline'"
+              [attr.aria-checked]="prefs().diffLayout === 'inline'"
+              (click)="set('diffLayout', 'inline')"
+              [title]="'The whole file, changes inline' | t"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M3 3.5h10M3 6.5h10M3 9.5h10M3 12.5h7" />
+              </svg>
+            </button>
+            <button
+              class="r-bar-btn icon"
+              role="radio"
+              [class.open]="prefs().diffLayout === 'split'"
+              [attr.aria-checked]="prefs().diffLayout === 'split'"
+              (click)="set('diffLayout', 'split')"
+              [title]="'Before and after, side by side' | t"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="11" height="11" rx="1" />
+                <path d="M8 2.5v11" />
+              </svg>
+            </button>
+          </div>
+        }
+
+        <div class="group">
+          @if (prefs().diffMode === 'diff') {
+            <button
+              class="r-bar-btn icon"
+              role="switch"
+              [class.open]="prefs().ignoreWhitespace"
+              [attr.aria-checked]="prefs().ignoreWhitespace"
+              (click)="set('ignoreWhitespace', !prefs().ignoreWhitespace)"
+              [title]="'Ignore spaces at the start and end of lines' | t"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M9.5 13V3M12 13V3M12 3H7.5a2.75 2.75 0 0 0 0 5.5h2" />
+              </svg>
             </button>
           }
-        </div>
-      }
-
-      <span class="space"></span>
-
-      @if (prefs().diffMode === 'diff') {
-        <div class="group" role="radiogroup" [attr.aria-label]="'Layout' | t">
-          <button
-            class="r-bar-btn icon"
-            role="radio"
-            [class.open]="prefs().diffLayout === 'hunks'"
-            [attr.aria-checked]="prefs().diffLayout === 'hunks'"
-            (click)="set('diffLayout', 'hunks')"
-            [title]="'The changes alone, with a little context' | t"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <rect x="2.5" y="2.5" width="11" height="4" rx="1" />
-              <rect x="2.5" y="9.5" width="11" height="4" rx="1" />
-            </svg>
-          </button>
-          <button
-            class="r-bar-btn icon"
-            role="radio"
-            [class.open]="prefs().diffLayout === 'inline'"
-            [attr.aria-checked]="prefs().diffLayout === 'inline'"
-            (click)="set('diffLayout', 'inline')"
-            [title]="'The whole file, changes inline' | t"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M3 3.5h10M3 6.5h10M3 9.5h10M3 12.5h7" />
-            </svg>
-          </button>
-          <button
-            class="r-bar-btn icon"
-            role="radio"
-            [class.open]="prefs().diffLayout === 'split'"
-            [attr.aria-checked]="prefs().diffLayout === 'split'"
-            (click)="set('diffLayout', 'split')"
-            [title]="'Before and after, side by side' | t"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <rect x="2.5" y="2.5" width="11" height="11" rx="1" />
-              <path d="M8 2.5v11" />
-            </svg>
-          </button>
-        </div>
-      }
-
-      <div class="group">
-        @if (prefs().diffMode === 'diff') {
           <button
             class="r-bar-btn icon"
             role="switch"
-            [class.open]="prefs().ignoreWhitespace"
-            [attr.aria-checked]="prefs().ignoreWhitespace"
-            (click)="set('ignoreWhitespace', !prefs().ignoreWhitespace)"
-            [title]="'Ignore spaces at the start and end of lines' | t"
+            [class.open]="prefs().wordWrap"
+            [attr.aria-checked]="prefs().wordWrap"
+            (click)="set('wordWrap', !prefs().wordWrap)"
+            [title]="'Wrap long lines' | t"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M9.5 13V3M12 13V3M12 3H7.5a2.75 2.75 0 0 0 0 5.5h2" />
+              <path d="M2.5 4h11M2.5 8h9a2 2 0 0 1 0 4H8M9.5 10.5L8 12l1.5 1.5M2.5 12h3" />
             </svg>
           </button>
-        }
-        <button
-          class="r-bar-btn icon"
-          role="switch"
-          [class.open]="prefs().wordWrap"
-          [attr.aria-checked]="prefs().wordWrap"
-          (click)="set('wordWrap', !prefs().wordWrap)"
-          [title]="'Wrap long lines' | t"
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M2.5 4h11M2.5 8h9a2 2 0 0 1 0 4H8M9.5 10.5L8 12l1.5 1.5M2.5 12h3" />
-          </svg>
-        </button>
+        </div>
       </div>
-    </div>
+    }
 
     <div class="body">
-      <div class="editor" #editor></div>
+      <div class="editor" #editor [hidden]="!!image()"></div>
+      @if (image(); as image) {
+        <app-image-diff [path]="image.target.change.path" [old]="image.old" [new]="image.new" />
+      }
       @if (failure(); as failure) {
         <p class="note error">{{ failure }}</p>
       } @else if (!ready()) {
