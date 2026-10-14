@@ -59,6 +59,12 @@
                 @case ('remote') {
                   <path d="M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7 1A2.5 2.5 0 0 0 4.5 12.5z" />
                 }
+                @case ('pull') {
+                  <circle cx="4.5" cy="3.5" r="1.6" />
+                  <circle cx="4.5" cy="12.5" r="1.6" />
+                  <circle cx="11.5" cy="12.5" r="1.6" />
+                  <path d="M4.5 5.1v5.8M11.5 10.9V6.5a2 2 0 0 0-2-2H7M8.5 3l-1.5 1.5L8.5 6" />
+                }
                 @case ('tag') {
                   <path d="M2.5 2.5h5l6 6-5 5-6-6z" />
                   <circle cx="5.5" cy="5.5" r="1" />
@@ -144,8 +150,10 @@
                         (click)="repository.select(item.target)"
                         (dblclick)="switchTo(section.key, item)"
                         [title]="
-                          section.key === 'local' || section.key === 'remote'
-                            ? item.name + ' · ' + switchHint()
+                          section.key === 'local' ||
+                          section.key === 'remote' ||
+                          section.key === 'pull'
+                            ? item.label + ' · ' + switchHint()
                             : item.name
                         "
                       >

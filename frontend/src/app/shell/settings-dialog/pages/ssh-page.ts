@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { t } from '../../../core/i18n/i18n';
 import { TPipe } from '../../../core/i18n/t.pipe';
+import { GithubService } from '../../../core/services/github.service';
 import { ProfilesService } from '../../../core/services/profiles.service';
 import { SettingsPage } from '../settings-page';
 
@@ -47,6 +48,11 @@ const HOSTS: readonly string[] = ['github.com', 'gitlab.com'];
           <button class="r-btn small" (click)="copy(key.text)">
             {{ copied() ? ('Copied' | t) : ('Copy' | t) }}
           </button>
+          @if (github.account()) {
+            <button class="r-btn small" [disabled]="busy()" (click)="addToGithub(key.text)">
+              {{ 'Add to GitHub' | t }}
+            </button>
+          }
         </div>
       }
     </div>
@@ -124,6 +130,7 @@ const HOSTS: readonly string[] = ['github.com', 'gitlab.com'];
 })
 export class SshPage extends SettingsPage {
   private readonly profiles = inject(ProfilesService);
+  protected readonly github = inject(GithubService);
   protected readonly hosts = HOSTS;
   protected readonly publicKey = signal<PublicKey | null>(null);
   protected readonly copied = signal(false);
@@ -158,6 +165,15 @@ export class SshPage extends SettingsPage {
   protected async generate() {
     const email = this.profiles.identity()?.email ?? '';
     await this.run(async () => this.set('sshKey', await invoke<string>('ssh_generate', { email })));
+  }
+
+  /** The public key added to the GitHub account, named after this computer's key. */
+  protected async addToGithub(key: string) {
+    const title = `Ramure (${key.split(' ').at(2) ?? 'ssh'})`;
+    await this.run(async () => {
+      await invoke('github_add_ssh_key', { title, key });
+      this.answer.set(t('Added to GitHub as “{title}”.', { title }));
+    });
   }
 
   protected async test(host: string) {

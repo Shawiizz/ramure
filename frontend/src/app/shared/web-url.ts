@@ -23,6 +23,12 @@ export function remoteUrl(url: string): string | null {
   return site && `https://${site.host}/${site.path}`;
 }
 
+/** The `owner/repository` of a remote on GitHub; null for one elsewhere. */
+export function githubRepository(url: string): string | null {
+  const site = siteOf(url.trim());
+  return site?.host === 'github.com' ? site.path : null;
+}
+
 function siteOf(url: string): { host: string; path: string } | null {
   // git@github.com:owner/repo.git
   const scp = /^[\w.-]+@([\w.-]+):(?!\/)(.+)$/.exec(url);

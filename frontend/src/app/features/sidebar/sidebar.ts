@@ -10,12 +10,13 @@ import {
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { RepositoryService } from '../../core/services/repository.service';
+import { GithubService } from '../../core/services/github.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { MenuEntry } from '../../shared/context-menu';
 import { follow } from '../../shared/drag';
 import { MenusService } from '../repository-tab/menus.service';
 
-type Kind = 'local' | 'remote' | 'tag' | 'stash';
+type Kind = 'local' | 'remote' | 'pull' | 'tag' | 'stash';
 
 interface Item {
   /** What the list shows: a remote branch without its remote's name. */
@@ -58,6 +59,7 @@ export class Sidebar {
   protected readonly repository = inject(RepositoryService);
   protected readonly menus = inject(MenusService);
   private readonly store = inject(SettingsService);
+  private readonly github = inject(GithubService);
   protected readonly collapsed = computed(() => new Set(this.store.settings().collapsed));
   protected readonly heights = computed(() => this.store.layout().heights);
   protected readonly query = signal('');
@@ -98,6 +100,18 @@ export class Sidebar {
         count: s.remoteBranches.length,
         groups: [...remotes].map(([name, items]) => ({ key: `remote/${name}`, name, items })),
       },
+      pull: {
+        key: 'pull',
+        title: t('Pull requests'),
+        count: this.repository.pulls()?.length ?? 0,
+        groups: plain(
+          (this.repository.pulls() ?? []).map((pull) => ({
+            label: `#${pull.number} ${pull.title}`,
+            name: String(pull.number),
+            target: pull.headId,
+          })),
+        ),
+      },
       tag: { key: 'tag', title: t('Tags'), count: s.tags.length, groups: plain(s.tags.map(named)) },
       stash: {
         key: 'stash',
@@ -112,7 +126,12 @@ export class Sidebar {
         ),
       },
     };
-    return this.store.layout().sections.map((key) => all[key as Kind]);
+    // pull requests only for a repository on GitHub, signed in
+    const pulls = !!this.repository.github() && !!this.github.account();
+    return this.store
+      .layout()
+      .sections.filter((key) => key !== 'pull' || pulls)
+      .map((key) => all[key as Kind]);
   });
 
   /** The sections as shown: while filtering, only what matches, unfolded. */
@@ -155,12 +174,14 @@ export class Sidebar {
 
   /** How the history's view names an item (`branch:main`); stashes have none. */
   protected keyOf(kind: Kind, name: string): string | null {
-    const prefix = { local: 'branch', remote: 'remote', tag: 'tag', stash: null }[kind];
+    const prefix = { local: 'branch', remote: 'remote', pull: null, tag: 'tag', stash: null }[kind];
     return prefix && `${prefix}:${name}`;
   }
 
   protected switchTo(kind: Kind, item: Item) {
-    if (kind === 'remote' || (kind === 'local' && item.name !== this.head())) {
+    const pull = kind === 'pull' && this.pull(item);
+    if (pull) void this.repository.checkoutPull(pull);
+    else if (kind === 'remote' || (kind === 'local' && item.name !== this.head())) {
       this.repository.checkout(item.name, kind === 'remote');
     }
   }
@@ -172,6 +193,10 @@ export class Sidebar {
         return m.forBranch(item.name);
       case 'remote':
         return m.forRemoteBranch(item.name);
+      case 'pull': {
+        const pull = this.pull(item);
+        return pull ? m.forPull(pull) : [];
+      }
       case 'tag':
         return m.forTag(item.name);
       case 'stash': {
@@ -179,6 +204,11 @@ export class Sidebar {
         return commit ? m.forCommit(commit) : [];
       }
     }
+  }
+
+  /** The pull request an item of its section stands for. */
+  private pull(item: Item) {
+    return this.repository.pulls()?.find((p) => String(p.number) === item.name) ?? null;
   }
 
   protected addRemote() {

@@ -19,6 +19,9 @@ import {
   View,
   Where,
 } from '../models/repository';
+import { githubRepository } from '../../shared/web-url';
+import { Pull } from '../models/github';
+import { GithubService } from './github.service';
 import { PreferencesService } from './preferences.service';
 import { ProfilesService } from './profiles.service';
 import { SettingsService } from './settings.service';
@@ -70,6 +73,7 @@ export class RepositoryService {
   private readonly profiles = inject(ProfilesService);
   private readonly preferences = inject(PreferencesService);
   private readonly store = inject(SettingsService);
+  private readonly hub = inject(GithubService);
   /** What can be undone, the last last; what was undone, to redo. */
   readonly undoable = signal<Undoable[]>([]);
   readonly redoable = signal<Undoable[]>([]);
@@ -178,7 +182,28 @@ export class RepositoryService {
     return labels;
   });
 
+  /** The repository on GitHub its remote (`origin`, else the first) is: `owner/name`. */
+  readonly github = computed(() => {
+    const remotes = this.snapshot()?.remotes ?? [];
+    const remote = remotes.find((r) => r.name === 'origin') ?? remotes[0];
+    const repository = remote && githubRepository(remote.url);
+    return repository ? { remote: remote.name, repository } : null;
+  });
+  /** Its open pull requests, once read; none away from GitHub or signed out. */
+  readonly pulls = signal<Pull[] | null>(null);
+
   constructor() {
+    // on GitHub, signed in: the pull requests, and the pictures of the authors
+    effect(() => {
+      const repository = this.github()?.repository;
+      const signedIn = !!this.hub.account();
+      untracked(() => {
+        this.pulls.set(null);
+        if (!repository || !signedIn) return;
+        void this.readPulls();
+        void this.hub.picture(repository);
+      });
+    });
     // the diff on screen read again when spaces start or stop counting
     effect(() => {
       this.preferences.preferences().ignoreWhitespace;
@@ -619,6 +644,33 @@ export class RepositoryService {
     return this.change('proceed', { operation, identity: this.profiles.identity() });
   }
 
+  /** Reads the open pull requests again. */
+  async readPulls(): Promise<void> {
+    const repository = this.github()?.repository;
+    if (!repository || !this.hub.account()) return;
+    try {
+      this.pulls.set(await invoke<Pull[]>('github_pulls', { repository }));
+    } catch (e) {
+      this.error.set(String(e));
+    }
+  }
+
+  /**
+   * Switches to a pull request's branch: one of this repository through its remote branch,
+   * one of a fork on a branch `pr/<number>` of its own.
+   */
+  checkoutPull(pull: Pull) {
+    const github = this.github();
+    if (!github) return Promise.resolve(false);
+    if (pull.headRepository === github.repository)
+      return this.checkout(`${github.remote}/${pull.head}`, true);
+    return this.change(
+      'checkout_pull',
+      { remote: github.remote, number: pull.number },
+      this.undoing(t('the switch to #{n}', { n: pull.number })),
+    );
+  }
+
   checkout(name: string, remote: boolean) {
     return this.change(
       'checkout',
@@ -657,6 +709,8 @@ export class RepositoryService {
         const prune = this.preferences.preferences().prune;
         await this.change(kind, kind === 'push' ? { force } : { prune });
       }
+      // what the remote has new, its pull requests too
+      if (kind === 'fetch') void this.readPulls();
     } finally {
       this.exchange.set(null);
     }

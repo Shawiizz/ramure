@@ -198,3 +198,31 @@ fn an_interactive_rebase_reorders_rewords_squashes_and_drops() {
     assert_eq!(messages, [("One", "Four"), ("Three, said better", ""), ("Base", "")]);
     assert!(!d.join("1.txt").exists(), "Two was dropped");
 }
+
+#[test]
+fn a_pull_request_is_checked_out_on_a_branch_of_its_own() {
+    let remote = tempfile::tempdir().unwrap();
+    git(remote.path(), &["init", "-q", "--bare", "-b", "main"]);
+    let url = remote.path().to_str().unwrap();
+    let dir = repository();
+    let d = dir.path();
+    commit(d, "First", 1);
+    git(d, &["remote", "add", "origin", url]);
+    git(d, &["push", "-q", "origin", "main"]);
+    // a contributor's commit, kept by the host under pull/7/head
+    git(d, &["switch", "-q", "-c", "contribution"]);
+    commit(d, "Contributed", 2);
+    git(d, &["push", "-q", "origin", "HEAD:refs/pull/7/head"]);
+    git(d, &["switch", "-q", "main"]);
+    git(d, &["branch", "-q", "-D", "contribution"]);
+
+    actions::checkout_pull(d, "origin", 7).unwrap();
+    let snapshot = Repository::open(d).unwrap().snapshot(10).unwrap();
+    assert!(matches!(snapshot.head, Head::Branch { ref name } if name == "pr/7"));
+    assert_eq!(snapshot.commits[0].summary, "Contributed");
+
+    git(d, &["switch", "-q", "main"]);
+    actions::checkout_pull(d, "origin", 7).unwrap();
+    let head = Repository::open(d).unwrap().snapshot(10).unwrap().head;
+    assert!(matches!(head, Head::Branch { ref name } if name == "pr/7"));
+}

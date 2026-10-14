@@ -6,6 +6,10 @@ tags at hand, the commit you pick in detail.
 - Repositories cloned (their progress as it comes) or made anew, with a README in a first
   commit when asked.
 - An ssh key chosen, made or tried from the settings, its public half copied in a click.
+- GitHub, signed in to with a code typed on github.com (the token kept by the system's
+  credential manager): your repositories to clone, a repository's pull requests in the
+  sidebar (checked out, opened), pull requests opened from a branch, your ssh key added,
+  the authors' GitHub pictures.
 - Commits and tags signed with the profile's ssh or GPG key; a commit's signature shown, and
   checked on a click.
 - Repositories in tabs, moved by dragging, dragged out into a window of their own and back

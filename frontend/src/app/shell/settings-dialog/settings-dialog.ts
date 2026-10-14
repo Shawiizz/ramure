@@ -3,6 +3,7 @@ import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { AboutPage } from './pages/about-page';
+import { AccountsPage } from './pages/accounts-page';
 import { EditorPage } from './pages/editor-page';
 import { GeneralPage } from './pages/general-page';
 import { GitPage } from './pages/git-page';
@@ -11,7 +12,8 @@ import { SshPage } from './pages/ssh-page';
 import { TerminalPage } from './pages/terminal-page';
 import { ToolsPage } from './pages/tools-page';
 
-type Page = 'general' | 'editor' | 'terminal' | 'git' | 'ssh' | 'signing' | 'tools' | 'about';
+type Page =
+  'general' | 'editor' | 'terminal' | 'git' | 'ssh' | 'signing' | 'accounts' | 'tools' | 'about';
 
 /** The settings: a page per subject, every change applied and kept at once. */
 @Component({
@@ -26,6 +28,7 @@ type Page = 'general' | 'editor' | 'terminal' | 'git' | 'ssh' | 'signing' | 'too
     GitPage,
     SshPage,
     SigningPage,
+    AccountsPage,
     ToolsPage,
     AboutPage,
   ],
@@ -40,6 +43,7 @@ export class SettingsDialog {
     { id: 'git', label: 'Git' },
     { id: 'ssh', label: 'SSH' },
     { id: 'signing', label: t('Signing') },
+    { id: 'accounts', label: t('Accounts') },
     { id: 'tools', label: t('External tools') },
     { id: 'about', label: t('About') },
   ]);

@@ -14,6 +14,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
+mod github;
 mod programs;
 mod ssh;
 mod terminal;
@@ -292,6 +293,21 @@ fn file_history(path: PathBuf, file: String) -> Answer<Vec<FileCommit>> {
 #[tauri::command(async)]
 fn blame(path: PathBuf, file: String, at: Option<String>) -> Answer<Blame> {
     Ok(ramure_git::blame(&path, &file, at.as_deref())?)
+}
+
+#[tauri::command(async)]
+fn checkout_pull(path: PathBuf, remote: String, number: u64) -> Answer<Snapshot> {
+    actions::checkout_pull(&path, &remote, number)?;
+    snapshot(&path)
+}
+
+/// Opens a web page in the user's browser; only `https` ones.
+#[tauri::command(async)]
+fn open_url(url: String) -> Answer<()> {
+    if !url.starts_with("https://") {
+        return Err(CommandError::System(format!("{url} is not a web page")));
+    }
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| CommandError::System(e.to_string()))
 }
 
 /// Opens the working tree's `file` in the program the system gives its kind.
@@ -685,6 +701,18 @@ pub fn run() {
             ssh::ssh_generate,
             ssh::ssh_test,
             ssh::gpg_keys,
+            github::github_device_start,
+            github::github_device_poll,
+            github::github_account,
+            github::github_sign_out,
+            github::github_repositories,
+            github::github_pulls,
+            github::github_create_pull,
+            github::github_default_branch,
+            github::github_add_ssh_key,
+            github::github_avatars,
+            open_url,
+            checkout_pull,
             signature,
             verify_signature,
             terminal::terminal_open,

@@ -1,4 +1,4 @@
-import { branchUrl, commitUrl, remoteUrl } from './web-url';
+import { branchUrl, commitUrl, githubRepository, remoteUrl } from './web-url';
 
 describe('a commit on its website', () => {
   const id = 'abc123';
@@ -37,5 +37,18 @@ describe('a branch and a remote on their website', () => {
     );
     expect(remoteUrl('ssh://git@gitlab.com/group/app.git')).toBe('https://gitlab.com/group/app');
     expect(remoteUrl('/srv/git/remote.git')).toBeNull();
+  });
+});
+
+describe('a repository on GitHub', () => {
+  it('is named owner/name from its remote in any form', () => {
+    expect(githubRepository('git@github.com:Shawiizz/ramure.git')).toBe('Shawiizz/ramure');
+    expect(githubRepository('https://github.com/Shawiizz/ramure')).toBe('Shawiizz/ramure');
+    expect(githubRepository('ssh://git@github.com/Shawiizz/ramure.git')).toBe('Shawiizz/ramure');
+  });
+
+  it('is none elsewhere', () => {
+    expect(githubRepository('https://gitlab.com/group/project.git')).toBeNull();
+    expect(githubRepository('C:/repositories/ramure')).toBeNull();
   });
 });

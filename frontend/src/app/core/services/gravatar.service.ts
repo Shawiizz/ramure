@@ -4,11 +4,14 @@ import { Injectable, signal } from '@angular/core';
 const SIZE = 64;
 
 /**
- * People's Gravatar pictures, by email: their address once the email's hash is known, and
- * none for those Gravatar has no picture of (their initials show instead).
+ * People's pictures, by email: the one GitHub has of them (told for a repository's authors,
+ * or read from their GitHub address), else Gravatar's; none for those neither has a picture
+ * of (their initials show instead).
  */
 @Injectable({ providedIn: 'root' })
 export class GravatarService {
+  /** GitHub's pictures of people, by email in lower case. */
+  private readonly github = signal<ReadonlyMap<string, string>>(new Map());
   private readonly hashes = signal<ReadonlyMap<string, string>>(new Map());
   private readonly missing = signal<ReadonlySet<string>>(new Set());
   private readonly hashing = new Set<string>();
@@ -17,10 +20,17 @@ export class GravatarService {
   url(email: string): string | null {
     const key = email.trim().toLowerCase();
     if (!key || this.missing().has(key)) return null;
+    const known = this.github().get(key) ?? noreplyPicture(key);
+    if (known) return `${known}${known.includes('?') ? '&' : '?'}s=${SIZE}`;
     const hash = this.hashes().get(key);
     if (hash) return `https://gravatar.com/avatar/${hash}?s=${SIZE}&d=404`;
     this.hash(key);
     return null;
+  }
+
+  /** The pictures GitHub has of people, by email in lower case. */
+  learn(pictures: Record<string, string>) {
+    this.github.update((known) => new Map([...known, ...Object.entries(pictures)]));
   }
 
   /** Gravatar had no picture for `email`: the initials stay. */
@@ -36,4 +46,15 @@ export class GravatarService {
     const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
     this.hashes.update((hashes) => new Map(hashes).set(key, hex));
   }
+}
+
+/**
+ * The picture of a GitHub account from the address GitHub gives commits made on its site:
+ * `12345+login@users.noreply.github.com`, or `login@users.noreply.github.com` for older ones.
+ */
+function noreplyPicture(email: string): string | null {
+  const found = /^(?:(\d+)\+)?([\w-]+)@users\.noreply\.github\.com$/.exec(email);
+  if (!found) return null;
+  const [, id, login] = found;
+  return id ? `https://avatars.githubusercontent.com/u/${id}` : `https://github.com/${login}.png`;
 }

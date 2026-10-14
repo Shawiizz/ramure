@@ -233,7 +233,7 @@ export const MIN_MESSAGE = 60;
 /** Nor the terminal. */
 export const MIN_TERMINAL = 100;
 
-export const SECTIONS: readonly string[] = ['local', 'remote', 'tag', 'stash'];
+export const SECTIONS: readonly string[] = ['local', 'remote', 'pull', 'tag', 'stash'];
 
 export const DEFAULT_LAYOUT: Layout = {
   sidebar: 228,

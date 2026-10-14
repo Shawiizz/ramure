@@ -1,6 +1,9 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { invoke } from '@tauri-apps/api/core';
 import { t } from '../../core/i18n/i18n';
+import { Pull } from '../../core/models/github';
 import { Change, Commit, Planned, Where } from '../../core/models/repository';
+import { GithubService } from '../../core/services/github.service';
 import { editorName } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
@@ -31,6 +34,7 @@ export interface Rebasing {
 export class MenusService {
   private readonly repository = inject(RepositoryService);
   private readonly preferences = inject(PreferencesService);
+  private readonly github = inject(GithubService);
   readonly menu = signal<OpenMenu | null>(null);
   readonly asking = signal<Ask | null>(null);
   readonly rebasing = signal<Rebasing | null>(null);
@@ -184,6 +188,9 @@ export class MenusService {
             { label: t('Push {name}', { name }), run: () => this.push() },
           ]
         : [{ label: t('Push {name}', { name }), run: () => r.pushBranch(name) }]),
+      ...(r.github() && this.github.account()
+        ? [{ label: t('Create a pull request…'), run: () => this.createPull(name) }]
+        : []),
       {
         label: t('Set the upstream of {name}…', { name }),
         run: () =>
@@ -474,6 +481,65 @@ export class MenusService {
       danger: true,
       answered: () => r.exchangeWith('push', true),
     });
+  }
+
+  /** What can be done with a pull request: check it out, see it on GitHub. */
+  forPull(pull: Pull): MenuEntry[] {
+    return [
+      {
+        label: t('Check out #{n}', { n: pull.number }),
+        run: () => this.repository.checkoutPull(pull),
+      },
+      { label: t('Open on GitHub'), run: () => this.github.openPage(pull.url) },
+      null,
+      { label: t('Copy the link'), run: () => this.copy(pull.url) },
+    ];
+  }
+
+  /**
+   * Opens a pull request bringing the local branch `name` into another, asked for; the
+   * branch is pushed first when its remote has not got it. The pull request opens on GitHub.
+   */
+  async createPull(name: string) {
+    const r = this.repository;
+    const github = r.github();
+    if (!github) return;
+    const base = await invoke<string>('github_default_branch', {
+      repository: github.repository,
+    }).catch(() => 'main');
+    const last = r.snapshot()?.commits.find((c) => c.id === this.targetOf('branch', name));
+    this.ask({
+      title: t('A pull request for {name}', { name }),
+      fields: [
+        { label: t('Title'), value: last?.summary ?? name },
+        { label: t('Description'), multiline: true, value: last?.body ?? '' },
+        { label: t('Into the branch'), code: true, value: base },
+      ],
+      confirm: t('Open the pull request'),
+      answered: ([title, body, into]) => void this.openPull(name, title, body, into),
+    });
+  }
+
+  private async openPull(name: string, title: string, body: string, base: string) {
+    const r = this.repository;
+    const github = r.github()!;
+    const remote = `${github.remote}/${name}`;
+    if (!r.snapshot()?.remoteBranches.some((b) => b.name === remote) && !(await r.pushBranch(name)))
+      return;
+    try {
+      const pull = await invoke<Pull>('github_create_pull', {
+        repository: github.repository,
+        title,
+        body,
+        head: name,
+        base,
+        draft: false,
+      });
+      await r.readPulls();
+      void this.github.openPage(pull.url);
+    } catch (e) {
+      r.error.set(String(e));
+    }
   }
 
   /** Throws away every change of the working tree, once sure. */

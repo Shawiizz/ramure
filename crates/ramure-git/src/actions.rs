@@ -66,6 +66,20 @@ pub fn checkout(dir: &Path, name: &str, remote: bool) -> Result<(), Error> {
     }
 }
 
+/// Switches to the pull request `number` of `remote` (GitHub keeps each one's commits under
+/// `pull/<number>/head`) on a branch `pr/<number>`, made the first time.
+pub fn checkout_pull(dir: &Path, remote: &str, number: u64) -> Result<(), Error> {
+    let branch = format!("pr/{number}");
+    git(dir, &["fetch", remote, &format!("pull/{number}/head")])?;
+    let exists =
+        git_answer(dir, &["rev-parse", "--verify", "-q", &format!("refs/heads/{branch}")])?.is_some();
+    if exists {
+        git(dir, &["switch", &branch]).map(drop)
+    } else {
+        git(dir, &["switch", "-c", &branch, "FETCH_HEAD"]).map(drop)
+    }
+}
+
 /// Fetches every remote; with `prune`, the branches they deleted go here too.
 pub fn fetch(dir: &Path, prune: bool) -> Result<(), Error> {
     let prune = if prune { "--prune" } else { "--no-prune" };

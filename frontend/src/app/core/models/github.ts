@@ -1,0 +1,44 @@
+/** The GitHub account signed in (`github::Account`). */
+export interface GithubAccount {
+  login: string;
+  name: string | null;
+  avatar_url: string;
+}
+
+/** The code to type on GitHub to sign in, and where (`github::DeviceCode`). */
+export interface DeviceCode {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  interval: number;
+  expires_in: number;
+}
+
+/** Where signing in stands (`github::Polled`). */
+export type Polled =
+  { state: 'pending' } | { state: 'slowDown' } | { state: 'done'; account: GithubAccount };
+
+/** A repository of the user's on GitHub (`github::Repository`). */
+export interface GithubRepository {
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  clone_url: string;
+  ssh_url: string;
+  pushed_at: string | null;
+}
+
+/** An open pull request (`github::Pull`). */
+export interface Pull {
+  number: number;
+  title: string;
+  author: string;
+  draft: boolean;
+  url: string;
+  /** The branch it brings, and the repository holding it: a fork's, maybe. */
+  head: string;
+  headRepository: string | null;
+  /** The commit it brings last. */
+  headId: string;
+  base: string;
+}
