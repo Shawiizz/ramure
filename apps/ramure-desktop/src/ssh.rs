@@ -72,8 +72,8 @@ pub fn ssh_generate(email: String) -> Result<String, String> {
     Ok(file.to_string_lossy().into_owned())
 }
 
-/// What the ssh server of `host` answers the key git uses: GitHub and GitLab greet the
-/// account it opens.
+/// What the ssh server of `host` answers the key chosen (ssh's own keys without one):
+/// GitHub and GitLab greet the account it opens.
 #[tauri::command(async)]
 pub fn ssh_test(host: String) -> Result<String, String> {
     if host.is_empty() || !host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
@@ -89,8 +89,9 @@ pub fn ssh_test(host: String) -> Result<String, String> {
         "-o",
         "ConnectTimeout=10",
     ]);
+    // the chosen key alone: ssh's configuration would offer its own keys besides
     if let Some(key) = ramure_git::ssh_key() {
-        command.arg("-i").arg(key).args(["-o", "IdentitiesOnly=yes"]);
+        command.args(["-F", "none", "-i"]).arg(key).args(["-o", "IdentitiesOnly=yes"]);
     }
     let output =
         command.arg(format!("git@{host}")).output().map_err(|e| format!("ssh could not run: {e}"))?;

@@ -12,6 +12,7 @@
   height: min(560px, calc(100vh - 64px));
   display: grid;
   grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--r-line-strong);
   border-radius: var(--r-radius-panel);
@@ -73,8 +74,10 @@
   }
 }
 
+/* the dialog's height, its rows scrolling inside */
 .content {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
