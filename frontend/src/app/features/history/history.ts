@@ -273,6 +273,30 @@ export class History {
     });
   }
 
+  /** The commits compared, lit like the one selected. */
+  protected readonly compared = computed(() => {
+    const comparison = this.repository.comparison();
+    return new Set(comparison ? [comparison.from.id, comparison.to.id] : []);
+  });
+
+  /** Selects a commit; with Ctrl, compares the one selected with it. */
+  protected pick(event: MouseEvent, commit: Commit) {
+    const r = this.repository;
+    const selected = r.selected();
+    if (!(event.ctrlKey || event.metaKey) || !selected || selected.id === commit.id) {
+      r.select(commit.id);
+      return;
+    }
+    // from the older to the newer, as the history lists them
+    const commits = r.snapshot()?.commits ?? [];
+    const place = (c: Commit) => commits.findIndex((x) => x.id === c.id);
+    const [from, to] = place(selected) > place(commit) ? [selected, commit] : [commit, selected];
+    void r.compare(
+      { id: from.id, name: from.id.slice(0, 7) },
+      { id: to.id, name: to.id.slice(0, 7) },
+    );
+  }
+
   /** A commit's menu, the commit selected. */
   protected openMenu(event: MouseEvent, commit: Commit) {
     this.repository.select(commit.id);

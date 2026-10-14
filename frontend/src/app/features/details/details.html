@@ -1,5 +1,72 @@
 <aside class="details" [attr.aria-label]="'Details' | t">
-  @if (repository.selectedId() === wip) {
+  @if (repository.comparison(); as comparison) {
+    <header class="bar compare-bar">
+      <span class="caption">{{ 'Comparing' | t }}</span>
+      <span class="space"></span>
+      <button
+        class="r-bar-btn icon"
+        (click)="repository.compare(comparison.to, comparison.from)"
+        [attr.aria-label]="'Swap them' | t"
+        [title]="'Swap them' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 5.5h10M10.5 3L13 5.5 10.5 8M13 10.5H3M5.5 8L3 10.5 5.5 13" />
+        </svg>
+      </button>
+      <button
+        class="r-bar-btn icon"
+        (click)="repository.endComparison()"
+        [attr.aria-label]="'Stop comparing' | t"
+        [title]="'Stop comparing' | t"
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+      </button>
+    </header>
+    <div class="scroll">
+      <div class="ends">
+        <span class="caption">{{ 'from' | t }}</span>
+        <button class="end r-mono" (click)="repository.select(comparison.from.id)">
+          {{ comparison.from.name }}
+        </button>
+        <span class="caption">{{ 'to' | t }}</span>
+        <button class="end r-mono" (click)="repository.select(comparison.to.id)">
+          {{ comparison.to.name }}
+        </button>
+      </div>
+      @if (comparison.files; as files) {
+        <div class="files-head">
+          <span class="total">{{
+            files.length === 1
+              ? ('1 changed file' | t)
+              : ('{n} changed files' | t: { n: files.length })
+          }}</span>
+          <span class="kinds">
+            @for (kind of countKinds(files); track kind.letter) {
+              <span class="kind" [style.color]="kind.color" [title]="kind.title()">
+                <b>{{ kind.letter }}</b
+                >{{ kind.count }}
+              </span>
+            }
+          </span>
+          <app-tree-switch />
+        </div>
+        @if (files.length) {
+          @let where = { kind: 'compare', from: comparison.from.id, to: comparison.to.id };
+          <app-file-list
+            [changes]="files"
+            [tree]="tree()"
+            [openPath]="comparedPath()"
+            (opened)="repository.toggleDiff($event, $any(where))"
+            (menu)="menus.open($event.event, menus.forFile($event.change, $any(where)))"
+          />
+        } @else {
+          <p class="none">{{ 'They hold the same files.' | t }}</p>
+        }
+      } @else {
+        <p class="none">{{ 'Reading…' | t }}</p>
+      }
+    </div>
+  } @else if (repository.selectedId() === wip) {
     <app-staging />
   } @else if (repository.selected(); as commit) {
     @let stash = repository.selectedStash();

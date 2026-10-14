@@ -59,6 +59,8 @@ pub enum Side<'a> {
     Commit(&'a str),
     /// Put aside in this stash.
     Stash(&'a str),
+    /// Between two commits: from the first to the second.
+    Compare(&'a str, &'a str),
 }
 
 /// The diff of the file `change` in the repository at `dir`; lines whose spaces alone
@@ -85,6 +87,7 @@ pub fn file_diff(
         Side::Commit(id) | Side::Stash(id) => {
             vec!["show", "--no-ext-diff", "--format=", "--diff-merges=first-parent", "-p", "-M", id]
         }
+        Side::Compare(from, to) => vec!["diff", "--no-ext-diff", "-M", from, to],
     };
     if ignore_whitespace {
         args.push("--ignore-space-change");
@@ -128,6 +131,9 @@ pub fn file_versions(dir: &Path, change: &Change, side: Side) -> Result<Versions
         Side::Stash(id) => {
             (blob_unless(added, format!("{id}^1:{old_path}"))?, blob_unless(deleted, format!("{id}:{path}"))?)
         }
+        Side::Compare(from, to) => {
+            (blob_unless(added, format!("{from}:{old_path}"))?, blob_unless(deleted, format!("{to}:{path}"))?)
+        }
     };
     Ok(Versions { old, new })
 }
@@ -161,6 +167,16 @@ fn too_big(bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 pub fn commit_files(dir: &Path, id: &str) -> Result<Vec<Change>, Error> {
     let out =
         git(dir, &["show", "--format=", "--diff-merges=first-parent", "-z", "-M", "--name-status", id])?;
+    Ok(changes(&out))
+}
+
+/// The files that differ from the commit `from` to the commit `to`.
+pub fn compare_files(dir: &Path, from: &str, to: &str) -> Result<Vec<Change>, Error> {
+    Ok(changes(&git(dir, &["diff", "--no-ext-diff", "-z", "-M", "--name-status", from, to])?))
+}
+
+/// The changes `--name-status -z` lists.
+fn changes(out: &[u8]) -> Vec<Change> {
     let mut fields =
         out.split(|&b| b == 0).filter(|f| !f.is_empty()).map(|f| String::from_utf8_lossy(f).into_owned());
     let mut changes = Vec::new();
@@ -171,7 +187,7 @@ pub fn commit_files(dir: &Path, id: &str) -> Result<Vec<Change>, Error> {
         let Some(path) = fields.next() else { break };
         changes.push(Change { path, old_path, kind });
     }
-    Ok(changes)
+    changes
 }
 
 /// The kind of change a `--name-status` letter names.

@@ -88,6 +88,11 @@ export class Details {
   });
   /** How many files of each kind, in the order of the list's letters. */
   protected readonly kinds = computed(() => countKinds(this.files() ?? []));
+  protected readonly countKinds = countKinds;
+  protected readonly comparedPath = computed(() => {
+    const diff = this.repository.diff();
+    return diff?.where.kind === 'compare' ? diff.change.path : null;
+  });
   protected readonly openPath = computed(() => {
     const diff = this.repository.diff();
     const where = diff?.where;

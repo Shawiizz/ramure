@@ -164,7 +164,8 @@
   &.match {
     background: color-mix(in srgb, var(--r-lane-1) 14%, transparent);
   }
-  &.selected {
+  &.selected,
+  &.compared {
     background: var(--r-raised);
     box-shadow: inset 2px 0 var(--r-accent);
   }

@@ -156,10 +156,11 @@
           tabindex="0"
           class="row"
           [class.selected]="selected"
+          [class.compared]="compared().has(line.commit.id)"
           [class.match]="matching().has(line.commit.id)"
           [attr.aria-selected]="selected"
           (contextmenu)="openMenu($event, line.commit)"
-          (click)="repository.select(line.commit.id)"
+          (click)="pick($event, line.commit)"
           (keydown.enter)="repository.select(line.commit.id)"
         >
           @for (column of columns(); track column) {

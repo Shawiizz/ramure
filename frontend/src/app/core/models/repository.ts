@@ -183,12 +183,16 @@ export interface Change {
   kind: ChangeKind;
 }
 
-/** Where a change lies: in the working tree, in the index, in a commit or in a stash. */
+/**
+ * Where a change lies: in the working tree, in the index, in a commit, in a stash, or
+ * between two commits compared.
+ */
 export type Where =
   | { kind: 'unstaged' }
   | { kind: 'staged' }
   | { kind: 'commit'; id: string }
-  | { kind: 'stash'; id: string };
+  | { kind: 'stash'; id: string }
+  | { kind: 'compare'; from: string; to: string };
 
 export interface FileDiff {
   binary: boolean;

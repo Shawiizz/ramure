@@ -110,6 +110,10 @@ export class DiffView {
     if (!where) return '';
     if (where.kind === 'commit') return t('In commit {id}', { id: where.id.slice(0, 7) });
     if (where.kind === 'stash') return t('In a stash');
+    if (where.kind === 'compare') {
+      const comparison = this.repository.comparison();
+      return comparison ? `${comparison.from.name} → ${comparison.to.name}` : '';
+    }
     return where.kind === 'staged' ? t('Staged') : t('Unstaged');
   });
 

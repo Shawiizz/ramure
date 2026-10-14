@@ -266,3 +266,52 @@ app-file-list {
     color: rgb(var(--r-added-rgb));
   }
 }
+
+/* two commits compared: which, from the one to the other */
+.compare-bar {
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 0 6px 0 16px;
+  .space {
+    flex: 1;
+  }
+  .icon {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+    svg[viewBox='0 0 10 10'] {
+      width: 10px;
+      height: 10px;
+    }
+  }
+}
+
+.ends {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 2px 2px 14px;
+  border-bottom: 1px solid var(--r-line);
+}
+
+.end {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--r-radius);
+  background: var(--r-raised);
+  color: var(--r-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  &:hover {
+    background: var(--r-hover);
+  }
+}

@@ -192,6 +192,7 @@ enum Where {
     Staged,
     Commit { id: String },
     Stash { id: String },
+    Compare { from: String, to: String },
 }
 
 impl Where {
@@ -201,6 +202,7 @@ impl Where {
             Where::Staged => Side::Staged,
             Where::Commit { id } => Side::Commit(id),
             Where::Stash { id } => Side::Stash(id),
+            Where::Compare { from, to } => Side::Compare(from, to),
         }
     }
 }
@@ -231,6 +233,11 @@ fn file_versions(path: PathBuf, change: Change, side: Where) -> Answer<tauri::ip
 #[tauri::command(async)]
 fn commit_files(path: PathBuf, id: String) -> Answer<Vec<Change>> {
     Ok(ramure_git::commit_files(&path, &id)?)
+}
+
+#[tauri::command(async)]
+fn compare_files(path: PathBuf, from: String, to: String) -> Answer<Vec<Change>> {
+    Ok(ramure_git::compare_files(&path, &from, &to)?)
 }
 
 #[tauri::command(async)]
@@ -690,6 +697,7 @@ pub fn run() {
             file_versions,
             commit_files,
             stash_files,
+            compare_files,
             apply_lines,
             take,
             conflict_sides,

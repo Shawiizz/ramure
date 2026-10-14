@@ -147,6 +147,7 @@ export class MenusService {
         disabled: !reaches(r.snapshot()?.commits ?? [], r.headId(), commit.id),
         run: () => this.rewriting.set(commit),
       },
+      ...this.comparing(commit.id, id),
       null,
       { label: t('Copy the commit’s id'), run: () => this.copy(commit.id) },
       ...(remote && link
@@ -177,6 +178,7 @@ export class MenusService {
         run: () => r.checkout(name, false),
       },
       ...this.joining(name),
+      ...this.comparing(this.targetOf('branch', name), name),
       null,
       ...(isCurrent
         ? [
@@ -259,6 +261,7 @@ export class MenusService {
     return [
       { label: t('Check out {name}', { name }), run: () => r.checkout(name, true) },
       ...this.joining(name),
+      ...this.comparing(target, name),
       null,
       ...(target ? [this.createBranchAt(target, name)] : []),
       {
@@ -367,6 +370,7 @@ export class MenusService {
             answered: () => r.deleteTag(name),
           }),
       },
+      ...this.comparing(this.targetOf('tag', name), name),
       null,
       { label: t('Copy the tag name'), run: () => this.copy(name) },
       null,
@@ -388,7 +392,7 @@ export class MenusService {
     const inTree = where.kind === 'staged' || where.kind === 'unstaged';
     // a file not committed yet has no history and nobody to blame
     const fresh = inTree && (change.kind === 'untracked' || change.kind === 'added');
-    const at = inTree ? undefined : where.id;
+    const at = inTree ? undefined : where.kind === 'compare' ? where.to : where.id;
     const looks: MenuEntry[] = [
       {
         label: t('File history'),
@@ -578,6 +582,20 @@ export class MenusService {
   }
 
   /** Merge, rebase and interactive rebase of the current branch with `name`. */
+  /** Compares the commit `target`, named `name`, with what is checked out. */
+  private comparing(target: string | null, name: string): MenuEntry[] {
+    const r = this.repository;
+    const head = r.headId();
+    if (!target || !head || target === head) return [];
+    const current = this.current() ?? head.slice(0, 7);
+    return [
+      {
+        label: t('Compare with {name}', { name: current }),
+        run: () => r.compare({ id: target, name }, { id: head, name: current }),
+      },
+    ];
+  }
+
   private joining(name: string): MenuEntry[] {
     const branch = this.current();
     if (!branch || name === branch) return [];

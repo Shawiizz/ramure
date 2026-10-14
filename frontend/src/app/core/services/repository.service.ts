@@ -47,6 +47,19 @@ export interface FilePanel {
   at?: string;
 }
 
+/** A commit, by the name it was picked by. */
+export interface Named {
+  id: string;
+  name: string;
+}
+
+/** Two commits compared: the files that differ from the one to the other. */
+export interface Comparison {
+  from: Named;
+  to: Named;
+  files: Change[] | null;
+}
+
 /** An exchange with a remote, under way. */
 export type Exchange = 'fetch' | 'pull' | 'push';
 
@@ -64,6 +77,7 @@ const UNDO_DEPTH = 50;
 
 /** The commit or stash a diff is read in, null for the working tree. */
 function sourceOf(where: Where): string | null {
+  if (where.kind === 'compare') return `${where.from}..${where.to}`;
   return where.kind === 'commit' || where.kind === 'stash' ? where.id : null;
 }
 
@@ -94,6 +108,7 @@ export class RepositoryService {
   readonly activity = signal<string | null>(null);
   readonly diff = signal<OpenDiff | null>(null);
   readonly filePanel = signal<FilePanel | null>(null);
+  readonly comparison = signal<Comparison | null>(null);
   /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
   readonly terminalOpen = signal(false);
   /** Older commits are being read, or none is left to read. */
@@ -297,6 +312,7 @@ export class RepositoryService {
   }
 
   select(id: string) {
+    if (this.comparison()) this.endComparison();
     this.selectedId.set(id);
     if (id === WIP) return;
     this.loadCommitFiles(id);
@@ -320,6 +336,28 @@ export class RepositoryService {
 
   unstage(files: string[]) {
     return this.change('unstage', { files });
+  }
+
+  /** Compares the commit `from` with `to`: the files that differ, each diff a click away. */
+  async compare(from: Named, to: Named): Promise<void> {
+    const path = this.snapshot()?.path;
+    if (!path) return;
+    this.filePanel.set(null);
+    this.diff.set(null);
+    const comparison: Comparison = { from, to, files: null };
+    this.comparison.set(comparison);
+    try {
+      const files = await invoke<Change[]>('compare_files', { path, from: from.id, to: to.id });
+      if (this.comparison() === comparison) this.comparison.set({ ...comparison, files });
+    } catch (e) {
+      this.error.set(String(e));
+      if (this.comparison() === comparison) this.comparison.set(null);
+    }
+  }
+
+  endComparison() {
+    this.comparison.set(null);
+    if (this.diff()?.where.kind === 'compare') this.diff.set(null);
   }
 
   /** Resolves a conflict with one side's version of the whole file. */
@@ -830,6 +868,8 @@ export class RepositoryService {
     // or a stash goes with it
     const diff = this.diff();
     const source = diff && sourceOf(diff.where);
+    // commits compared stay what they are
+    if (diff?.where.kind === 'compare') return;
     if (source) {
       if (!snapshot.commits.some((c) => c.id === source)) this.diff.set(null);
     } else if (diff) {
