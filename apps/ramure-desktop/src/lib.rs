@@ -4,8 +4,8 @@
 
 use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Sides, Step, Version};
 use ramure_git::{
-    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, RefLogEntry,
-    RefState, Repository, SavedFile, Side, Snapshot, View,
+    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, PullFiles, Pulled,
+    RefLogEntry, RefState, Repository, SavedFile, Side, Snapshot, View,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -238,6 +238,20 @@ fn file_versions(path: PathBuf, change: Change, side: Where) -> Answer<tauri::ip
 #[tauri::command(async)]
 fn commit_files(path: PathBuf, id: String) -> Answer<Vec<Change>> {
     Ok(ramure_git::commit_files(&path, &id)?)
+}
+
+/// The files a pull request changes, its commits fetched first when missing here.
+#[tauri::command(async)]
+fn pull_files(
+    path: PathBuf,
+    remote: String,
+    number: u64,
+    base: String,
+    base_id: String,
+    head: String,
+) -> Answer<PullFiles> {
+    let pull = Pulled { remote: &remote, number, base: &base, base_id: &base_id, head: &head };
+    Ok(ramure_git::pull_files(&path, &pull)?)
 }
 
 #[tauri::command(async)]
@@ -732,6 +746,7 @@ pub fn run() {
             commit_files,
             stash_files,
             compare_files,
+            pull_files,
             files,
             reflog,
             commits_changing,
@@ -777,6 +792,9 @@ pub fn run() {
             github::github_repositories,
             github::github_pulls,
             github::github_checks,
+            github::github_pull,
+            github::github_comment,
+            github::github_review,
             github::github_create_pull,
             github::github_default_branch,
             github::github_add_ssh_key,

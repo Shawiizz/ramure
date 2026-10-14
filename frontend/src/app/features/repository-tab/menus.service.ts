@@ -500,6 +500,7 @@ export class MenusService {
   /** What can be done with a pull request: check it out, see it on GitHub. */
   forPull(pull: Pull): MenuEntry[] {
     return [
+      { label: t('Read #{n}', { n: pull.number }), run: () => this.repository.openPull(pull) },
       {
         label: t('Check out #{n}', { n: pull.number }),
         run: () => this.repository.checkoutPull(pull),

@@ -20,7 +20,8 @@ mod undo;
 pub use cli::{set_ssh_key, ssh_command, ssh_key};
 pub use create::{clone, init};
 pub use diff::{
-    commit_files, compare_files, file_diff, file_versions, FileDiff, Hunk, Line, LineKind, Side, Versions,
+    commit_files, compare_files, file_diff, file_versions, pull_files, FileDiff, Hunk, Line, LineKind,
+    PullFiles, Pulled, Side, Versions,
 };
 pub use files::{
     blame, commits_changing, delete_file, file_history, files, full_path, ignore, read_file, signature,

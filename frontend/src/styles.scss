@@ -334,3 +334,51 @@ button {
     transform: translateY(-5px);
   }
 }
+
+/* injected HTML takes no component's styles: the look of Markdown is the whole app's */
+.r-markdown {
+  padding: 4px 14px;
+  overflow-wrap: anywhere;
+  user-select: text;
+  :is(p, ul, ol, pre, blockquote, table) {
+    margin: 10px 0;
+  }
+  :is(h1, h2, h3, h4) {
+    margin: 14px 0 8px;
+    font-size: 14px;
+  }
+  a {
+    color: var(--r-accent);
+  }
+  code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--r-raised);
+    font: 12px var(--r-mono);
+  }
+  pre {
+    padding: 10px 12px;
+    overflow-x: auto;
+    border-radius: var(--r-radius);
+    background: var(--r-void);
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+  blockquote {
+    padding-left: 12px;
+    border-left: 3px solid var(--r-line-strong);
+    color: var(--r-text-2);
+  }
+  img {
+    max-width: 100%;
+  }
+  table {
+    border-collapse: collapse;
+  }
+  :is(th, td) {
+    padding: 4px 10px;
+    border: 1px solid var(--r-line);
+  }
+}

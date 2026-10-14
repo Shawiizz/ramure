@@ -41,6 +41,8 @@ export interface Pull {
   /** The commit it brings last. */
   headId: string;
   base: string;
+  /** The base branch's last commit. */
+  baseId: string;
 }
 
 /** Where a check on a commit stands (`github::CheckState`). */
@@ -52,3 +54,31 @@ export interface Check {
   state: CheckState;
   url: string | null;
 }
+
+/** Something said about a pull request (`github::Note`). */
+export interface PullNote {
+  kind: 'comment' | 'review' | 'code';
+  author: string;
+  avatar: string | null;
+  body: string;
+  time: string;
+  /** A review's verdict. */
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | null;
+  /** The file and line a comment on the code is about. */
+  path: string | null;
+  line: number | null;
+  url: string | null;
+}
+
+/** A pull request read whole (`github::PullThread`). */
+export interface PullThread extends Pull {
+  body: string;
+  avatar: string | null;
+  state: 'open' | 'closed';
+  merged: boolean;
+  createdAt: string;
+  notes: PullNote[];
+}
+
+/** A review's verdict, as GitHub's API names it. */
+export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT';

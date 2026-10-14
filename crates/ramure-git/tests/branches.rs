@@ -226,3 +226,48 @@ fn a_pull_request_is_checked_out_on_a_branch_of_its_own() {
     let head = Repository::open(d).unwrap().snapshot(10).unwrap().head;
     assert!(matches!(head, Head::Branch { ref name } if name == "pr/7"));
 }
+
+#[test]
+fn a_pull_requests_files_are_read_its_commits_fetched_first() {
+    let remote = tempfile::tempdir().unwrap();
+    git(remote.path(), &["init", "-q", "--bare", "-b", "main"]);
+    let work = repository();
+    let w = work.path();
+    write(w, "a.txt", "one\n");
+    git(w, &["add", "."]);
+    commit(w, "First", 1);
+    let url = remote.path().to_string_lossy().into_owned();
+    git(w, &["push", "-q", &url, "main"]);
+    // the pull request: a commit pushed where GitHub keeps them, on no branch
+    write(w, "b.txt", "two\n");
+    git(w, &["add", "."]);
+    commit(w, "Second", 2);
+    git(w, &["push", "-q", &url, "HEAD:refs/pull/7/head"]);
+    let head = String::from_utf8(
+        std::process::Command::new("git").args(["rev-parse", "HEAD"]).current_dir(w).output().unwrap().stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+
+    let clone = tempfile::tempdir().unwrap();
+    git(clone.path(), &["clone", "-q", &url, "."]);
+    let c = clone.path();
+    let base = String::from_utf8(
+        std::process::Command::new("git")
+            .args(["rev-parse", "HEAD~1"])
+            .current_dir(w)
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+    // a clone following no branch of the remote: the base comes along with the pull request
+    git(c, &["update-ref", "-d", "refs/remotes/origin/main"]);
+    let pull = ramure_git::Pulled { remote: "origin", number: 7, base: "main", base_id: &base, head: &head };
+    let found = ramure_git::pull_files(c, &pull).unwrap();
+    assert_eq!(found.to, head);
+    assert_eq!(found.files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["b.txt"]);
+}

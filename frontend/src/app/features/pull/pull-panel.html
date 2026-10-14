@@ -1,0 +1,173 @@
+@if (pull(); as pull) {
+  <section class="panel">
+    <header class="head">
+      <span class="mode">{{ 'Pull request' | t }}</span>
+      <span class="title">
+        <span class="number r-mono">#{{ pull.number }}</span>
+        {{ pull.title }}
+      </span>
+      @if (state(); as state) {
+        <span class="state" [class]="state.kind">{{ state.name }}</span>
+      }
+      <span class="space"></span>
+      <div class="r-seg" role="radiogroup" [attr.aria-label]="'View' | t">
+        <button
+          role="radio"
+          [attr.aria-checked]="tab() === 'conversation'"
+          (click)="show('conversation')"
+        >
+          {{ 'Conversation' | t }}
+        </button>
+        <button role="radio" [attr.aria-checked]="tab() === 'files'" (click)="show('files')">
+          {{ 'Files' | t }}
+          @if (files(); as files) {
+            <span class="count">{{ files.files.length }}</span>
+          }
+        </button>
+      </div>
+      <button
+        class="r-bar-btn icon"
+        (click)="hub.openPage(pull.url)"
+        [attr.aria-label]="'Open on GitHub' | t"
+        [title]="'Open on GitHub' | t"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M9 3h4v4M13 3L7.5 8.5M11.5 9.5V13H3V4.5h3.5" />
+        </svg>
+      </button>
+      <button
+        class="r-bar-btn icon close"
+        (click)="close()"
+        [attr.aria-label]="'Back to the history (Esc)' | t"
+        [title]="'Back to the history (Esc)' | t"
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+      </button>
+    </header>
+
+    @if (tab() === 'conversation') {
+      <div class="scroll" (click)="follow($event)">
+        <div class="thread">
+          <p class="branches">
+            {{ '{author} wants to merge' | t: { author: pull.author } }}
+            <span class="branch r-mono">{{ pull.head }}</span>
+            {{ 'into' | t }}
+            <span class="branch r-mono">{{ pull.base }}</span>
+          </p>
+
+          @if (said(); as said) {
+            @let opened = thread()!;
+            <article class="note">
+              <header>
+                @if (opened.avatar) {
+                  <img class="face" [src]="opened.avatar" alt="" />
+                }
+                <b>{{ opened.author }}</b>
+                <span class="when" [title]="exactly(opened.createdAt)">{{
+                  ago(opened.createdAt)
+                }}</span>
+              </header>
+              @if (said.description; as description) {
+                <div class="r-markdown" [innerHTML]="description"></div>
+              } @else {
+                <p class="none">{{ 'No description.' | t }}</p>
+              }
+            </article>
+
+            @for (item of said.notes; track $index) {
+              @let note = item.note;
+              <article
+                class="note"
+                [class.approved]="note.state === 'APPROVED'"
+                [class.changes]="note.state === 'CHANGES_REQUESTED'"
+              >
+                <header>
+                  @if (note.avatar) {
+                    <img class="face" [src]="note.avatar" alt="" />
+                  }
+                  <b>{{ note.author }}</b>
+                  <span class="verb">{{ verb(note) }}</span>
+                  <span class="when" [title]="exactly(note.time)">{{ ago(note.time) }}</span>
+                </header>
+                @if (note.body.trim()) {
+                  <div class="r-markdown" [innerHTML]="item.html"></div>
+                }
+              </article>
+            }
+
+            <div class="reply">
+              <textarea
+                [value]="reply()"
+                (input)="reply.set($any($event.target).value)"
+                (keydown.control.enter)="reply().trim() && send(null)"
+                [placeholder]="'Leave a comment (Markdown)' | t"
+                [disabled]="sending()"
+              ></textarea>
+              @if (failure(); as failure) {
+                <p class="error">{{ failure }}</p>
+              }
+              <div class="actions">
+                <button
+                  class="r-btn"
+                  [disabled]="sending() || !reply().trim()"
+                  (click)="send('REQUEST_CHANGES')"
+                  [title]="'Ask for changes before it is merged' | t"
+                >
+                  {{ 'Request changes' | t }}
+                </button>
+                <button class="r-btn" [disabled]="sending()" (click)="send('APPROVE')">
+                  {{ 'Approve' | t }}
+                </button>
+                <button
+                  class="r-btn r-btn--primary"
+                  [disabled]="sending() || !reply().trim()"
+                  (click)="send(null)"
+                >
+                  {{ 'Comment (Ctrl+Enter)' | t }}
+                </button>
+              </div>
+            </div>
+          } @else if (failure(); as failure) {
+            <p class="error">{{ failure }}</p>
+          } @else {
+            <p class="none">{{ 'Reading…' | t }}</p>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="split">
+        <div class="files">
+          @if (files(); as files) {
+            <div class="files-head">
+              <span class="total">{{
+                files.files.length === 1
+                  ? ('1 changed file' | t)
+                  : ('{n} changed files' | t: { n: files.files.length })
+              }}</span>
+              <app-tree-switch />
+            </div>
+            @let where = { kind: 'compare', from: files.from, to: files.to };
+            <app-file-list
+              [changes]="files.files"
+              [tree]="tree()"
+              [openPath]="openPath()"
+              (opened)="openFile($event)"
+              (menu)="menus.open($event.event, menus.forFile($event.change, $any(where)))"
+            />
+          } @else if (failure(); as failure) {
+            <p class="error">{{ failure }}</p>
+          } @else {
+            <p class="none">{{ 'Reading…' | t }}</p>
+          }
+        </div>
+        <div class="diff">
+          @if (repository.diff()) {
+            <app-diff-view />
+          } @else {
+            <p class="none">{{ 'Pick a file to see what it changes.' | t }}</p>
+          }
+        </div>
+      </div>
+    }
+  </section>
+}

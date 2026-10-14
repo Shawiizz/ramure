@@ -219,6 +219,13 @@ export interface SavedFile {
   index: string[];
 }
 
+/** What a pull request changes, from where it left its base to its last commit. */
+export interface PullFiles {
+  from: string;
+  to: string;
+  files: Change[];
+}
+
 /** A move of HEAD: the commit it went to, what moved it, when. */
 export interface RefLogEntry {
   id: string;

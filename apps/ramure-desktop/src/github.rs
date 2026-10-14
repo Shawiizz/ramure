@@ -193,6 +193,8 @@ pub struct Pull {
     /// The commit it brings last.
     head_id: String,
     base: String,
+    /// The base branch's last commit.
+    base_id: String,
 }
 
 impl Pull {
@@ -208,6 +210,7 @@ impl Pull {
             head_repository: pull["head"]["repo"]["full_name"].as_str().map(str::to_owned),
             head_id: text(&pull["head"]["sha"]),
             base: text(&pull["base"]["ref"]),
+            base_id: text(&pull["base"]["sha"]),
         }
     }
 }
@@ -315,6 +318,118 @@ async fn checks_of(repository: &str, id: &str) -> Result<Vec<Check>, String> {
         url: text(&status["target_url"]),
     }));
     Ok(checks)
+}
+
+/// A pull request read whole: what it says, and what was said about it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullThread {
+    #[serde(flatten)]
+    pull: Pull,
+    body: String,
+    avatar: Option<String>,
+    /// `open` or `closed`; merged when closed by a merge.
+    state: String,
+    merged: bool,
+    created_at: String,
+    notes: Vec<Note>,
+}
+
+/// Something said about a pull request: a comment, a review, or a comment on a line of
+/// its code.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Note {
+    kind: &'static str,
+    author: String,
+    avatar: Option<String>,
+    body: String,
+    time: String,
+    /// A review's verdict: `APPROVED`, `CHANGES_REQUESTED`, `COMMENTED`, `DISMISSED`.
+    state: Option<String>,
+    /// The file and line a comment on the code is about.
+    path: Option<String>,
+    line: Option<u64>,
+    url: Option<String>,
+}
+
+impl Note {
+    fn from(kind: &'static str, value: &Value, time: &str) -> Note {
+        let text = |value: &Value| value.as_str().map(str::to_owned);
+        Note {
+            kind,
+            author: text(&value["user"]["login"]).unwrap_or_default(),
+            avatar: text(&value["user"]["avatar_url"]),
+            body: text(&value["body"]).unwrap_or_default(),
+            time: text(&value[time]).unwrap_or_default(),
+            state: text(&value["state"]),
+            path: text(&value["path"]),
+            line: value["line"].as_u64().or_else(|| value["original_line"].as_u64()),
+            url: text(&value["html_url"]),
+        }
+    }
+}
+
+/// The pull request `number` of `owner/repository`: its description, its comments, its
+/// reviews and the comments on its code, in the order they were made.
+#[tauri::command]
+pub async fn github_pull(repository: String, number: u64) -> Result<PullThread, String> {
+    let get = |path: String| {
+        tauri::async_runtime::spawn(async move { call::<Value>(reqwest::Method::GET, &path, None).await })
+    };
+    let pull = get(format!("/repos/{repository}/pulls/{number}"));
+    let comments = get(format!("/repos/{repository}/issues/{number}/comments?per_page=100"));
+    let reviews = get(format!("/repos/{repository}/pulls/{number}/reviews?per_page=100"));
+    let on_code = get(format!("/repos/{repository}/pulls/{number}/comments?per_page=100"));
+    let joined = |e: tauri::Error| e.to_string();
+    let pull = pull.await.map_err(joined)??;
+    let list = |value: Value| value.as_array().cloned().unwrap_or_default();
+    let mut notes: Vec<Note> = list(comments.await.map_err(joined)??)
+        .iter()
+        .map(|c| Note::from("comment", c, "created_at"))
+        .collect();
+    notes.extend(
+        list(reviews.await.map_err(joined)??)
+            .iter()
+            .map(|r| Note::from("review", r, "submitted_at"))
+            // a review that only holds comments on the code says nothing of its own
+            .filter(|r| !(r.body.is_empty() && r.state.as_deref() == Some("COMMENTED"))),
+    );
+    notes.extend(list(on_code.await.map_err(joined)??).iter().map(|c| Note::from("code", c, "created_at")));
+    notes.sort_by(|a, b| a.time.cmp(&b.time));
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_owned();
+    Ok(PullThread {
+        body: text(&pull["body"]),
+        avatar: pull["user"]["avatar_url"].as_str().map(str::to_owned),
+        state: text(&pull["state"]),
+        merged: pull["merged"].as_bool().unwrap_or(false),
+        created_at: text(&pull["created_at"]),
+        pull: Pull::from(&pull),
+        notes,
+    })
+}
+
+/// Comments on the pull request `number` of `owner/repository`.
+#[tauri::command]
+pub async fn github_comment(repository: String, number: u64, body: String) -> Result<(), String> {
+    let path = format!("/repos/{repository}/issues/{number}/comments");
+    call::<Value>(reqwest::Method::POST, &path, Some(json!({ "body": body }))).await.map(drop)
+}
+
+/// Reviews the pull request `number` of `owner/repository`: `APPROVE`, `REQUEST_CHANGES`
+/// or `COMMENT`, with `body` said along.
+#[tauri::command]
+pub async fn github_review(
+    repository: String,
+    number: u64,
+    event: String,
+    body: String,
+) -> Result<(), String> {
+    if !["APPROVE", "REQUEST_CHANGES", "COMMENT"].contains(&event.as_str()) {
+        return Err(format!("{event} is not a review"));
+    }
+    let path = format!("/repos/{repository}/pulls/{number}/reviews");
+    call::<Value>(reqwest::Method::POST, &path, Some(json!({ "event": event, "body": body }))).await.map(drop)
 }
 
 /// A new pull request on `owner/repository`, bringing `head` into `base`.

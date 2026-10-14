@@ -175,6 +175,41 @@ pub fn compare_files(dir: &Path, from: &str, to: &str) -> Result<Vec<Change>, Er
     Ok(changes(&git(dir, &["diff", "--no-ext-diff", "-z", "-M", "--name-status", from, to])?))
 }
 
+/// What a pull request changes: from where it left its base to its last commit.
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullFiles {
+    pub from: String,
+    pub to: String,
+    pub files: Vec<Change>,
+}
+
+/// The pull request `number` of `remote`: it brings its last commit `head` into the branch
+/// `base`, whose last commit is `base_id`.
+pub struct Pulled<'a> {
+    pub remote: &'a str,
+    pub number: u64,
+    pub base: &'a str,
+    pub base_id: &'a str,
+    pub head: &'a str,
+}
+
+/// The files a pull request changes, from where its branch left its base: its commits
+/// fetched first when this repository lacks them, whatever branches it follows.
+pub fn pull_files(dir: &Path, pull: &Pulled) -> Result<PullFiles, Error> {
+    let present = |id: &str| -> Result<bool, Error> {
+        Ok(git_answer(dir, &["cat-file", "-e", &format!("{id}^{{commit}}")])?.is_some())
+    };
+    let Pulled { remote, number, base, base_id, head } = *pull;
+    if !present(head)? || !present(base_id)? {
+        git(dir, &["fetch", "--no-tags", remote, &format!("pull/{number}/head"), base])?;
+    }
+    let from = git(dir, &["merge-base", base_id, head])?;
+    let from = String::from_utf8_lossy(&from).trim().to_owned();
+    let files = compare_files(dir, &from, head)?;
+    Ok(PullFiles { from, to: head.to_owned(), files })
+}
+
 /// The changes `--name-status -z` lists.
 fn changes(out: &[u8]) -> Vec<Change> {
     let mut fields =

@@ -123,6 +123,8 @@ export class RepositoryService {
   readonly comparison = signal<Comparison | null>(null);
   /** Where HEAD has been, in place of the history. */
   readonly reflogOpen = signal(false);
+  /** A pull request read, in place of the history. */
+  readonly pullOpen = signal<Pull | null>(null);
   /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
   readonly terminalOpen = signal(false);
   /** Older commits are being read, or none is left to read. */
@@ -514,13 +516,22 @@ export class RepositoryService {
   openFile(panel: FilePanel) {
     this.diff.set(null);
     this.reflogOpen.set(false);
+    this.pullOpen.set(null);
     this.filePanel.set(panel);
   }
 
   openReflog() {
     this.diff.set(null);
     this.filePanel.set(null);
+    this.pullOpen.set(null);
     this.reflogOpen.set(true);
+  }
+
+  openPull(pull: Pull) {
+    this.diff.set(null);
+    this.filePanel.set(null);
+    this.reflogOpen.set(false);
+    this.pullOpen.set(pull);
   }
 
   /** Runs a command about one file of the working tree, telling a failure. */
