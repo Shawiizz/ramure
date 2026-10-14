@@ -210,8 +210,8 @@ export const FR: Record<string, string> = {
   Editing: 'Modification',
   Editor: 'Éditeur',
   'End the terminal': 'Fermer le terminal',
-  'Every change, staged or not, and every new file is thrown away for good.':
-    'Toutes les modifications, indexées ou non, et tous les nouveaux fichiers sont perdus définitivement.',
+  'Every change, staged or not, and every new file is thrown away; Undo brings them back.':
+    'Toutes les modifications, indexées ou non, et tous les nouveaux fichiers sont abandonnés ; Annuler les ramène.',
   'Every file ending in {extension}': 'Tous les fichiers en {extension}',
   'Every {n} min': 'Toutes les {n} min',
   'Everything in {dir}': 'Tout le contenu de {dir}',
@@ -272,8 +272,8 @@ export const FR: Record<string, string> = {
   'Interactive rebase of {branch} onto {name}…': 'Rebase interactif de {branch} sur {name}…',
   'Interactive rebase onto this commit…': 'Rebase interactif sur ce commit…',
   'Into the branch': 'Vers la branche',
-  'It goes back as it is staged, or committed, for good.':
-    'Il revient définitivement tel qu’il est indexé, ou commité.',
+  'It goes back as it is staged, or committed; Undo brings its changes back.':
+    'Il revient tel qu’il est indexé, ou commité ; Annuler ramène ses modifications.',
   'It goes from the disk: only a version git kept can bring it back.':
     'Il disparaît du disque : seule une version gardée par git peut le faire revenir.',
   'It keeps who made it, when, and a message: the usual kind for a release.':
@@ -284,8 +284,8 @@ export const FR: Record<string, string> = {
     'Ses commits présents nulle part ailleurs partent avec elle ; Annuler la fait revenir.',
   'Its name': 'Son nom',
   'Its own folder': 'Son propre dossier',
-  'Its staged and unstaged changes are thrown away for good.':
-    'Ses modifications indexées et non indexées sont perdues définitivement.',
+  'Its staged and unstaged changes are thrown away; Undo brings them back.':
+    'Ses modifications indexées et non indexées sont abandonnées ; Annuler les ramène.',
   Keep: 'Garder',
   'Keep all current': 'Tout garder de l’actuel',
   'Keep all incoming': 'Tout garder de l’entrant',
@@ -550,19 +550,24 @@ export const FR: Record<string, string> = {
   'The current version deletes this file.': 'La version actuelle supprime ce fichier.',
   'The date is not valid.': 'La date n’est pas valide.',
   'the deletion of {name}': 'la suppression de {name}',
+  'the discarding of every change': 'l’abandon de toutes les modifications',
+  'the discarding of lines of {name}': 'l’abandon de lignes de {name}',
+  'the discarding of {name}': 'l’abandon des modifications de {name}',
+  'the discarding of {n} files': 'l’abandon des modifications de {n} fichiers',
   'The editor’s when empty.': 'Celle de l’éditeur si vide.',
   'The edits not saved are lost.': 'Les modifications non enregistrées sont perdues.',
   'The incoming version deletes this file.': 'La version entrante supprime ce fichier.',
-  'The lines go back as they are staged, or committed, for good.':
-    'Les lignes reviennent définitivement telles qu’elles sont indexées, ou commitées.',
   'The files in their folders': 'Les fichiers dans leurs dossiers',
   'The folder it goes in': 'Le dossier où il va',
   'The global identity follows the profile': 'L’identité globale suit le profil',
   'the identity git is set up with': 'l’identité configurée dans git',
   'the interactive rebase': 'le rebase interactif',
+  'The lines go back as they are staged, or committed; Undo brings them back.':
+    'Les lignes reviennent telles qu’elles sont indexées, ou commitées ; Annuler les ramène.',
   'the merge of {name}': 'la fusion de {name}',
   'the new branch {name}': 'la nouvelle branche {name}',
-  'The new file is deleted for good.': 'Le nouveau fichier est supprimé définitivement.',
+  'The new file is deleted; Undo brings it back.':
+    'Le nouveau fichier est supprimé ; Annuler le ramène.',
   'The oldest commit kept has nothing below to join.':
     'Le plus ancien commit gardé n’a rien en dessous à rejoindre.',
   'The one signing, by its command or its path.': 'Celui qui signe, par sa commande ou son chemin.',
@@ -573,6 +578,7 @@ export const FR: Record<string, string> = {
   'The remote branch {name} follows': 'La branche distante que suit {name}',
   'the renaming of {name}': 'le renommage de {name}',
   'the reset to {id}': 'le reset sur {id}',
+  'the resolving of {name}': 'la résolution de {name}',
   'the revert of {id}': 'le revert de {id}',
   'the rewrite of {id}': 'la réécriture de {id}',
   'the switch to #{n}': 'le passage sur #{n}',

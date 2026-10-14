@@ -445,10 +445,10 @@ export class MenusService {
             title: t('Discard the changes of {name}?', { name }),
             text:
               change.kind === 'untracked'
-                ? t('The new file is deleted for good.')
+                ? t('The new file is deleted; Undo brings it back.')
                 : staged
-                  ? t('Its staged and unstaged changes are thrown away for good.')
-                  : t('It goes back as it is staged, or committed, for good.'),
+                  ? t('Its staged and unstaged changes are thrown away; Undo brings them back.')
+                  : t('It goes back as it is staged, or committed; Undo brings its changes back.'),
             fields: [],
             confirm: t('Discard'),
             danger: true,
@@ -560,7 +560,9 @@ export class MenusService {
   discardAll() {
     this.ask({
       title: t('Discard every change?'),
-      text: t('Every change, staged or not, and every new file is thrown away for good.'),
+      text: t(
+        'Every change, staged or not, and every new file is thrown away; Undo brings them back.',
+      ),
       fields: [],
       confirm: t('Discard everything'),
       danger: true,

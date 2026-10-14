@@ -212,6 +212,13 @@ export interface DiffLine {
   text: string;
 }
 
+/** A file as it was, kept to be put back: its bytes' blob, its index entries. */
+export interface SavedFile {
+  path: string;
+  blob: string | null;
+  index: string[];
+}
+
 /** A move of HEAD: the commit it went to, what moved it, when. */
 export interface RefLogEntry {
   id: string;

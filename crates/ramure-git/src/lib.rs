@@ -12,6 +12,7 @@ mod identity;
 mod partial;
 mod reflog;
 mod repository;
+mod saved;
 mod stash;
 mod status;
 mod undo;
@@ -33,6 +34,7 @@ pub use identity::{
 pub use partial::{apply_lines, Part, Picked};
 pub use reflog::{reflog, RefLogEntry};
 pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};
+pub use saved::{restore_files, save_files, SavedFile};
 pub use stash::{stash_files, Stash};
 pub use status::{status, Change, ChangeKind, Status, Upstream};
 use std::path::PathBuf;

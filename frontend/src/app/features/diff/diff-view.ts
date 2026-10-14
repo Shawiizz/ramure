@@ -199,7 +199,7 @@ export class DiffView {
     this.preferences.set(key, value);
   }
 
-  /** Stages, unstages or throws away `lines`; after asking, when they go for good. */
+  /** Stages, unstages or throws away `lines`; throwing them away is asked first. */
   protected applyLines(part: Part, lines: Picked[]) {
     const file = this.open()?.change.path;
     if (!file) return;
@@ -209,7 +209,7 @@ export class DiffView {
     }
     this.menus.ask({
       title: t('Discard these changes?'),
-      text: t('The lines go back as they are staged, or committed, for good.'),
+      text: t('The lines go back as they are staged, or committed; Undo brings them back.'),
       fields: [],
       confirm: t('Discard'),
       danger: true,

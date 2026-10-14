@@ -5,7 +5,7 @@
 use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Sides, Step, Version};
 use ramure_git::{
     actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, RefLogEntry,
-    RefState, Repository, Side, Snapshot, View,
+    RefState, Repository, SavedFile, Side, Snapshot, View,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -376,6 +376,20 @@ fn conflict_sides(path: PathBuf, file: String) -> Answer<Sides> {
     Ok(actions::conflict_sides(&path, &file)?)
 }
 
+/// The files as they are now, to be put back later: before and after a discard.
+#[tauri::command(async)]
+fn save_files(path: PathBuf, files: Vec<String>) -> Answer<Vec<SavedFile>> {
+    Ok(ramure_git::save_files(&path, &files)?)
+}
+
+/// Puts files back as `to` saved them, from how `from` saved them: a discard undone or
+/// done again.
+#[tauri::command(async)]
+fn restore_files(path: PathBuf, to: Vec<SavedFile>, from: Vec<SavedFile>) -> Answer<Snapshot> {
+    ramure_git::restore_files(&path, &to, &from)?;
+    snapshot(&path)
+}
+
 /// Resolves a conflict with one side's version of the whole file.
 #[tauri::command(async)]
 fn take(path: PathBuf, file: String, version: Version) -> Answer<Snapshot> {
@@ -712,6 +726,8 @@ pub fn run() {
             reflog,
             apply_lines,
             take,
+            save_files,
+            restore_files,
             conflict_sides,
             stage,
             unstage,

@@ -13,6 +13,7 @@ import {
   RefLabel,
   RefState,
   Reset,
+  SavedFile,
   Rewrite,
   Signature,
   Snapshot,
@@ -63,14 +64,20 @@ export interface Comparison {
 /** An exchange with a remote, under way. */
 export type Exchange = 'fetch' | 'pull' | 'push';
 
-/** An action done, and how to take it back: where the names were before it and after. */
-export interface Undoable {
+/**
+ * An action done, and how to take it back: where the names were before it and after, or
+ * the files it changed as they were before and after.
+ */
+export type Undoable = {
   /** What was done, to complete "Undo …" and "Redo …". */
   what: string;
-  before: RefState;
-  after: RefState;
-  how: Move;
-}
+} & (
+  | { kind: 'refs'; before: RefState; after: RefState; how: Move }
+  | { kind: 'files'; before: SavedFile[]; after: SavedFile[] }
+);
+
+/** How an action is undone: by moving the names back, or by putting its files back. */
+type Undoing = { what: string; how: Move } | { what: string; files: string[] };
 
 /** Actions undone at most, back from the last. */
 const UNDO_DEPTH = 50;
@@ -364,12 +371,15 @@ export class RepositoryService {
 
   /** Resolves a conflict with one side's version of the whole file. */
   takeVersion(file: string, version: Version) {
-    return this.change('take', { file, version });
+    const what = t('the resolving of {name}', { name: nameOf(file) });
+    return this.change('take', { file, version }, { what, files: [file] });
   }
 
   /** Stages, unstages or throws away some of a file's changed lines. */
   applyLines(file: string, part: Part, lines: Picked[]) {
-    return this.change('apply_lines', { file, part, lines });
+    const what = t('the discarding of lines of {name}', { name: nameOf(file) });
+    const undoing = part === 'discard' ? { what, files: [file] } : undefined;
+    return this.change('apply_lines', { file, part, lines }, undoing);
   }
 
   /**
@@ -431,12 +441,22 @@ export class RepositoryService {
 
   /** Throws away the changes of some files, their staged ones too when `staged`. */
   discard(files: string[], staged: boolean) {
-    return this.change('discard', { files, staged });
+    const what =
+      files.length === 1
+        ? t('the discarding of {name}', { name: nameOf(files[0]) })
+        : t('the discarding of {n} files', { n: files.length });
+    return this.change('discard', { files, staged }, { what, files });
   }
 
   /** Throws away every change of the working tree, new files included. */
   discardAll() {
-    return this.change('discard_all', {});
+    const status = this.snapshot()?.status;
+    const files = [
+      ...(status?.staged ?? []),
+      ...(status?.unstaged ?? []),
+      ...(status?.conflicted ?? []),
+    ].flatMap((c) => (c.oldPath ? [c.path, c.oldPath] : [c.path]));
+    return this.change('discard_all', {}, { what: t('the discarding of every change'), files });
   }
 
   /** Adds a pattern to the repository's .gitignore. */
@@ -666,24 +686,33 @@ export class RepositoryService {
   undo() {
     const last = this.undoable().at(-1);
     if (!last) return Promise.resolve(false);
-    return this.travel(last, last.before, last.after, this.undoable, this.redoable);
+    return this.travel(last, true, this.undoable, this.redoable);
   }
 
   /** Does again the last action undone. */
   redo() {
     const last = this.redoable().at(-1);
     if (!last) return Promise.resolve(false);
-    return this.travel(last, last.after, last.before, this.redoable, this.undoable);
+    return this.travel(last, false, this.redoable, this.undoable);
   }
 
   private async travel(
     entry: Undoable,
-    to: RefState,
-    from: RefState,
+    back: boolean,
     taken: typeof this.undoable,
     given: typeof this.undoable,
   ): Promise<boolean> {
-    const done = await this.change('restore', { to, from, how: entry.how });
+    const done =
+      entry.kind === 'refs'
+        ? await this.change('restore', {
+            to: back ? entry.before : entry.after,
+            from: back ? entry.after : entry.before,
+            how: entry.how,
+          })
+        : await this.change('restore_files', {
+            to: back ? entry.before : entry.after,
+            from: back ? entry.after : entry.before,
+          });
     // done or not (the repository moved on meanwhile), it is off this list
     taken.update((list) => list.slice(0, -1));
     if (done) given.update((list) => [...list, entry]);
@@ -827,7 +856,7 @@ export class RepositoryService {
   private async change(
     command: string,
     args: Record<string, unknown>,
-    undoable?: { what: string; how: Move },
+    undoable?: Undoing,
   ): Promise<boolean> {
     const path = this.snapshot()?.path;
     if (!path) return false;
@@ -836,15 +865,18 @@ export class RepositoryService {
     this.error.set(null);
     let done = false;
     try {
-      const before = undoable && (await invoke<RefState>('ref_state', { path }));
+      const before = undoable && (await this.state(path, undoable));
       this.apply(await invoke<Snapshot>(command, { path, ...args }));
       done = true;
       if (undoable && before) {
-        const after = await invoke<RefState>('ref_state', { path });
+        const after = await this.state(path, undoable);
         if (JSON.stringify(after) !== JSON.stringify(before)) {
-          this.undoable.update((list) =>
-            [...list, { ...undoable, before, after }].slice(-UNDO_DEPTH),
-          );
+          const entry = (
+            'how' in undoable
+              ? { kind: 'refs', what: undoable.what, how: undoable.how, before, after }
+              : { kind: 'files', what: undoable.what, before, after }
+          ) as Undoable;
+          this.undoable.update((list) => [...list, entry].slice(-UNDO_DEPTH));
           this.redoable.set([]);
         }
       }
@@ -860,6 +892,13 @@ export class RepositoryService {
       if (this.snapshot()?.operation) this.error.set(null);
     }
     return done;
+  }
+
+  /** What an action changes, as it is now: the names, or its files. */
+  private state(path: string, undoing: Undoing): Promise<RefState | SavedFile[]> {
+    return 'how' in undoing
+      ? invoke<RefState>('ref_state', { path })
+      : invoke<SavedFile[]>('save_files', { path, files: undoing.files });
   }
 
   /** Takes a new state, keeping the selection where it still makes sense. */
@@ -907,4 +946,9 @@ export class RepositoryService {
       this.error.set(String(e));
     }
   }
+}
+
+/** A path's last part: the file's name. */
+function nameOf(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1);
 }

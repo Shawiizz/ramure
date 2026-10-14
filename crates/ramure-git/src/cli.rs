@@ -2,8 +2,9 @@
 //! user's own configuration, hooks and credentials with it.
 
 use crate::{Error, Identity};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::sync::RwLock;
 
 /// Runs `git args` in `dir` and returns what it printed; its error message when it fails.
@@ -24,6 +25,25 @@ pub(crate) fn git_with(
     env: &[(&str, &str)],
 ) -> Result<Vec<u8>, Error> {
     let output = run(Some(dir), args, identity, env)?;
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        Err(Error::Command(message(&output)))
+    }
+}
+
+/// Like [`git`], `input` given to it on its standard input.
+pub(crate) fn git_fed(dir: &Path, args: &[&str], input: &[u8]) -> Result<Vec<u8>, Error> {
+    let could_not = |e: std::io::Error| Error::Command(format!("git could not run: {e}"));
+    let mut child = command(Some(dir), args, None, &[])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(could_not)?;
+    // written whole before its answer is read: it fits in the pipe, or git reads it all first
+    child.stdin.take().expect("stdin is piped").write_all(input).map_err(could_not)?;
+    let output = child.wait_with_output().map_err(could_not)?;
     if output.status.success() {
         Ok(output.stdout)
     } else {
