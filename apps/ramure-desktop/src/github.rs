@@ -212,12 +212,21 @@ impl Pull {
     }
 }
 
-/// The open pull requests of `owner/repository`, the last updated first.
+/// The open pull requests of `owner/repository`, the last updated first: at most 500.
 #[tauri::command]
 pub async fn github_pulls(repository: String) -> Result<Vec<Pull>, String> {
-    let path = format!("/repos/{repository}/pulls?state=open&sort=updated&direction=desc&per_page=100");
-    let pulls: Vec<Value> = call(reqwest::Method::GET, &path, None).await?;
-    Ok(pulls.iter().map(Pull::from).collect())
+    let mut all = Vec::new();
+    for page in 1..=5 {
+        let path = format!(
+            "/repos/{repository}/pulls?state=open&sort=updated&direction=desc&per_page=100&page={page}"
+        );
+        let pulls: Vec<Value> = call(reqwest::Method::GET, &path, None).await?;
+        all.extend(pulls.iter().map(Pull::from));
+        if pulls.len() < 100 {
+            break;
+        }
+    }
+    Ok(all)
 }
 
 /// A new pull request on `owner/repository`, bringing `head` into `base`.

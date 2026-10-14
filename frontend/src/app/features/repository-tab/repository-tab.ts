@@ -13,7 +13,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
 import { AskDialog } from '../../shared/ask-dialog';
 import { ContextMenu } from '../../shared/context-menu';
-import { Tab, TabsService } from '../../core/services/tabs.service';
+import { Tab, TabsService, splitPath } from '../../core/services/tabs.service';
 import { Toast } from '../../shell/toast/toast';
 import { Details } from '../details/details';
 import { DiffView } from '../diff/diff-view';
@@ -39,6 +39,12 @@ import { follow } from '../../shared/drag';
   template: `
     @if (repository.snapshot()) {
       <app-toolbar />
+      <!-- git at work: a bar sliding under the toolbar, once it lasts -->
+      <div
+        class="progress"
+        [class.on]="repository.working() || repository.loading() || repository.exchange()"
+        role="progressbar"
+      ></div>
       <app-operation-banner />
       <div class="workspace" [style.grid-template-columns]="columns()">
         <app-sidebar />
@@ -81,6 +87,11 @@ import { follow } from '../../shared/drag';
         ></div>
         <app-details />
       </div>
+    } @else if (repository.loading()) {
+      <div class="opening" role="status">
+        <span class="spinner"></span>
+        {{ 'Opening {name}…' | t: { name: opening() } }}
+      </div>
     } @else {
       <app-welcome (chose)="show($event)" />
     }
@@ -116,6 +127,57 @@ import { follow } from '../../shared/drag';
     app-welcome {
       flex: 1;
       min-height: 0;
+    }
+    /* the bar under the toolbar: unseen for what is quick, sliding for what takes a while */
+    .progress {
+      position: relative;
+      height: 2px;
+      margin-bottom: -2px;
+      z-index: 3;
+      overflow: hidden;
+      opacity: 0;
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 30%;
+        background: var(--r-accent);
+        animation: slide 1.1s ease-in-out infinite;
+      }
+      &.on {
+        opacity: 1;
+        transition: opacity var(--r-fast) 250ms;
+      }
+    }
+    @keyframes slide {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(340%);
+      }
+    }
+    .opening {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: var(--r-text-2);
+    }
+    .spinner {
+      width: 26px;
+      height: 26px;
+      border: 2.5px solid var(--r-line-strong);
+      border-top-color: var(--r-accent);
+      border-radius: 50%;
+      animation: turn 0.8s linear infinite;
+    }
+    @keyframes turn {
+      to {
+        transform: rotate(360deg);
+      }
     }
     .center {
       min-width: 0;
@@ -204,6 +266,8 @@ import { follow } from '../../shared/drag';
 })
 export class RepositoryTab {
   readonly tab = input.required<Tab>();
+  /** The repository being opened, by its folder's name. */
+  protected readonly opening = computed(() => splitPath(this.tab().path ?? '').name);
   readonly active = input(false);
   protected readonly repository = inject(RepositoryService);
   protected readonly menus = inject(MenusService);

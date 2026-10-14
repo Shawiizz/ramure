@@ -87,6 +87,8 @@ export class RepositoryService {
   readonly selectedId = signal<string | null>(null);
   readonly exchange = signal<Exchange | null>(null);
   readonly working = signal(false);
+  /** The command at work (`checkout`, `rebase`…), for the loader to name it. */
+  readonly activity = signal<string | null>(null);
   readonly diff = signal<OpenDiff | null>(null);
   readonly filePanel = signal<FilePanel | null>(null);
   /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
@@ -247,6 +249,7 @@ export class RepositoryService {
     const path = this.snapshot()?.path;
     if (!path || this.reading || this.readAll || this.working()) return;
     this.reading = true;
+    this.activity.set('read_more');
     const before = this.snapshot()!.commits.length;
     try {
       this.apply(await invoke<Snapshot>('read_more', { path }));
@@ -255,6 +258,7 @@ export class RepositoryService {
       this.error.set(String(e));
     } finally {
       this.reading = false;
+      this.activity.set(null);
     }
   }
 
@@ -767,6 +771,7 @@ export class RepositoryService {
     const path = this.snapshot()?.path;
     if (!path) return false;
     this.working.set(true);
+    this.activity.set(command);
     this.error.set(null);
     let done = false;
     try {
@@ -786,6 +791,7 @@ export class RepositoryService {
       this.error.set(String(e));
     } finally {
       this.working.set(false);
+      this.activity.set(null);
     }
     if (!done) {
       await this.refresh();

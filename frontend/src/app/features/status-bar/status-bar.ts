@@ -40,13 +40,12 @@ export class StatusBar {
     return operation ? names[operation] : null;
   });
 
-  /** What git is busy with, if anything. */
+  /** What git is busy with, if anything, as its command is called. */
   protected readonly busy = computed(() => {
-    const exchange = this.repository.exchange();
-    if (exchange === 'fetch') return t('Fetching…');
-    if (exchange === 'pull') return t('Pulling…');
-    if (exchange === 'push') return t('Pushing…');
-    return this.repository.working() ? t('Working…') : null;
+    const activity = this.repository.exchange() ?? this.repository.activity();
+    if (this.repository.loading()) return t('Opening…');
+    if (!activity) return null;
+    return ACTIVITIES[activity]?.() ?? t('Working…');
   });
 
   /** Brings the upstream's commits here, else sends this branch's there, else looks for new ones. */
@@ -64,3 +63,31 @@ export class StatusBar {
     return Math.round(share * 100);
   }
 }
+
+/** The loader's words for the commands that take a while. */
+const ACTIVITIES: Record<string, () => string> = {
+  fetch: () => t('Fetching…'),
+  fetch_remote: () => t('Fetching…'),
+  pull: () => t('Pulling…'),
+  push: () => t('Pushing…'),
+  push_branch: () => t('Pushing…'),
+  push_tag: () => t('Pushing…'),
+  checkout: () => t('Switching…'),
+  checkout_commit: () => t('Switching…'),
+  checkout_pull: () => t('Switching…'),
+  commit: () => t('Committing…'),
+  merge: () => t('Merging…'),
+  rebase: () => t('Rebasing…'),
+  rebase_branch: () => t('Rebasing…'),
+  rebase_interactive: () => t('Rebasing…'),
+  rewrite: () => t('Rewriting…'),
+  cherry_pick: () => t('Cherry-picking…'),
+  revert: () => t('Reverting…'),
+  reset: () => t('Resetting…'),
+  stash: () => t('Stashing…'),
+  stash_pop: () => t('Bringing the stash back…'),
+  stash_apply: () => t('Bringing the stash back…'),
+  discard: () => t('Discarding…'),
+  discard_all: () => t('Discarding…'),
+  read_more: () => t('Reading older commits…'),
+};
