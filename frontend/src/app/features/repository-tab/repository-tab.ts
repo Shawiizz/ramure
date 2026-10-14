@@ -23,6 +23,7 @@ import { MIN_TERMINAL } from '../../core/models/settings';
 import { History } from '../history/history';
 import { OperationBanner } from '../operation/operation-banner';
 import { RebaseDialog } from '../rebase/rebase-dialog';
+import { Palette } from '../palette/palette';
 import { RewriteDialog } from '../rewrite/rewrite-dialog';
 import { Sidebar } from '../sidebar/sidebar';
 import { StatusBar } from '../status-bar/status-bar';
@@ -97,6 +98,7 @@ import { follow } from '../../shared/drag';
     }
     <app-status-bar />
     <app-toast />
+    <app-palette />
     @if (menus.menu(); as menu) {
       <app-context-menu
         [entries]="menu.entries"
@@ -262,6 +264,7 @@ import { follow } from '../../shared/drag';
     AskDialog,
     RebaseDialog,
     RewriteDialog,
+    Palette,
   ],
 })
 export class RepositoryTab {

@@ -148,6 +148,20 @@ pub fn full_path(dir: &Path, path: &str) -> Result<PathBuf, Error> {
     inside(dir, path)
 }
 
+/// The working tree's files git follows or could, those it ignores left out; sorted.
+pub fn files(dir: &Path) -> Result<Vec<String>, Error> {
+    let out = git(dir, &["ls-files", "-z", "--cached", "--others", "--exclude-standard"])?;
+    let mut files: Vec<String> = out
+        .split(|&b| b == 0)
+        .filter(|p| !p.is_empty())
+        .map(|p| String::from_utf8_lossy(p).into_owned())
+        .collect();
+    files.sort_unstable();
+    // a file in conflict is listed once for each side
+    files.dedup();
+    Ok(files)
+}
+
 /// Adds `pattern` to the repository's `.gitignore`, made when missing, in its line endings.
 pub fn ignore(dir: &Path, pattern: &str) -> Result<(), Error> {
     let file = dir.join(".gitignore");

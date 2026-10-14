@@ -639,7 +639,7 @@ export class MenusService {
     ];
   }
 
-  private createBranchAt(id: string, at: string): MenuEntry {
+  createBranchAt(id: string, at: string): MenuEntry {
     return {
       label: t('Create a branch here…'),
       run: () =>

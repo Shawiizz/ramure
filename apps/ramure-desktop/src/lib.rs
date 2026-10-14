@@ -269,6 +269,11 @@ fn discard_all(path: PathBuf) -> Answer<Snapshot> {
 }
 
 #[tauri::command(async)]
+fn files(path: PathBuf) -> Answer<Vec<String>> {
+    Ok(ramure_git::files(&path)?)
+}
+
+#[tauri::command(async)]
 fn ignore(path: PathBuf, pattern: String) -> Answer<Snapshot> {
     ramure_git::ignore(&path, &pattern)?;
     snapshot(&path)
@@ -698,6 +703,7 @@ pub fn run() {
             commit_files,
             stash_files,
             compare_files,
+            files,
             apply_lines,
             take,
             conflict_sides,

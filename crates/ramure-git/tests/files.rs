@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::{git, git_at, repository, write};
+use common::{commit, git, git_at, repository, write};
 use ramure_git::{
     actions, blame, delete_file, file_history, ignore, read_file, status, write_file, ChangeKind,
 };
@@ -133,4 +133,18 @@ fn a_file_is_read_written_and_deleted_inside_the_repository_only() {
     assert!(!d.join("a.txt").exists());
     assert!(read_file(d, "../outside.txt").is_err());
     assert!(write_file(d, "/etc/passwd", b"x").is_err());
+}
+
+#[test]
+fn the_files_are_those_git_follows_or_could() {
+    let dir = repository();
+    let d = dir.path();
+    write(d, "b.txt", "b\n");
+    write(d, "src/a.rs", "a\n");
+    git(d, &["add", "."]);
+    commit(d, "First", 1);
+    write(d, "new.md", "new\n");
+    write(d, "build/out.bin", "out\n");
+    write(d, ".gitignore", "build/\n");
+    assert_eq!(ramure_git::files(d).unwrap(), [".gitignore", "b.txt", "new.md", "src/a.rs"]);
 }
