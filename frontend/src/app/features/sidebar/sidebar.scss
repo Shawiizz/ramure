@@ -80,14 +80,21 @@ section {
   }
 }
 
+/* a heading and its buttons: the line lights as one, to the edge */
 .heading-row {
   display: flex;
   align-items: center;
   padding-right: 6px;
   cursor: grab;
+  &:hover {
+    background: var(--r-hover);
+  }
   .heading {
     flex: 1;
     min-width: 0;
+    &:hover {
+      background: transparent;
+    }
   }
 }
 
