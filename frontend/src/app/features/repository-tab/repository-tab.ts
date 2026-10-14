@@ -61,11 +61,18 @@ import { follow } from '../../shared/drag';
           <div class="main">
             <app-history />
             @if (repository.filePanel()) {
-              <app-file-panel />
+              @defer {
+                <app-file-panel />
+              }
             } @else if (repository.pullOpen()) {
-              <app-pull-panel />
+              <!-- read the first time a pull request opens, its Markdown with it -->
+              @defer {
+                <app-pull-panel />
+              }
             } @else if (repository.reflogOpen()) {
-              <app-reflog />
+              @defer {
+                <app-reflog />
+              }
             } @else if (repository.diff()) {
               <app-diff-view />
             }
@@ -104,7 +111,9 @@ import { follow } from '../../shared/drag';
     }
     <app-status-bar />
     <app-toast />
-    <app-palette />
+    @defer (on idle) {
+      <app-palette />
+    }
     @if (menus.menu(); as menu) {
       <app-context-menu
         [entries]="menu.entries"
@@ -117,10 +126,14 @@ import { follow } from '../../shared/drag';
       <app-ask-dialog [ask]="asking" (cancelled)="menus.asking.set(null)" />
     }
     @if (menus.rebasing(); as rebasing) {
-      <app-rebase-dialog [rebasing]="rebasing" (closed)="menus.rebasing.set(null)" />
+      @defer {
+        <app-rebase-dialog [rebasing]="rebasing" (closed)="menus.rebasing.set(null)" />
+      }
     }
     @if (menus.rewriting(); as commit) {
-      <app-rewrite-dialog [commit]="commit" (closed)="menus.rewriting.set(null)" />
+      @defer {
+        <app-rewrite-dialog [commit]="commit" (closed)="menus.rewriting.set(null)" />
+      }
     }
   `,
   styles: `
