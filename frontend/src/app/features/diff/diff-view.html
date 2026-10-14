@@ -76,6 +76,20 @@
         </button>
       </div>
 
+      @if (selected().length) {
+        <div class="group">
+          @for (part of parts(); track part) {
+            <button
+              class="r-bar-btn"
+              [class.danger]="part === 'discard'"
+              (click)="applyLines(part, selected())"
+            >
+              {{ partLabel(part) }}
+            </button>
+          }
+        </div>
+      }
+
       <span class="space"></span>
 
       @if (prefs().diffMode === 'diff') {

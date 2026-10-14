@@ -7,6 +7,8 @@ import {
   Commit,
   FileDiff,
   Move,
+  Part,
+  Picked,
   Planned,
   RefLabel,
   RefState,
@@ -317,6 +319,11 @@ export class RepositoryService {
 
   unstage(files: string[]) {
     return this.change('unstage', { files });
+  }
+
+  /** Stages, unstages or throws away some of a file's changed lines. */
+  applyLines(file: string, part: Part, lines: Picked[]) {
+    return this.change('apply_lines', { file, part, lines });
   }
 
   /**

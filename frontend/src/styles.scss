@@ -259,6 +259,53 @@ button {
     width: 3px !important;
     background: rgb(var(--r-added-rgb));
   }
+  /* above each hunk: its header and what can become of it */
+  .r-hunk-zone {
+    z-index: 5;
+  }
+  .r-hunk-bar {
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px 0 12px;
+    border-block: 1px solid var(--r-line);
+    background: var(--r-base);
+    color: var(--r-text-3);
+    font: 11px var(--r-mono);
+    white-space: nowrap;
+    .header {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    button {
+      height: 22px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: var(--r-radius);
+      background: transparent;
+      color: var(--r-text-2);
+      font: 500 11.5px var(--r-font);
+      cursor: pointer;
+      transition:
+        background var(--r-fast),
+        color var(--r-fast);
+      &:hover {
+        background: var(--r-hover);
+        color: var(--r-text);
+      }
+      &.danger:hover {
+        color: rgb(var(--r-removed-rgb));
+      }
+    }
+  }
+  .r-hunk-gap {
+    border-block: 1px solid var(--r-line);
+    background: var(--r-base);
+  }
   .r-gutter-removed {
     margin-left: 4px;
     width: 0 !important;

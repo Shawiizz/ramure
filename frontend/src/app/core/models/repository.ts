@@ -207,3 +207,12 @@ export interface DiffLine {
   new: number | null;
   text: string;
 }
+
+/** What becomes of a hunk, or of lines picked in it. */
+export type Part = 'stage' | 'unstage' | 'discard';
+
+/** A changed line: a removed one by its old number, an added one by its new. */
+export interface Picked {
+  old: number | null;
+  new: number | null;
+}

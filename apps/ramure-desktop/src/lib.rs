@@ -4,8 +4,8 @@
 
 use ramure_git::actions::{Planned, Pull, Reset, Rewrite, Step};
 use ramure_git::{
-    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, RefState, Repository, Side,
-    Snapshot, View,
+    actions, Blame, Change, FileCommit, FileDiff, Identity, Move, Operation, Part, Picked, RefState,
+    Repository, Side, Snapshot, View,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -354,6 +354,13 @@ fn unstage(path: PathBuf, files: Vec<String>) -> Answer<Snapshot> {
     snapshot(&path)
 }
 
+/// Stages, unstages or throws away some of a file's changed lines.
+#[tauri::command(async)]
+fn apply_lines(path: PathBuf, file: String, part: Part, lines: Vec<Picked>) -> Answer<Snapshot> {
+    ramure_git::apply_lines(&path, &file, part, &lines)?;
+    snapshot(&path)
+}
+
 /// Commits what is staged; with `amend`, into the last commit instead.
 #[tauri::command(async)]
 fn commit(path: PathBuf, message: String, amend: bool, identity: Option<Identity>) -> Answer<Snapshot> {
@@ -671,6 +678,7 @@ pub fn run() {
             file_versions,
             commit_files,
             stash_files,
+            apply_lines,
             stage,
             unstage,
             commit,

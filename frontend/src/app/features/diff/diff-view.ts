@@ -14,7 +14,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type * as Monaco from 'monaco-editor';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { Change, FileDiff, Where } from '../../core/models/repository';
+import { Change, FileDiff, Hunk, Part, Picked, Where } from '../../core/models/repository';
 import { DiffLayout, DiffMode, Preferences } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService } from '../../core/services/repository.service';
@@ -27,6 +27,9 @@ import {
   injectMonaco,
   restyle,
 } from '../../shared/monaco';
+import { MenusService } from '../repository-tab/menus.service';
+
+type CodeEditor = Monaco.editor.ICodeEditor;
 
 /** The file a diff is about: a change, and where it lies. */
 interface Target {
@@ -51,6 +54,8 @@ interface Shown {
   texts: { old: string; new: string } | null;
   models: Monaco.editor.ITextModel[];
   decorations: Monaco.editor.IEditorDecorationsCollection | null;
+  /** The bars above the hunks, in each editor they are in. */
+  bars: { editor: CodeEditor; ids: string[] }[];
 }
 
 /** How long a new diff may take before it shows anyway. */
@@ -82,6 +87,7 @@ const LAYOUTS: Record<DiffLayout, Monaco.editor.IDiffEditorOptions> = {
 })
 export class DiffView {
   protected readonly repository = inject(RepositoryService);
+  private readonly menus = inject(MenusService);
   private readonly preferences = inject(PreferencesService);
   protected readonly prefs = this.preferences.preferences;
   protected readonly open = this.repository.diff;
@@ -105,6 +111,18 @@ export class DiffView {
     if (where.kind === 'stash') return t('In a stash');
     return where.kind === 'staged' ? t('Staged') : t('Unstaged');
   });
+
+  /** What the hunks, or lines picked, can become: none in a commit or a stash. */
+  protected readonly parts = computed<Part[]>(() => {
+    const open = this.open();
+    if (!open?.diff || open.diff.binary || open.change.kind === 'conflicted') return [];
+    if (open.where.kind === 'staged') return ['unstage'];
+    if (open.where.kind !== 'unstaged') return [];
+    return open.change.kind === 'untracked' ? ['stage'] : ['stage', 'discard'];
+  });
+
+  /** The changed lines the selection covers. */
+  protected readonly selected = signal<Picked[]>([]);
 
   protected readonly counts = computed(() => {
     let added = 0;
@@ -174,6 +192,29 @@ export class DiffView {
 
   protected set<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     this.preferences.set(key, value);
+  }
+
+  /** Stages, unstages or throws away `lines`; after asking, when they go for good. */
+  protected applyLines(part: Part, lines: Picked[]) {
+    const file = this.open()?.change.path;
+    if (!file) return;
+    if (part !== 'discard') {
+      void this.repository.applyLines(file, part, lines);
+      return;
+    }
+    this.menus.ask({
+      title: t('Discard these changes?'),
+      text: t('The lines go back as they are staged, or committed, for good.'),
+      fields: [],
+      confirm: t('Discard'),
+      danger: true,
+      answered: () => void this.repository.applyLines(file, part, lines),
+    });
+  }
+
+  protected partLabel(part: Part) {
+    if (part === 'stage') return t('Stage lines');
+    return part === 'unstage' ? t('Unstage lines') : t('Discard lines');
   }
 
   protected pickEncoding(value: string) {
@@ -252,6 +293,94 @@ export class DiffView {
       shown.decorations?.clear();
       shown.decorations = editor.createDecorationsCollection(marks(monaco, diff));
     }
+    this.placeBars(shown, diff, prefs);
+  }
+
+  /** A bar above each hunk, naming it and what can become of it; its place kept on the other side. */
+  private placeBars(shown: Shown, diff: FileDiff | null, prefs: Preferences) {
+    for (const { editor, ids } of shown.bars) {
+      editor.changeViewZones((zones) => ids.forEach((id) => zones.removeZone(id)));
+    }
+    shown.bars = [];
+    this.selected.set([]);
+    const parts = this.parts();
+    if (!diff || !parts.length) return;
+    const sides: { editor: CodeEditor; old: boolean; bar: boolean }[] = [];
+    if (shown.mode === 'diff') {
+      const editor = shown.editor as Monaco.editor.IStandaloneDiffEditor;
+      sides.push({ editor: editor.getModifiedEditor(), old: false, bar: true });
+      if (prefs.diffLayout === 'split')
+        sides.push({ editor: editor.getOriginalEditor(), old: true, bar: false });
+    } else {
+      // a deleted file shows its old lines
+      sides.push({ editor: shown.editor as CodeEditor, old: !shown.texts?.new, bar: true });
+    }
+    for (const side of sides) {
+      const ids: string[] = [];
+      side.editor.changeViewZones((zones) => {
+        for (const hunk of diff.hunks) {
+          ids.push(
+            zones.addZone({
+              afterLineNumber: lineBefore(hunk, side.old),
+              heightInPx: 28,
+              // under the fold of the lines hidden before it
+              ordinal: 1_000_000,
+              domNode: side.bar ? this.bar(hunk, parts) : gap(),
+            }),
+          );
+        }
+      });
+      shown.bars.push({ editor: side.editor, ids });
+    }
+  }
+
+  private bar(hunk: Hunk, parts: Part[]): HTMLElement {
+    // Monaco sets the zone's own display, and takes the pointer from what is in it
+    const zone = document.createElement('div');
+    zone.className = 'r-hunk-zone';
+    zone.addEventListener('pointerdown', (e) => e.stopPropagation());
+    zone.addEventListener('mousedown', (e) => e.stopPropagation());
+    const bar = zone.appendChild(document.createElement('div'));
+    bar.className = 'r-hunk-bar';
+    const header = document.createElement('span');
+    header.className = 'header';
+    header.textContent = hunk.header;
+    bar.append(header);
+    const lines = hunk.lines
+      .filter((l) => l.kind !== 'context')
+      .map((l) => ({
+        old: l.kind === 'removed' ? l.old : null,
+        new: l.kind === 'added' ? l.new : null,
+      }));
+    for (const part of parts) {
+      const button = document.createElement('button');
+      button.textContent =
+        part === 'stage'
+          ? t('Stage hunk')
+          : part === 'unstage'
+            ? t('Unstage hunk')
+            : t('Discard hunk');
+      button.classList.toggle('danger', part === 'discard');
+      button.addEventListener('click', () => this.applyLines(part, lines));
+      bar.append(button);
+    }
+    return zone;
+  }
+
+  /** Follows the selection: the changed lines it covers, on the side it is in. */
+  private follow(editor: CodeEditor, old: boolean) {
+    editor.onDidChangeCursorSelection(({ selection }) => {
+      if (!this.parts().length || selection.isEmpty()) {
+        this.selected.set([]);
+        return;
+      }
+      // lines picked whole end at the start of the next one
+      const last =
+        selection.endColumn === 1 && selection.endLineNumber > selection.startLineNumber
+          ? selection.endLineNumber - 1
+          : selection.endLineNumber;
+      this.selected.set(pickedIn(this.open()?.diff ?? null, selection.startLineNumber, last, old));
+    });
   }
 
   /**
@@ -335,7 +464,14 @@ export class DiffView {
             useInlineViewWhenSpaceIsLimited: false,
           })
         : monaco.editor.create(pane, options);
-    return { mode, pane, editor, path: null, texts: null, models: [], decorations: null };
+    if (mode === 'diff') {
+      const diff = editor as Monaco.editor.IStandaloneDiffEditor;
+      this.follow(diff.getModifiedEditor(), false);
+      this.follow(diff.getOriginalEditor(), true);
+    } else {
+      this.follow(editor as CodeEditor, false);
+    }
+    return { mode, pane, editor, path: null, texts: null, models: [], decorations: null, bars: [] };
   }
 
   private dispose() {
@@ -370,6 +506,49 @@ function split(target: Target, buffer: ArrayBuffer): Versions {
   const old = new Uint8Array(buffer, 5, oldLength);
   const rest = new Uint8Array(buffer, 5 + oldLength);
   return { target, old: present & 1 ? old : null, new: present & 2 ? rest : null };
+}
+
+/** The line a hunk's bar goes after, in the old version or the new. */
+function lineBefore(hunk: Hunk, old: boolean): number {
+  const [, oldStart, oldCount, newStart, newCount] =
+    /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))?/.exec(hunk.header)?.map(Number) ?? [];
+  const [start, count] = old ? [oldStart, oldCount] : [newStart, newCount];
+  // a hunk with no line on that side starts after the line it names
+  return count === 0 ? start : Math.max(0, (start ?? 1) - 1);
+}
+
+/** A bar's place on the side without it, so that both sides stay level. */
+function gap(): HTMLElement {
+  const gap = document.createElement('div');
+  gap.className = 'r-hunk-gap';
+  return gap;
+}
+
+/**
+ * The changed lines between `first` and `last`: on the old side, the lines removed there;
+ * on the new, the lines added there and those removed just before one of them.
+ */
+function pickedIn(diff: FileDiff | null, first: number, last: number, old: boolean): Picked[] {
+  const picked: Picked[] = [];
+  const within = (n: number | null) => n !== null && n >= first && n <= last;
+  for (const hunk of diff?.hunks ?? []) {
+    let removed: Picked[] = [];
+    let next = 1;
+    for (const line of hunk.lines) {
+      if (line.kind === 'removed') {
+        if (old && within(line.old)) picked.push({ old: line.old, new: null });
+        else if (!old) removed.push({ old: line.old, new: null });
+        continue;
+      }
+      if (within(line.new)) picked.push(...removed);
+      removed = [];
+      if (line.kind === 'added' && !old && within(line.new))
+        picked.push({ old: null, new: line.new });
+      next = (line.new ?? next) + 1;
+    }
+    if (within(next)) picked.push(...removed);
+  }
+  return picked;
 }
 
 /** Where each change starts in the new file: the file view goes from one to the next. */

@@ -9,6 +9,7 @@ mod diff;
 mod files;
 mod graph;
 mod identity;
+mod partial;
 mod repository;
 mod stash;
 mod status;
@@ -26,6 +27,7 @@ pub use identity::{
     git_version, global_config, global_identity, set_global_config, set_global_identity, Identity, Signing,
     SigningFormat,
 };
+pub use partial::{apply_lines, Part, Picked};
 pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};
 pub use stash::{stash_files, Stash};
 pub use status::{status, Change, ChangeKind, Status, Upstream};
