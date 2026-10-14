@@ -15,13 +15,15 @@ import { TreeSwitch } from '../../shared/tree-switch';
 import { fullDate, shortDate } from '../../shared/when';
 import { MenusService } from '../repository-tab/menus.service';
 import { Staging } from '../staging/staging';
+import { ChecksMark, stateName } from '../../shared/checks-mark';
+import { GithubService } from '../../core/services/github.service';
 
 /** The right panel: the selected commit and its files, or the working tree to commit. */
 @Component({
   selector: 'app-details',
   templateUrl: './details.html',
   styleUrl: './details.scss',
-  imports: [TPipe, FileList, Staging, Avatar, TreeSwitch],
+  imports: [TPipe, FileList, Staging, Avatar, TreeSwitch, ChecksMark],
 })
 export class Details {
   protected readonly repository = inject(RepositoryService);
@@ -89,6 +91,8 @@ export class Details {
   /** How many files of each kind, in the order of the list's letters. */
   protected readonly kinds = computed(() => countKinds(this.files() ?? []));
   protected readonly countKinds = countKinds;
+  protected readonly hub = inject(GithubService);
+  protected readonly stateName = stateName;
   protected readonly comparedPath = computed(() => {
     const diff = this.repository.diff();
     return diff?.where.kind === 'compare' ? diff.change.path : null;

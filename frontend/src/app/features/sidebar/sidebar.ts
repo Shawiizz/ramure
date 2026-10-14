@@ -15,6 +15,7 @@ import { SettingsService } from '../../core/services/settings.service';
 import { MenuEntry } from '../../shared/context-menu';
 import { follow } from '../../shared/drag';
 import { MenusService } from '../repository-tab/menus.service';
+import { ChecksMark } from '../../shared/checks-mark';
 
 type Kind = 'local' | 'remote' | 'pull' | 'tag' | 'stash';
 
@@ -53,7 +54,7 @@ const MIN_HEIGHT = 60;
   selector: 'app-sidebar',
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.scss',
-  imports: [TPipe],
+  imports: [TPipe, ChecksMark],
 })
 export class Sidebar {
   protected readonly repository = inject(RepositoryService);

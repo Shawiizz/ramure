@@ -31,6 +31,7 @@ import {
   laneX,
   shape,
 } from './graph';
+import { ChecksMark } from '../../shared/checks-mark';
 import { MenusService } from '../repository-tab/menus.service';
 import { t } from '../../core/i18n/i18n';
 import { ColumnId, DEFAULT_COLUMNS } from '../../core/models/settings';
@@ -79,7 +80,7 @@ interface Unfolded {
   selector: 'app-history',
   templateUrl: './history.html',
   styleUrl: './history.scss',
-  imports: [TPipe, RefPill, OverlayScroll],
+  imports: [TPipe, RefPill, OverlayScroll, ChecksMark],
 })
 export class History {
   protected readonly repository = inject(RepositoryService);

@@ -42,3 +42,13 @@ export interface Pull {
   headId: string;
   base: string;
 }
+
+/** Where a check on a commit stands (`github::CheckState`). */
+export type CheckState = 'success' | 'failure' | 'pending' | 'neutral';
+
+/** A check run on a commit, or a status another service set (`github::Check`). */
+export interface Check {
+  name: string;
+  state: CheckState;
+  url: string | null;
+}

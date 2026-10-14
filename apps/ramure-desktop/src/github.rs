@@ -229,6 +229,94 @@ pub async fn github_pulls(repository: String) -> Result<Vec<Pull>, String> {
     Ok(all)
 }
 
+/// Where a check on a commit stands.
+#[derive(Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CheckState {
+    Success,
+    Failure,
+    Pending,
+    /// Skipped, cancelled or neutral: it neither passed nor failed.
+    Neutral,
+}
+
+/// A check run on a commit (GitHub Actions and the like), or a status another service set.
+#[derive(Serialize)]
+pub struct Check {
+    name: String,
+    state: CheckState,
+    url: Option<String>,
+}
+
+/// The checks on the commits `ids` of `owner/repository`, by commit: those with none left
+/// out. Their two kinds are asked for every commit at once.
+#[tauri::command]
+pub async fn github_checks(
+    repository: String,
+    ids: Vec<String>,
+) -> Result<std::collections::BTreeMap<String, Vec<Check>>, String> {
+    let asked: Vec<_> = ids
+        .into_iter()
+        .map(|id| {
+            let repository = repository.clone();
+            tauri::async_runtime::spawn(async move {
+                let checks = checks_of(&repository, &id).await;
+                (id, checks)
+            })
+        })
+        .collect();
+    let mut found = std::collections::BTreeMap::new();
+    for task in asked {
+        // a commit GitHub does not have yet (one not pushed) has no checks
+        if let (id, Ok(checks)) = task.await.map_err(|e| e.to_string())? {
+            if !checks.is_empty() {
+                found.insert(id, checks);
+            }
+        }
+    }
+    Ok(found)
+}
+
+async fn checks_of(repository: &str, id: &str) -> Result<Vec<Check>, String> {
+    let text = |value: &Value| value.as_str().map(str::to_owned);
+    let runs: Value = call(
+        reqwest::Method::GET,
+        &format!("/repos/{repository}/commits/{id}/check-runs?per_page=100"),
+        None,
+    )
+    .await?;
+    let mut checks: Vec<Check> = runs["check_runs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|run| Check {
+            name: text(&run["name"]).unwrap_or_default(),
+            state: match (run["status"].as_str(), run["conclusion"].as_str()) {
+                (Some("completed"), Some("success")) => CheckState::Success,
+                (
+                    Some("completed"),
+                    Some("failure" | "timed_out" | "action_required" | "startup_failure"),
+                ) => CheckState::Failure,
+                (Some("completed"), _) => CheckState::Neutral,
+                _ => CheckState::Pending,
+            },
+            url: text(&run["html_url"]),
+        })
+        .collect();
+    let statuses: Value =
+        call(reqwest::Method::GET, &format!("/repos/{repository}/commits/{id}/status"), None).await?;
+    checks.extend(statuses["statuses"].as_array().into_iter().flatten().map(|status| Check {
+        name: text(&status["context"]).unwrap_or_default(),
+        state: match status["state"].as_str() {
+            Some("success") => CheckState::Success,
+            Some("failure" | "error") => CheckState::Failure,
+            _ => CheckState::Pending,
+        },
+        url: text(&status["target_url"]),
+    }));
+    Ok(checks)
+}
+
 /// A new pull request on `owner/repository`, bringing `head` into `base`.
 #[tauri::command]
 pub async fn github_create_pull(

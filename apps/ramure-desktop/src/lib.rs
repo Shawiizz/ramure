@@ -776,6 +776,7 @@ pub fn run() {
             github::github_sign_out,
             github::github_repositories,
             github::github_pulls,
+            github::github_checks,
             github::github_create_pull,
             github::github_default_branch,
             github::github_add_ssh_key,

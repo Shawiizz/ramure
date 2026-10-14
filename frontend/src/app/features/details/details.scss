@@ -315,3 +315,63 @@ app-file-list {
     background: var(--r-hover);
   }
 }
+
+/* the checks GitHub ran on the commit, each opening its page */
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--r-line);
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 2px 6px;
+    color: var(--r-text-2);
+    font-size: 12px;
+    font-weight: 600;
+  }
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--r-radius);
+  background: transparent;
+  color: var(--r-text);
+  text-align: left;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    background: var(--r-hover);
+  }
+  &:disabled {
+    cursor: default;
+  }
+  .state {
+    flex: none;
+    width: 64px;
+    font-size: 12px;
+    &.success {
+      color: rgb(var(--r-added-rgb));
+    }
+    &.failure {
+      color: rgb(var(--r-removed-rgb));
+    }
+    &.pending {
+      color: var(--r-lane-1);
+    }
+    &.neutral {
+      color: var(--r-text-3);
+    }
+  }
+  .name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

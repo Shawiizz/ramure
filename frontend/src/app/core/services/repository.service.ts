@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { t } from '../i18n/i18n';
 import {
@@ -24,7 +24,7 @@ import {
   Where,
 } from '../models/repository';
 import { githubRepository } from '../../shared/web-url';
-import { Pull } from '../models/github';
+import { Check, Pull } from '../models/github';
 import { GithubService } from './github.service';
 import { PreferencesService } from './preferences.service';
 import { ProfilesService } from './profiles.service';
@@ -78,6 +78,11 @@ export type Undoable = {
 
 /** How an action is undone: by moving the names back, or by putting its files back. */
 type Undoing = { what: string; how: Move } | { what: string; files: string[] };
+
+/** The commits whose checks are read at once, at most: each costs GitHub two requests. */
+const MAX_CHECKED = 40;
+/** How long checks still running are left before being asked for again. */
+const CHECKS_AGAIN_MS = 30_000;
 
 /** Actions undone at most, back from the last. */
 const UNDO_DEPTH = 50;
@@ -220,14 +225,23 @@ export class RepositoryService {
   });
   /** Its open pull requests, once read; none away from GitHub or signed out. */
   readonly pulls = signal<Pull[] | null>(null);
+  /** The checks GitHub ran on commits, by commit: the branches', the pull requests'. */
+  readonly checks = signal<ReadonlyMap<string, Check[]>>(new Map());
+  /** The commits whose checks were asked for since the last fetch. */
+  private checked = new Set<string>();
+  /** Checks still running are asked for again a while later. */
+  private checksAgain: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.checksAgain));
     // on GitHub, signed in: the pull requests, and the pictures of the authors
     effect(() => {
       const repository = this.github()?.repository;
       const signedIn = !!this.hub.account();
       untracked(() => {
         this.pulls.set(null);
+        this.checks.set(new Map());
+        this.checked.clear();
         if (!repository || !signedIn) return;
         void this.readPulls();
         void this.hub.picture(repository);
@@ -333,6 +347,7 @@ export class RepositoryService {
     if (this.comparison()) this.endComparison();
     this.selectedId.set(id);
     if (id === WIP) return;
+    void this.readChecks([id]);
     this.loadCommitFiles(id);
     if (!this.stashes().has(id)) void this.loadSignature(id);
   }
@@ -755,6 +770,51 @@ export class RepositoryService {
     } catch (e) {
       this.error.set(String(e));
     }
+    // read again with the pull requests: a fetch may bring new runs
+    this.checked.clear();
+    void this.readChecks(this.tips());
+  }
+
+  /** The checks on the commits `ids` not asked for yet, from GitHub. */
+  async readChecks(ids: string[]): Promise<void> {
+    const repository = this.github()?.repository;
+    const asked = ids.filter((id) => !this.checked.has(id));
+    if (!repository || !this.hub.account() || !asked.length) return;
+    asked.forEach((id) => this.checked.add(id));
+    try {
+      const found = await invoke<Record<string, Check[]>>('github_checks', {
+        repository,
+        ids: asked,
+      });
+      this.checks.update((checks) => {
+        const next = new Map(checks);
+        asked.forEach((id) => next.delete(id));
+        Object.entries(found).forEach(([id, list]) => next.set(id, list));
+        return next;
+      });
+    } catch (e) {
+      console.warn('checks not read', e);
+    }
+    clearTimeout(this.checksAgain);
+    const running = [...this.checks()]
+      .filter(([, list]) => list.some((c) => c.state === 'pending'))
+      .map(([id]) => id);
+    if (!running.length) return;
+    this.checksAgain = setTimeout(() => {
+      running.forEach((id) => this.checked.delete(id));
+      void this.readChecks(running);
+    }, CHECKS_AGAIN_MS);
+  }
+
+  /** The commits checks matter most on: the branches' tips and the pull requests'. */
+  private tips(): string[] {
+    const s = this.snapshot();
+    const ids = [
+      ...(s?.branches ?? []).map((b) => b.target),
+      ...(s?.remoteBranches ?? []).map((b) => b.target),
+      ...(this.pulls() ?? []).map((p) => p.headId),
+    ];
+    return [...new Set(ids)].slice(0, MAX_CHECKED);
   }
 
   /**

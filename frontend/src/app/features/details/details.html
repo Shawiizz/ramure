@@ -203,6 +203,23 @@
         </div>
       </div>
 
+      @if (repository.checks().get(commit.id); as checks) {
+        <section class="checks" [attr.aria-label]="'Checks on GitHub' | t">
+          <h3><app-checks-mark [id]="commit.id" /> {{ 'Checks on GitHub' | t }}</h3>
+          @for (check of checks; track $index) {
+            <button
+              class="check"
+              [disabled]="!check.url"
+              (click)="hub.openPage(check.url!)"
+              [title]="check.url ? ('See it on GitHub' | t) : ''"
+            >
+              <span class="state" [class]="check.state">{{ stateName(check.state) }}</span>
+              <span class="name">{{ check.name }}</span>
+            </button>
+          }
+        </section>
+      }
+
       @if (files(); as files) {
         <div class="files-head">
           <span class="total">{{

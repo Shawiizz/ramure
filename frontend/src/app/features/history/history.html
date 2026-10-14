@@ -302,6 +302,9 @@
                   @if (s.node === 'stash') {
                     <span class="stash-tag">stash</span>
                   }
+                  @if (repository.checks().has(line.commit.id)) {
+                    <app-checks-mark [id]="line.commit.id" />
+                  }
                   <span class="summary">{{ line.commit.summary }}</span>
                   @if (line.detail && descriptions()) {
                     <span class="detail">{{ line.detail }}</span>

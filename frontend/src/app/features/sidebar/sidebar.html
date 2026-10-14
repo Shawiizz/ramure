@@ -165,6 +165,13 @@
                           <span class="dot"></span>
                         }
                         <span class="title">{{ item.label }}</span>
+                        @if (
+                          section.key !== 'tag' &&
+                          section.key !== 'stash' &&
+                          repository.checks().has(item.target)
+                        ) {
+                          <app-checks-mark [id]="item.target" />
+                        }
                       </button>
                       <button
                         class="r-bar-btn small more"
