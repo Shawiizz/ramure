@@ -5,8 +5,8 @@ mod common;
 use common::{commit, git, init, repository, write};
 use ramure_git::actions::Pull;
 use ramure_git::{
-    actions, commit_files, compare_files, file_diff, file_versions, stash_files, status, Change, ChangeKind, Head, Identity,
-    LineKind, Repository, Side,
+    actions, commit_files, compare_files, file_diff, file_versions, stash_files, status, Change, ChangeKind,
+    Head, Identity, LineKind, Repository, Side,
 };
 
 fn change(path: &str, kind: ChangeKind) -> Change {
@@ -419,17 +419,13 @@ fn two_commits_are_compared_file_by_file() {
     let dir = repository();
     let d = dir.path();
     git(d, &["config", "core.autocrlf", "false"]);
-    write(d, "a.txt", "one
-");
-    write(d, "gone.txt", "bye
-");
+    write(d, "a.txt", "one\n");
+    write(d, "gone.txt", "bye\n");
     git(d, &["add", "."]);
     commit(d, "First", 1);
-    write(d, "a.txt", "two
-");
+    write(d, "a.txt", "two\n");
     git(d, &["rm", "-q", "gone.txt"]);
-    write(d, "new.txt", "hi
-");
+    write(d, "new.txt", "hi\n");
     git(d, &["add", "."]);
     commit(d, "Second", 2);
 
@@ -446,6 +442,5 @@ fn two_commits_are_compared_file_by_file() {
     let lines: Vec<_> = diff.hunks[0].lines.iter().map(|l| (l.kind, l.text.as_str())).collect();
     assert_eq!(lines, [(LineKind::Removed, "one"), (LineKind::Added, "two")]);
     let versions = file_versions(d, &files[2], Side::Compare("HEAD~1", "HEAD")).unwrap();
-    assert_eq!((versions.old.as_deref(), versions.new.as_deref()), (None, Some(&b"hi
-"[..])));
+    assert_eq!((versions.old, versions.new), (None, Some(b"hi\n".to_vec())));
 }
