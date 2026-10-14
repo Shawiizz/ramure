@@ -1,7 +1,7 @@
 name: Release
 
-# A version tag (1.2.3) builds the signed installer and the update manifest and attaches
-# them to a draft release: publishing it offers the update to the installed copies.
+# A version tag (1.2.3) builds the installers of every system and the update manifest and
+# attaches them to a draft release: publishing it offers the update to the installed copies.
 on:
   push:
     tags: ["[0-9]+.[0-9]+.[0-9]+"]
@@ -10,23 +10,47 @@ permissions:
   contents: write
 
 jobs:
-  installer:
-    runs-on: windows-latest
+  # made once, before the builds attach to it side by side
+  draft:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
       - name: The tag is the app version
-        shell: pwsh
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages.Where({ $_.name -eq 'ramure-desktop' }).version
-          if ($version -ne '${{ github.ref_name }}') { throw "tag ${{ github.ref_name }}, app version $version" }
-      # tauri-action attaches to this draft rather than creating the release itself
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          if [ "$version" != "$TAG" ]; then echo "tag $TAG, app version $version"; exit 1; fi
       - name: Draft release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --draft --verify-tag --title "Ramure $TAG" --notes ""
+
+  installer:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: ""
+          # one app for Apple silicon and Intel Macs alike
+          - os: macos-latest
+            args: --target universal-apple-darwin
+          # the oldest Ubuntu built on runs the most Linux systems
+          - os: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Both Mac architectures
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      # each build adds its system to the update manifest the others left
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,4 +64,4 @@ jobs:
           releaseDraft: true
           includeUpdaterJson: true
           # signed update packages: only here, where the signing key is
-          args: --config tauri.release.conf.json
+          args: --config tauri.release.conf.json ${{ matrix.args }}

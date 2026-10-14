@@ -27,9 +27,16 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-opener = "2"
 portable-pty = "0.9.0"
-keyring = { version = "3.6.3", features = ["windows-native"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
 
+# the token kept by the system's own credential store
 [target.'cfg(windows)'.dependencies]
+keyring = { version = "3.6.3", features = ["windows-native"] }
 webview2-com = "0.39"
 windows-core = "0.62"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6.3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6.3", features = ["linux-native-sync-persistent", "crypto-rust"] }
