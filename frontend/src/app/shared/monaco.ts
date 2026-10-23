@@ -1,6 +1,7 @@
 import { Signal, effect, inject, signal } from '@angular/core';
 import loader from '@monaco-editor/loader';
 import type * as Monaco from 'monaco-editor';
+import { language } from '../core/i18n/i18n';
 import { Preferences } from '../core/models/settings';
 import { PreferencesService } from '../core/services/preferences.service';
 
@@ -16,6 +17,8 @@ export function loadMonaco(): Promise<MonacoApi> {
     style.rel = 'stylesheet';
     style.href = `${BASE}/editor/editor.main.css`;
     document.head.append(style);
+    // its own words in the app's language, read before it loads: its lines left out, its menus
+    if (language() === 'fr') await script(`${BASE}/nls/lang/fr.js`);
     loader.config({ paths: { vs: BASE } });
     const monaco = (await loader.init()) as MonacoApi;
     // code only read, or edited a moment, needs no language service checking it: TypeScript's
@@ -53,6 +56,17 @@ export function warmMonaco(): void {
       host.remove();
     });
     editor.setModel({ original, modified });
+  });
+}
+
+/** Runs the script at `src`, once it has loaded. */
+function script(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const element = document.createElement('script');
+    element.src = src;
+    element.onload = () => resolve();
+    element.onerror = () => reject(new Error(`${src} could not load`));
+    document.head.append(element);
   });
 }
 
@@ -187,8 +201,9 @@ export function applyTheme(monaco: MonacoApi, light: boolean) {
       'diffEditorGutter.removedLineBackground': alpha(removed, 0.24),
       'editorOverviewRuler.addedForeground': alpha(added, 0.8),
       'editorOverviewRuler.deletedForeground': alpha(removed, 0.8),
-      'diffEditor.unchangedRegionBackground': token('raised'),
+      'diffEditor.unchangedRegionBackground': token('base'),
       'diffEditor.unchangedRegionForeground': token('text-3'),
+      'diffEditor.unchangedRegionShadow': '#00000000',
       'diffEditor.border': token('line'),
       'scrollbarSlider.background': alpha(token('line-strong'), 0.7),
       'scrollbarSlider.hoverBackground': token('line-strong'),

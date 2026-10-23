@@ -396,3 +396,57 @@ button {
 .monaco-diff-editor .original-in-monaco-diff-editor .margin-view-zones .gutter-delete {
   background: transparent;
 }
+
+/* the lines a diff leaves out: a quiet band between two hunks, in the app's own type, its
+   unfolding lit under the pointer; the code it skips named after a dot */
+.monaco-diff-editor .monaco-editor .diff-hidden-lines {
+  font: 11.5px var(--r-font);
+  .center {
+    border-block: 1px solid var(--r-line);
+    box-shadow: none;
+    transition:
+      background var(--r-fast),
+      color var(--r-fast);
+    cursor: pointer;
+    &:hover {
+      background: var(--r-hover);
+      color: var(--r-text-2);
+    }
+  }
+  .default-control {
+    color: var(--r-text-3);
+    &:hover {
+      color: var(--r-accent);
+    }
+  }
+  .content-row {
+    gap: 2px;
+    /* git's line count, then where in the code: a dot between, not a bar */
+    > span:nth-child(2) {
+      font-size: 0;
+      &::before {
+        content: '·';
+        margin: 0 8px;
+        color: var(--r-text-3);
+        font-size: 12px;
+      }
+    }
+  }
+  .breadcrumb-item {
+    color: var(--r-text-3);
+    .codicon {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+  }
+  .breadcrumb-label {
+    font-family: var(--r-mono);
+    font-size: 11px;
+  }
+  .top:hover,
+  .bottom:hover,
+  .top.dragging,
+  .bottom.dragging {
+    background-color: color-mix(in srgb, var(--r-accent) 60%, transparent);
+  }
+}
