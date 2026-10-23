@@ -26,19 +26,44 @@
   }
 }
 
+/* the count, then the branch: the branch's name shortens first; with too little room for
+   it to read, it goes, the toolbar names it */
 .changes {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: safe center;
   color: var(--r-text-2);
   font-size: 12px;
-  text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  container-type: inline-size;
+}
+
+.count,
+.branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.count {
+  flex-shrink: 0;
 }
 
 .on {
+  flex: none;
   margin: 0 5px;
+}
+
+@container (max-width: 200px) {
+  .on,
+  .branch {
+    display: none;
+  }
+  .count {
+    flex-shrink: 1;
+  }
 }
 
 .branch {

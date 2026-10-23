@@ -13,14 +13,14 @@
         </svg>
       </button>
       <span class="changes">
-        {{
+        <span class="count">{{
           repository.changes() === 1
             ? ('1 file change' | t)
             : ('{n} file changes' | t: { n: repository.changes() })
-        }}
+        }}</span>
         @if (branch(); as branch) {
           <span class="on">{{ 'on' | t }}</span>
-          <span class="branch r-mono">{{ branch }}</span>
+          <span class="branch r-mono" [title]="branch">{{ branch }}</span>
         }
       </span>
       <app-tree-switch />
