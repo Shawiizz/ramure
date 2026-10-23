@@ -138,6 +138,8 @@ export class RepositoryService {
   private readonly readAhead = new Map<string, Promise<unknown>>();
   /** Where HEAD has been, in place of the history. */
   readonly reflogOpen = signal(false);
+  /** Where the keyboard goes next: back to the commit in the history, or into its files. */
+  readonly keyboard = signal<'history' | 'files' | null>(null);
   /** A pull request read, in place of the history. */
   readonly pullOpen = signal<Pull | null>(null);
   /** A terminal runs in the repository's folder; it may be out of sight meanwhile. */
@@ -567,6 +569,12 @@ export class RepositoryService {
     this.reflogOpen.set(false);
     this.pullOpen.set(null);
     this.filePanel.set(panel);
+  }
+
+  /** Closes the file shown and goes back to its commit in the history (Left in its files). */
+  leaveFiles() {
+    this.diff.set(null);
+    this.keyboard.set('history');
   }
 
   openReflog() {

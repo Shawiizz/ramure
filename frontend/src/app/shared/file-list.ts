@@ -92,6 +92,7 @@ export interface FileMenu {
               (pointerenter)="pointed.emit(change)"
               (keydown.arrowdown)="step($event, change, 1)"
               (keydown.arrowup)="step($event, change, -1)"
+              (keydown.arrowleft)="$event.preventDefault(); back.emit()"
               [title]="titleOf(change)"
             >
               <span class="kind" [style.color]="kind(change).color">{{ kind(change).letter }}</span>
@@ -220,6 +221,8 @@ export class FileList {
   readonly opened = output<Change>();
   /** A file under the pointer: its diff may be read ahead. */
   readonly pointed = output<Change>();
+  /** Left on a file: back to what the list belongs to. */
+  readonly back = output<void>();
   /** The action asked on a file, or on every file of a folder. */
   readonly acted = output<Change[]>();
   readonly menu = output<FileMenu>();
@@ -230,19 +233,33 @@ export class FileList {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
-   * Up and down move to the file above or below and open it, as a click would; the one after
-   * it, the way they go, is read ahead.
+   * Up and down move to the file above or below and open it, as a click would, going round
+   * from the last to the first; the one after it, the way they go, is read ahead.
    */
   protected step(event: Event, change: Change, by: 1 | -1) {
     event.preventDefault();
-    const files = this.rows().flatMap((row) => (row.kind === 'file' ? [row.change] : []));
-    const at = files.indexOf(change) + by;
-    const next = files[at];
-    if (!next) return;
+    const files = this.files();
+    this.go(files, (files.indexOf(change) + by + files.length) % files.length, by);
+  }
+
+  /** Opens the first file, the keyboard on it; false when there is none. */
+  openFirst(): boolean {
+    const files = this.files();
+    if (!files.length) return false;
+    this.go(files, 0, 1);
+    return true;
+  }
+
+  /** The files as listed, those of folders folded away left out. */
+  private files(): Change[] {
+    return this.rows().flatMap((row) => (row.kind === 'file' ? [row.change] : []));
+  }
+
+  private go(files: Change[], at: number, by: 1 | -1) {
     this.host.nativeElement.querySelectorAll<HTMLButtonElement>('button.file')[at]?.focus();
-    this.opened.emit(next);
-    const after = files[at + by];
-    if (after) this.pointed.emit(after);
+    this.opened.emit(files[at]);
+    const after = files[(at + by + files.length) % files.length];
+    if (after !== files[at]) this.pointed.emit(after);
   }
 
   protected readonly rows = computed<Row[]>(() => {

@@ -39,6 +39,7 @@
           [action]="stageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, false)"
+          (back)="repository.leaveFiles()"
           (acted)="repository.stage(paths($event))"
           (menu)="menus.open($event.event, menus.forFile($event.change, { kind: 'unstaged' }))"
         />
@@ -63,6 +64,7 @@
           [action]="stageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, false)"
+          (back)="repository.leaveFiles()"
           (acted)="repository.stage(paths($event))"
           (menu)="menus.open($event.event, menus.forFile($event.change, { kind: 'unstaged' }))"
         />
@@ -89,6 +91,7 @@
           [action]="unstageLabel()"
           [openPath]="openPath()"
           (opened)="show($event, true)"
+          (back)="repository.leaveFiles()"
           (acted)="repository.unstage(paths($event))"
           (menu)="menus.open($event.event, menus.forFile($event.change, { kind: 'staged' }))"
         />

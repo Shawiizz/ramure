@@ -104,6 +104,7 @@
             [tree]="tree()"
             [openPath]="comparedPath()"
             (opened)="repository.toggleDiff($event, $any(where))"
+            (back)="repository.leaveFiles()"
             (pointed)="repository.readAheadOf($event, $any(where))"
             (menu)="menus.open($event.event, menus.forFile($event.change, $any(where)))"
           />
@@ -291,6 +292,7 @@
           [tree]="tree()"
           [openPath]="openPath()"
           (opened)="repository.toggleDiff($event, $any(where))"
+          (back)="repository.leaveFiles()"
           (pointed)="repository.readAheadOf($event, $any(where))"
           (menu)="menus.open($event.event, menus.forFile($event.change, $any(where)))"
         />

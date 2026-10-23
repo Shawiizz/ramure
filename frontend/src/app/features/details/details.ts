@@ -1,4 +1,12 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChildren,
+} from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
@@ -121,7 +129,21 @@ export class Details {
       : null;
   });
 
+  private readonly lists = viewChildren(FileList);
+
   constructor() {
+    // the keyboard sent into the files: the first one opened, once they are read
+    effect(() => {
+      if (this.repository.keyboard() !== 'files' || this.repository.selectedId() === WIP) return;
+      const lists = this.lists();
+      if (!this.files() && !this.repository.comparison()?.files) return;
+      // once drawn, even with no file to open: the keyboard is not kept waiting for later
+      untracked(() => {
+        if (!lists.length) return;
+        lists.some((list) => list.openFirst());
+        this.repository.keyboard.set(null);
+      });
+    });
     // another selection: the second click asked for no longer applies
     effect(() => {
       this.repository.selectedId();

@@ -123,6 +123,8 @@
           [attr.aria-selected]="repository.selectedId() === wipId"
           (click)="repository.select(wipId)"
           (keydown.enter)="repository.select(wipId)"
+          (keydown.arrowdown)="step($event, wipId, 1)"
+          (keydown.arrowright)="intoFiles($event, wipId)"
         >
           @for (column of columns(); track column) {
             @switch (column) {
@@ -181,6 +183,9 @@
           (contextmenu)="openMenu($event, line.commit)"
           (click)="pick($event, line.commit)"
           (keydown.enter)="repository.select(line.commit.id)"
+          (keydown.arrowdown)="step($event, line.commit.id, 1)"
+          (keydown.arrowup)="step($event, line.commit.id, -1)"
+          (keydown.arrowright)="intoFiles($event, line.commit.id)"
         >
           @for (column of columns(); track column) {
             @switch (column) {

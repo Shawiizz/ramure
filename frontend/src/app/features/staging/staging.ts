@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, untracked, viewChildren } from '@angular/core';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
 import { Change } from '../../core/models/repository';
@@ -28,6 +28,21 @@ export class Staging {
     return head?.kind === 'branch' ? head.name : null;
   });
   protected readonly stageLabel = computed(() => t('Stage'));
+  private readonly lists = viewChildren(FileList);
+
+  constructor() {
+    // the keyboard sent into the changes: the first file of the first list holding one
+    effect(() => {
+      if (this.repository.keyboard() !== 'files') return;
+      const lists = this.lists();
+      // once drawn, even with no file to open: the keyboard is not kept waiting for later
+      untracked(() => {
+        if (!lists.length) return;
+        lists.some((list) => list.openFirst());
+        this.repository.keyboard.set(null);
+      });
+    });
+  }
   protected readonly unstageLabel = computed(() => t('Unstage'));
 
   protected readonly status = computed(() => this.repository.snapshot()?.status);

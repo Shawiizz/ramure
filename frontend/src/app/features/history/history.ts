@@ -255,6 +255,20 @@ export class History {
       const id = this.repository.selectedId();
       untracked(() => this.reveal(id));
     });
+    // the keyboard sent back here: on the commit selected, once brought into view and drawn
+    effect(() => {
+      if (this.repository.keyboard() !== 'history') return;
+      untracked(() => {
+        this.repository.keyboard.set(null);
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            this.rows()
+              ?.nativeElement.querySelector<HTMLElement>('.row.selected')
+              ?.focus({ preventScroll: true }),
+          ),
+        );
+      });
+    });
   }
 
   private reveal(id: string | null) {
@@ -282,6 +296,23 @@ export class History {
   }
 
   /** The commits compared, lit like the one selected. */
+  /** Up and down select the commit below or above, the keyboard following it. */
+  protected step(event: Event, id: string, by: 1 | -1) {
+    event.preventDefault();
+    const ids = [...(this.wip() ? [WIP] : []), ...this.lines().map((l) => l.commit.id)];
+    const next = ids[ids.indexOf(id) + by];
+    if (!next) return;
+    this.repository.select(next);
+    this.repository.keyboard.set('history');
+  }
+
+  /** Right opens the commit's first file, the keyboard going into its files. */
+  protected intoFiles(event: Event, id: string) {
+    event.preventDefault();
+    if (this.repository.selectedId() !== id) this.repository.select(id);
+    this.repository.keyboard.set('files');
+  }
+
   /** The commits picked together, lit like the one selected. */
   protected readonly compared = computed(() => {
     const comparison = this.repository.comparison();
