@@ -325,6 +325,14 @@ button {
   .r-conflict-marker {
     background: color-mix(in srgb, var(--r-text-3) 16%, transparent);
   }
+  .r-line-removed {
+    background: rgb(var(--r-removed-rgb) / 0.22);
+  }
+  .r-gutter-removed-line {
+    margin-left: 4px;
+    width: 3px !important;
+    background: rgb(var(--r-removed-rgb));
+  }
   .r-gutter-removed {
     margin-left: 4px;
     width: 0 !important;

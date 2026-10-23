@@ -16,6 +16,8 @@ export const FR: Record<string, string> = {
   'A new branch at the selected commit': 'Une nouvelle branche sur le commit sélectionné',
   'A new branch at {id}': 'Une nouvelle branche sur {id}',
   'A new key': 'Une nouvelle clé',
+  'A new or deleted file has nothing to compare':
+    'Un fichier nouveau ou supprimé n’a rien à comparer',
   'A new remote': 'Un nouveau dépôt distant',
   'A new tag at {id}': 'Un nouveau tag sur {id}',
   'A pull request for {name}': 'Une pull request pour {name}',

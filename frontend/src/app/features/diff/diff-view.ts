@@ -166,6 +166,15 @@ export class DiffView {
   });
   protected readonly encoding = computed(() => this.picked() ?? this.guessed());
   protected readonly ready = computed(() => !!this.versions() && !!this.monaco());
+  /** A file only one side has, added or deleted: shown whole, there is nothing to compare. */
+  protected readonly whole = computed(() => {
+    const v = this.versions();
+    return !!v && (!v.old || !v.new);
+  });
+  /** How the file is shown: as the settings say, a whole file always in the file view. */
+  protected readonly mode = computed<DiffMode>(() =>
+    this.whole() ? 'file' : this.prefs().diffMode,
+  );
   /** The versions of an image, shown as images rather than as text. */
   protected readonly image = computed(() => {
     const v = this.versions();
@@ -197,7 +206,8 @@ export class DiffView {
     effect(() => {
       const monaco = this.monaco();
       const host = this.host()?.nativeElement;
-      if (monaco && host) untracked(() => (this.shown ??= this.create(monaco, host, this.prefs())));
+      if (monaco && host)
+        untracked(() => (this.shown ??= this.create(monaco, host, this.prefs(), this.mode())));
     });
     inject(DestroyRef).onDestroy(() => this.dispose());
   }
@@ -303,9 +313,10 @@ export class DiffView {
     prefs: Preferences,
     diff: FileDiff | null,
   ) {
-    if (this.shown?.mode !== prefs.diffMode) {
+    const mode = this.mode();
+    if (this.shown?.mode !== mode) {
       this.dispose();
-      this.shown = this.create(monaco, host, prefs);
+      this.shown = this.create(monaco, host, prefs, mode);
     }
     if (this.shown!.texts !== texts) {
       const path = this.versions()?.target.change.path ?? null;
@@ -324,7 +335,8 @@ export class DiffView {
         mouseWheelScrollSensitivity: prefs.scrollSpeed,
       });
       shown.decorations?.clear();
-      shown.decorations = editor.createDecorationsCollection(marks(monaco, diff));
+      const deleted = !this.versions()?.new;
+      shown.decorations = editor.createDecorationsCollection(marks(monaco, diff, deleted));
     }
     this.placeBars(shown, diff, prefs);
   }
@@ -418,7 +430,7 @@ export class DiffView {
     prefs: Preferences,
   ) {
     const before = this.shown!;
-    const next = before.texts ? this.create(monaco, host, prefs) : before;
+    const next = before.texts ? this.create(monaco, host, prefs, 'diff') : before;
     const editor = next.editor as Monaco.editor.IStandaloneDiffEditor;
     editor.updateOptions(diffOptions(prefs));
     if (next !== before) {
@@ -471,8 +483,7 @@ export class DiffView {
     Object.assign(shown, { path, texts, models: [model] });
   }
 
-  private create(monaco: MonacoApi, host: HTMLElement, prefs: Preferences): Shown {
-    const mode = prefs.diffMode;
+  private create(monaco: MonacoApi, host: HTMLElement, prefs: Preferences, mode: DiffMode): Shown {
     const options = editorOptions(prefs);
     const pane = document.createElement('div');
     pane.style.cssText = 'position: absolute; inset: 0';
@@ -591,10 +602,14 @@ function changeStarts(diff: FileDiff | null): number[] {
 }
 
 /**
- * The file view's marks: added lines tinted, a red notch where lines were removed, both
- * beside the scrollbar.
+ * The file view's marks: added lines tinted, a red notch where lines were removed, a deleted
+ * file's lines all tinted red; beside the scrollbar too.
  */
-function marks(monaco: MonacoApi, diff: FileDiff | null): Monaco.editor.IModelDeltaDecoration[] {
+function marks(
+  monaco: MonacoApi,
+  diff: FileDiff | null,
+  deleted: boolean,
+): Monaco.editor.IModelDeltaDecoration[] {
   const decorations: Monaco.editor.IModelDeltaDecoration[] = [];
   // marked along the scrollbar too: where the changes are, at a glance
   const full = monaco.editor.OverviewRulerLane.Full;
@@ -609,6 +624,20 @@ function marks(monaco: MonacoApi, diff: FileDiff | null): Monaco.editor.IModelDe
             className: 'r-line-added',
             linesDecorationsClassName: 'r-gutter-added',
             overviewRuler: { color: { id: 'editorOverviewRuler.addedForeground' }, position: full },
+          },
+        });
+      } else if (line.kind === 'removed' && deleted && line.old !== null) {
+        // a deleted file shows its old lines, all of them removed
+        decorations.push({
+          range: new monaco.Range(line.old, 1, line.old, 1),
+          options: {
+            isWholeLine: true,
+            className: 'r-line-removed',
+            linesDecorationsClassName: 'r-gutter-removed-line',
+            overviewRuler: {
+              color: { id: 'editorOverviewRuler.deletedForeground' },
+              position: full,
+            },
           },
         });
       } else if (line.kind === 'removed') {

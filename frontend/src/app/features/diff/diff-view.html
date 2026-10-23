@@ -46,14 +46,16 @@
         <div class="r-seg" role="radiogroup" [attr.aria-label]="'View' | t">
           <button
             role="radio"
-            [attr.aria-checked]="prefs().diffMode === 'file'"
+            [attr.aria-checked]="mode() === 'file'"
             (click)="set('diffMode', 'file')"
           >
             {{ 'File view' | t }}
           </button>
           <button
             role="radio"
-            [attr.aria-checked]="prefs().diffMode === 'diff'"
+            [attr.aria-checked]="mode() === 'diff'"
+            [disabled]="whole()"
+            [title]="whole() ? ('A new or deleted file has nothing to compare' | t) : ''"
             (click)="set('diffMode', 'diff')"
           >
             {{ 'Diff view' | t }}
@@ -95,7 +97,7 @@
 
         <span class="space"></span>
 
-        @if (prefs().diffMode === 'diff') {
+        @if (mode() === 'diff') {
           <div class="group" role="radiogroup" [attr.aria-label]="'Layout' | t">
             <button
               class="r-bar-btn icon"
@@ -139,7 +141,7 @@
         }
 
         <div class="group">
-          @if (prefs().diffMode === 'diff') {
+          @if (mode() === 'diff') {
             <button
               class="r-bar-btn icon"
               role="switch"
