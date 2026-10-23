@@ -1,4 +1,4 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, output, signal } from '@angular/core';
 import { t } from '../core/i18n/i18n';
 import { Change, ChangeKind } from '../core/models/repository';
 
@@ -90,6 +90,8 @@ export interface FileMenu {
               class="file"
               (click)="opened.emit(change)"
               (pointerenter)="pointed.emit(change)"
+              (keydown.arrowdown)="step($event, change, 1)"
+              (keydown.arrowup)="step($event, change, -1)"
               [title]="titleOf(change)"
             >
               <span class="kind" [style.color]="kind(change).color">{{ kind(change).letter }}</span>
@@ -224,6 +226,24 @@ export class FileList {
   /** The folders folded away, by path. */
   protected readonly collapsed = signal(new Set<string>());
   protected readonly counts = countKinds;
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /**
+   * Up and down move to the file above or below and open it, as a click would; the one after
+   * it, the way they go, is read ahead.
+   */
+  protected step(event: Event, change: Change, by: 1 | -1) {
+    event.preventDefault();
+    const files = this.rows().flatMap((row) => (row.kind === 'file' ? [row.change] : []));
+    const at = files.indexOf(change) + by;
+    const next = files[at];
+    if (!next) return;
+    this.host.nativeElement.querySelectorAll<HTMLButtonElement>('button.file')[at]?.focus();
+    this.opened.emit(next);
+    const after = files[at + by];
+    if (after) this.pointed.emit(after);
+  }
 
   protected readonly rows = computed<Row[]>(() => {
     const changes = this.changes();
