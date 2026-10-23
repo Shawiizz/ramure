@@ -382,3 +382,9 @@ button {
     border: 1px solid var(--r-line);
   }
 }
+
+/* inline, Monaco fills the old version's line numbers beside lines added with the colour of
+   lines removed: nothing was removed there */
+.monaco-diff-editor .original-in-monaco-diff-editor .margin-view-zones .gutter-delete {
+  background: transparent;
+}
