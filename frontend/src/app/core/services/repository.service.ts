@@ -439,7 +439,15 @@ export class RepositoryService {
       span = { from: commit?.parents[0] ?? EMPTY_TREE, to: where.id };
     } else return Promise.resolve(false);
     const what = t('the revert of lines of {name}', { name: nameOf(file) });
-    return this.change('revert_lines', { ...span, file, lines }, { what, files: [file] });
+    return this.change('revert_lines', { ...span, file, lines }, { what, files: [file] }).then(
+      (done) => {
+        // git's words for it: the file is no longer as the commit left it there
+        if (!done && /patch (failed|does not apply)/.test(this.error() ?? '')) {
+          this.error.set(t('These lines changed since the commit: they cannot be reverted here.'));
+        }
+        return done;
+      },
+    );
   }
 
   /** Stages, unstages or throws away some of a file's changed lines. */

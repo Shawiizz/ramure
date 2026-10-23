@@ -648,6 +648,8 @@ export const FR: Record<string, string> = {
   Theme: 'Thème',
   'Then send it to the upstream': 'Puis l’envoyer sur la branche distante',
   'There is nothing to replay onto {name}.': 'Il n’y a rien à rejouer sur {name}.',
+  'These lines changed since the commit: they cannot be reverted here.':
+    'Ces lignes ont changé depuis le commit : elles ne peuvent pas être annulées ici.',
   'They do not follow one another on a branch: their changes cannot be put together.':
     'Ils ne se suivent pas sur une même branche : leurs changements ne peuvent pas être réunis.',
   'They hold the same files.': 'Leurs fichiers sont identiques.',

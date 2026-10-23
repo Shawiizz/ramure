@@ -29,6 +29,7 @@ import {
   restyle,
   zoneBar,
 } from '../../shared/monaco';
+import { reaches } from '../../shared/ancestry';
 import { MenusService } from '../repository-tab/menus.service';
 import { ImageDiff, isImage } from './image-diff';
 
@@ -131,7 +132,13 @@ export class DiffView {
     const open = this.open();
     if (!open?.diff || open.diff.binary || open.change.kind === 'conflicted') return [];
     if (open.where.kind === 'staged') return ['unstage'];
-    if (open.where.kind === 'commit' || open.where.kind === 'compare') return ['revert'];
+    // what the branch checked out has, only, can be taken back out of its files
+    const commits = this.repository.snapshot()?.commits ?? [];
+    const head = this.repository.headId();
+    if (open.where.kind === 'commit' || open.where.kind === 'compare') {
+      const last = open.where.kind === 'commit' ? open.where.id : open.where.to;
+      return reaches(commits, head, last) ? ['revert'] : [];
+    }
     if (open.where.kind !== 'unstaged') return [];
     return open.change.kind === 'untracked' ? ['stage'] : ['stage', 'discard'];
   });
