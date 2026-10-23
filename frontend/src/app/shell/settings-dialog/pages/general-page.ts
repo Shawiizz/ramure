@@ -28,7 +28,7 @@ import { SettingsPage } from '../settings-page';
     <div class="row">
       <div>
         <span class="name">{{ 'Theme' | t }}</span>
-        <span class="help">{{ 'Dark, light, or as the system is.' | t }}</span>
+        <span class="help">{{ 'Dark, gray, light, or as the system is.' | t }}</span>
       </div>
       <div class="seg" role="radiogroup" [attr.aria-label]="'Theme' | t">
         @for (theme of themes; track theme) {
@@ -118,6 +118,7 @@ export class GeneralPage extends SettingsPage {
   protected readonly scrollSpeeds = SCROLL_SPEEDS;
   protected readonly themeNames = computed<Record<Theme, string>>(() => ({
     dark: t('Dark'),
+    gray: t('Gray'),
     light: t('Light'),
     system: t('As the system'),
   }));

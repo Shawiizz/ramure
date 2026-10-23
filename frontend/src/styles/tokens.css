@@ -49,6 +49,22 @@
   --r-fast: 120ms;
 }
 
+/* the gray theme: dark still, on softer cool grays, as GitKraken's; the lanes as in the dark */
+:root[data-theme='gray'] {
+  --r-void: #1f2227;
+  --r-base: #262a30;
+  --r-raised: #2e3339;
+  --r-hover: #373d45;
+  --r-line: #3a4049;
+  --r-line-strong: #4c535e;
+
+  --r-text: #eceef1;
+  --r-text-2: #b9bec6;
+  --r-text-3: #8f96a0;
+  --r-commit: #f1f3f6;
+  --r-knob: #eceef1;
+}
+
 /* the light theme: the same structure on near-white, the lanes darkened to read on it */
 :root[data-theme='light'] {
   color-scheme: light;

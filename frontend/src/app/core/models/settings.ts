@@ -45,7 +45,7 @@ export interface Workspace {
   paths: string[];
 }
 
-export type Theme = 'dark' | 'light' | 'system';
+export type Theme = 'dark' | 'gray' | 'light' | 'system';
 /** The colour of the buttons, the selections and the graph's main lane. */
 export type Accent = 'blue' | 'violet' | 'green' | 'orange' | 'neutral';
 /** A column of the history. */
@@ -138,7 +138,7 @@ export interface Preferences {
   cloneFolder: string;
 }
 
-export const THEMES: readonly Theme[] = ['dark', 'light', 'system'];
+export const THEMES: readonly Theme[] = ['dark', 'gray', 'light', 'system'];
 export const ACCENTS: readonly Accent[] = ['blue', 'violet', 'green', 'orange', 'neutral'];
 export const AUTO_FETCH_MINUTES: readonly number[] = [0, 5, 15, 30];
 export const HISTORY_LIMITS: readonly number[] = [1000, 5000, 20000];
