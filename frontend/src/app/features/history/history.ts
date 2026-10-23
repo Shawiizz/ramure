@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { Commit, GraphRow, RefLabel } from '../../core/models/repository';
+import { EMPTY_TREE, Commit, GraphRow, RefLabel } from '../../core/models/repository';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { OverlayScroll } from '../../shared/overlay-scroll';
 import { GravatarService } from '../../core/services/gravatar.service';
@@ -76,9 +76,6 @@ interface Unfolded {
  * The history: one line per commit, its branches and tags on the left, then the graph.
  * Only the rows in view are drawn, between two spacers as tall as the rows left out.
  */
-/** git's tree with nothing in it: what the first commit's changes start from. */
-const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
-
 @Component({
   selector: 'app-history',
   templateUrl: './history.html',
@@ -285,56 +282,57 @@ export class History {
   }
 
   /** The commits compared, lit like the one selected. */
+  /** The commits picked together, lit like the one selected. */
   protected readonly compared = computed(() => {
     const comparison = this.repository.comparison();
-    if (!comparison) return new Set<string>();
-    return new Set(comparison.commits ?? [comparison.from.id, comparison.to.id]);
+    const picked = this.repository.picked();
+    if (picked.length) return new Set(picked);
+    return new Set(comparison ? [comparison.from.id, comparison.to.id] : []);
   });
 
   /**
-   * Selects a commit; with Ctrl, compares the one selected with it; with Shift, picks every
-   * commit from the one selected to it, their changes together.
+   * Selects a commit; with Shift, picks every commit of its line from the one selected to
+   * it; with Ctrl, adds it to those picked, or takes it out. Commits that follow one another
+   * show their changes together.
    */
   protected pick(event: MouseEvent, commit: Commit) {
     const r = this.repository;
     const selected = r.selected();
-    const together = event.shiftKey;
-    const compared = event.ctrlKey || event.metaKey;
-    if (!(together || compared) || !selected || selected.id === commit.id) {
+    const span = event.shiftKey;
+    const toggle = event.ctrlKey || event.metaKey;
+    if (!(span || toggle) || !selected || r.stashes().has(commit.id)) {
       r.select(commit.id);
       return;
     }
-    if (together) {
-      this.pickSpan(selected, commit);
+    if (span) {
+      this.pickTogether(this.span(selected, commit));
       return;
     }
-    // from the older to the newer, as the history lists them
-    const commits = r.snapshot()?.commits ?? [];
-    const place = (c: Commit) => commits.findIndex((x) => x.id === c.id);
-    const [from, to] = place(selected) > place(commit) ? [selected, commit] : [commit, selected];
-    void r.compare(
-      { id: from.id, name: from.id.slice(0, 7) },
-      { id: to.id, name: to.id.slice(0, 7) },
-    );
+    const picked = new Set(r.picked().length ? r.picked() : [selected.id]);
+    if (!picked.delete(commit.id)) picked.add(commit.id);
+    this.pickTogether(this.commits().filter((c) => picked.has(c.id)));
+  }
+
+  /** The history's commits in its order, stashes left out: those that can be picked. */
+  private commits(): Commit[] {
+    const stashes = this.repository.stashes();
+    return this.lines()
+      .map((l) => l.commit)
+      .filter((c) => !stashes.has(c.id));
   }
 
   /**
    * The commits from `one` to `other` along the newer one's line, as GitKraken picks them:
-   * those it comes from that come from the older one, the other branches between left out;
-   * their changes together, from before the oldest to the newest.
+   * those it comes from that come from the older one, the other branches between left out.
    */
-  private pickSpan(one: Commit, other: Commit) {
-    const r = this.repository;
-    const commits = this.lines()
-      .map((l) => l.commit)
-      .filter((c) => !r.stashes().has(c.id));
+  private span(one: Commit, other: Commit): Commit[] {
+    const commits = this.commits();
     const place = (c: Commit) => commits.findIndex((x) => x.id === c.id);
     const [first, last] = [place(one), place(other)].sort((a, b) => a - b);
-    if (first < 0) return;
+    if (first < 0) return [];
     const span = commits.slice(first, last + 1);
-    const newest = span[0];
     // what the newest comes from, down the span: a commit's parents follow it in the list
-    const line = new Set([newest.id]);
+    const line = new Set([span[0].id]);
     for (const commit of span) {
       if (line.has(commit.id)) commit.parents.forEach((p) => line.add(p));
     }
@@ -346,14 +344,33 @@ export class History {
         if (commit.parents.some((p) => from.has(p))) from.add(commit.id);
       }
     }
-    const picked = span.filter((c) => line.has(c.id) && (!from.size || from.has(c.id)));
-    const oldest = picked[picked.length - 1];
+    return span.filter((c) => line.has(c.id) && (!from.size || from.has(c.id)));
+  }
+
+  /**
+   * Picks `commits`, the newest first: their changes together when they follow one another
+   * on a line, from before the oldest to the newest; else only shown as picked.
+   */
+  private pickTogether(commits: Commit[]) {
+    const r = this.repository;
+    if (commits.length < 2) {
+      if (commits[0]) r.select(commits[0].id);
+      return;
+    }
+    const ids = commits.map((c) => c.id);
+    const between = this.span(commits[0], commits[commits.length - 1]).map((c) => c.id);
+    if (between.join() !== ids.join()) {
+      r.pickApart(ids);
+      return;
+    }
+    const newest = commits[0];
+    const oldest = commits[commits.length - 1];
     // the first commit of all came from nothing: its files are all new
     const before = oldest.parents[0] ?? EMPTY_TREE;
     void r.compare(
       { id: before, name: oldest.parents[0] ? `${oldest.id.slice(0, 7)}^` : t('nothing') },
       { id: newest.id, name: newest.id.slice(0, 7) },
-      picked.map((c) => c.id),
+      ids,
     );
   }
 

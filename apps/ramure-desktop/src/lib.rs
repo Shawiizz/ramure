@@ -421,6 +421,19 @@ fn take(path: PathBuf, file: String, version: Version) -> Answer<Snapshot> {
     snapshot(&path)
 }
 
+/// Takes back out of the working tree some of the lines that went from `from` to `to`.
+#[tauri::command(async)]
+fn revert_lines(
+    path: PathBuf,
+    from: String,
+    to: String,
+    file: String,
+    lines: Vec<Picked>,
+) -> Answer<Snapshot> {
+    ramure_git::revert_lines(&path, &from, &to, &file, &lines)?;
+    snapshot(&path)
+}
+
 /// Stages, unstages or throws away some of a file's changed lines.
 #[tauri::command(async)]
 fn apply_lines(path: PathBuf, file: String, part: Part, lines: Vec<Picked>) -> Answer<Snapshot> {
@@ -751,6 +764,7 @@ pub fn run() {
             reflog,
             commits_changing,
             apply_lines,
+            revert_lines,
             take,
             save_files,
             restore_files,

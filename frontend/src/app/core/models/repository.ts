@@ -243,8 +243,14 @@ export interface Sides {
   incoming: boolean;
 }
 
-/** What becomes of a hunk, or of lines picked in it. */
-export type Part = 'stage' | 'unstage' | 'discard';
+/**
+ * What becomes of a hunk, or of lines picked in it: staged, unstaged, thrown away; or, of a
+ * commit's, taken back out of the working tree.
+ */
+export type Part = 'stage' | 'unstage' | 'discard' | 'revert';
+
+/** git's tree with nothing in it: what the first commit's changes start from. */
+export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
 /** A changed line: a removed one by its old number, an added one by its new. */
 export interface Picked {

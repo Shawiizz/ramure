@@ -185,6 +185,8 @@ export function applyTheme(monaco: MonacoApi, light: boolean) {
       'diffEditor.removedTextBackground': alpha(removed, 0.14),
       'diffEditorGutter.insertedLineBackground': alpha(added, 0.4),
       'diffEditorGutter.removedLineBackground': alpha(removed, 0.24),
+      'editorOverviewRuler.addedForeground': alpha(added, 0.8),
+      'editorOverviewRuler.deletedForeground': alpha(removed, 0.8),
       'diffEditor.unchangedRegionBackground': token('raised'),
       'diffEditor.unchangedRegionForeground': token('text-3'),
       'diffEditor.border': token('line'),

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { t } from '../i18n/i18n';
 import {
   ALL_SHOWN,
+  EMPTY_TREE,
   Change,
   Commit,
   FileDiff,
@@ -126,6 +127,10 @@ export class RepositoryService {
   readonly diff = signal<OpenDiff | null>(null);
   readonly filePanel = signal<FilePanel | null>(null);
   readonly comparison = signal<Comparison | null>(null);
+  /** Commits picked together that do not follow one another: no diff puts them together. */
+  readonly apart = signal<string[] | null>(null);
+  /** The commits picked together (Shift or Ctrl+click), as the history lists them. */
+  readonly picked = computed(() => this.comparison()?.commits ?? this.apart() ?? []);
   /**
    * Files of commits, stashes and comparisons, their diffs and versions read ahead or
    * before: they never change. The last ones only, by what they are read with.
@@ -356,7 +361,7 @@ export class RepositoryService {
   }
 
   select(id: string) {
-    if (this.comparison()) this.endComparison();
+    if (this.comparison() || this.apart()) this.endComparison();
     this.selectedId.set(id);
     if (id === WIP) return;
     void this.readChecks([id]);
@@ -392,6 +397,7 @@ export class RepositoryService {
     if (!path) return;
     this.filePanel.set(null);
     this.diff.set(null);
+    this.apart.set(null);
     const comparison: Comparison = { from, to, files: null, commits };
     this.comparison.set(comparison);
     try {
@@ -403,8 +409,15 @@ export class RepositoryService {
     }
   }
 
+  /** Commits picked together that do not follow one another: shown, not compared. */
+  pickApart(ids: string[]) {
+    this.endComparison();
+    this.apart.set(ids);
+  }
+
   endComparison() {
     this.comparison.set(null);
+    this.apart.set(null);
     if (this.diff()?.where.kind === 'compare') this.diff.set(null);
   }
 
@@ -412,6 +425,21 @@ export class RepositoryService {
   takeVersion(file: string, version: Version) {
     const what = t('the resolving of {name}', { name: nameOf(file) });
     return this.change('take', { file, version }, { what, files: [file] });
+  }
+
+  /**
+   * Takes some of the lines a commit changed, or that differ between two commits compared,
+   * back out of the working tree.
+   */
+  revertLines(file: string, where: Where, lines: Picked[]) {
+    let span: { from: string; to: string };
+    if (where.kind === 'compare') span = { from: where.from, to: where.to };
+    else if (where.kind === 'commit') {
+      const commit = this.snapshot()?.commits.find((c) => c.id === where.id);
+      span = { from: commit?.parents[0] ?? EMPTY_TREE, to: where.id };
+    } else return Promise.resolve(false);
+    const what = t('the revert of lines of {name}', { name: nameOf(file) });
+    return this.change('revert_lines', { ...span, file, lines }, { what, files: [file] });
   }
 
   /** Stages, unstages or throws away some of a file's changed lines. */

@@ -378,3 +378,45 @@ app-file-list {
     white-space: nowrap;
   }
 }
+
+/* commits picked that do not follow one another: listed, with why they are not compared */
+.apart-note {
+  margin: 2px 2px 12px;
+  color: var(--r-text-2);
+}
+
+.compare-two {
+  margin: 0 2px 12px;
+}
+
+.picked {
+  margin: 0 -16px;
+  padding: 0;
+  list-style: none;
+  button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 16px;
+    border: 0;
+    background: transparent;
+    color: var(--r-text);
+    text-align: left;
+    cursor: pointer;
+    &:hover {
+      background: var(--r-hover);
+    }
+  }
+  .sha {
+    flex: none;
+    color: var(--r-text-3);
+    font-size: 12px;
+  }
+  .summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

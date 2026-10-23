@@ -1,5 +1,6 @@
-//! Part of a file's changes staged, unstaged or thrown away: a hunk, or lines picked in it.
-//! git's own diff of the file is cut down to the lines picked and applied with `git apply`.
+//! Part of a file's changes staged, unstaged or thrown away: a hunk, or lines picked in it;
+//! or part of what a commit changed taken back from the working tree. git's own diff of the
+//! file is cut down to the lines picked and applied with `git apply`.
 
 use crate::cli::git;
 use crate::Error;
@@ -35,12 +36,6 @@ pub fn apply_lines(dir: &Path, path: &str, part: Part, picked: &[Picked]) -> Res
         diff = file_patch(dir, path, part)?;
     }
     let reverse = part != Part::Stage;
-    let patch =
-        cut(&diff, picked, reverse).ok_or_else(|| Error::Command("None of these lines changed.".into()))?;
-    let git_dir = git(dir, &["rev-parse", "--absolute-git-dir"])?;
-    let file = Path::new(String::from_utf8_lossy(&git_dir).trim()).join("ramure-part.patch");
-    std::fs::write(&file, &patch).map_err(|e| Error::Command(format!("{}: {e}", file.display())))?;
-    let name = file.to_string_lossy();
     let mut args = vec!["apply", "--recount", "--whitespace=nowarn"];
     if part != Part::Discard {
         args.push("--cached");
@@ -48,6 +43,26 @@ pub fn apply_lines(dir: &Path, path: &str, part: Part, picked: &[Picked]) -> Res
     if reverse {
         args.push("--reverse");
     }
+    apply(dir, &diff, picked, reverse, &args)
+}
+
+/// Takes the lines `picked` of what went from `from` to `to` in the file `path` back out of
+/// the working tree: a commit's hunk reverted, or lines of it.
+pub fn revert_lines(dir: &Path, from: &str, to: &str, path: &str, picked: &[Picked]) -> Result<(), Error> {
+    let diff =
+        git(dir, &["diff", "--no-ext-diff", "--no-color", "--no-renames", "-U3", from, to, "--", path])?;
+    apply(dir, &diff, picked, true, &["apply", "--recount", "--whitespace=nowarn", "--reverse"])
+}
+
+/// Applies the diff cut down to the lines `picked` with `git args`.
+fn apply(dir: &Path, diff: &[u8], picked: &[Picked], reverse: bool, args: &[&str]) -> Result<(), Error> {
+    let patch =
+        cut(diff, picked, reverse).ok_or_else(|| Error::Command("None of these lines changed.".into()))?;
+    let git_dir = git(dir, &["rev-parse", "--absolute-git-dir"])?;
+    let file = Path::new(String::from_utf8_lossy(&git_dir).trim()).join("ramure-part.patch");
+    std::fs::write(&file, &patch).map_err(|e| Error::Command(format!("{}: {e}", file.display())))?;
+    let name = file.to_string_lossy();
+    let mut args = args.to_vec();
     args.push(&name);
     let applied = git(dir, &args).map(drop);
     let _ = std::fs::remove_file(&file);

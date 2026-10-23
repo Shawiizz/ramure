@@ -131,6 +131,7 @@ export class DiffView {
     const open = this.open();
     if (!open?.diff || open.diff.binary || open.change.kind === 'conflicted') return [];
     if (open.where.kind === 'staged') return ['unstage'];
+    if (open.where.kind === 'commit' || open.where.kind === 'compare') return ['revert'];
     if (open.where.kind !== 'unstaged') return [];
     return open.change.kind === 'untracked' ? ['stage'] : ['stage', 'discard'];
   });
@@ -222,8 +223,13 @@ export class DiffView {
 
   /** Stages, unstages or throws away `lines`; throwing them away is asked first. */
   protected applyLines(part: Part, lines: Picked[]) {
-    const file = this.open()?.change.path;
-    if (!file) return;
+    const open = this.open();
+    const file = open?.change.path;
+    if (!open || !file) return;
+    if (part === 'revert') {
+      void this.repository.revertLines(file, open.where, lines);
+      return;
+    }
     if (part !== 'discard') {
       void this.repository.applyLines(file, part, lines);
       return;
@@ -239,8 +245,13 @@ export class DiffView {
   }
 
   protected partLabel(part: Part) {
-    if (part === 'stage') return t('Stage lines');
-    return part === 'unstage' ? t('Unstage lines') : t('Discard lines');
+    const labels: Record<Part, () => string> = {
+      stage: () => t('Stage lines'),
+      unstage: () => t('Unstage lines'),
+      discard: () => t('Discard lines'),
+      revert: () => t('Revert lines'),
+    };
+    return labels[part]();
   }
 
   protected pickEncoding(value: string) {
@@ -367,6 +378,7 @@ export class DiffView {
       stage: () => t('Stage hunk'),
       unstage: () => t('Unstage hunk'),
       discard: () => t('Discard hunk'),
+      revert: () => t('Revert hunk'),
     };
     return zoneBar(
       hunk.header,
@@ -578,9 +590,14 @@ function changeStarts(diff: FileDiff | null): number[] {
   return [...new Set(starts)].sort((a, b) => a - b);
 }
 
-/** The file view's marks: added lines tinted, a red notch where lines were removed. */
+/**
+ * The file view's marks: added lines tinted, a red notch where lines were removed, both
+ * beside the scrollbar.
+ */
 function marks(monaco: MonacoApi, diff: FileDiff | null): Monaco.editor.IModelDeltaDecoration[] {
   const decorations: Monaco.editor.IModelDeltaDecoration[] = [];
+  // marked along the scrollbar too: where the changes are, at a glance
+  const full = monaco.editor.OverviewRulerLane.Full;
   for (const hunk of diff?.hunks ?? []) {
     let next = 1;
     for (const line of hunk.lines) {
@@ -591,12 +608,19 @@ function marks(monaco: MonacoApi, diff: FileDiff | null): Monaco.editor.IModelDe
             isWholeLine: true,
             className: 'r-line-added',
             linesDecorationsClassName: 'r-gutter-added',
+            overviewRuler: { color: { id: 'editorOverviewRuler.addedForeground' }, position: full },
           },
         });
       } else if (line.kind === 'removed') {
         decorations.push({
           range: new monaco.Range(next, 1, next, 1),
-          options: { linesDecorationsClassName: 'r-gutter-removed' },
+          options: {
+            linesDecorationsClassName: 'r-gutter-removed',
+            overviewRuler: {
+              color: { id: 'editorOverviewRuler.deletedForeground' },
+              position: full,
+            },
+          },
         });
       }
       if (line.new !== null) next = line.new + 1;

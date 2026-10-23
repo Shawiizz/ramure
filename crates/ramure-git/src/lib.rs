@@ -32,7 +32,7 @@ pub use identity::{
     git_version, global_config, global_identity, set_global_config, set_global_identity, Identity, Signing,
     SigningFormat,
 };
-pub use partial::{apply_lines, Part, Picked};
+pub use partial::{apply_lines, revert_lines, Part, Picked};
 pub use reflog::{reflog, RefLogEntry};
 pub use repository::{Branch, Commit, Head, Operation, Remote, Repository, Snapshot, View};
 pub use saved::{restore_files, save_files, SavedFile};

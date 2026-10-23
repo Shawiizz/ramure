@@ -1,5 +1,41 @@
 <aside class="details" [attr.aria-label]="'Details' | t">
-  @if (repository.comparison(); as comparison) {
+  @if (repository.apart(); as apart) {
+    <header class="bar compare-bar">
+      <span class="caption">{{ '{n} commits picked' | t: { n: apart.length } }}</span>
+      <span class="space"></span>
+      <button
+        class="r-bar-btn icon"
+        (click)="repository.endComparison()"
+        [attr.aria-label]="'Stop picking' | t"
+        [title]="'Stop picking' | t"
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+      </button>
+    </header>
+    <div class="scroll">
+      <p class="apart-note">
+        {{
+          'They do not follow one another on a branch: their changes cannot be put together.' | t
+        }}
+      </p>
+      @if (apart.length === 2) {
+        <button class="r-btn compare-two" (click)="compareTwo(apart)">
+          {{ 'Compare these two' | t }}
+        </button>
+      }
+      <ul class="picked">
+        @for (id of apart; track id) {
+          @let commit = commitOf(id);
+          <li>
+            <button (click)="repository.select(id)">
+              <span class="sha r-mono">{{ id.slice(0, 7) }}</span>
+              <span class="summary">{{ commit?.summary }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  } @else if (repository.comparison(); as comparison) {
     <header class="bar compare-bar">
       <span class="caption">{{
         comparison.commits

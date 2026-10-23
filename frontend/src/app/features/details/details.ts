@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { t } from '../../core/i18n/i18n';
 import { TPipe } from '../../core/i18n/t.pipe';
-import { Stash, Verification } from '../../core/models/repository';
+import { Commit, Stash, Verification } from '../../core/models/repository';
 import { DEFAULT_LAYOUT, MIN_MESSAGE } from '../../core/models/settings';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { RepositoryService, WIP } from '../../core/services/repository.service';
@@ -91,6 +91,16 @@ export class Details {
   /** How many files of each kind, in the order of the list's letters. */
   protected readonly kinds = computed(() => countKinds(this.files() ?? []));
   protected readonly countKinds = countKinds;
+
+  protected commitOf(id: string): Commit | null {
+    return this.repository.snapshot()?.commits.find((c) => c.id === id) ?? null;
+  }
+
+  /** The two commits picked apart, compared from the older to the newer. */
+  protected compareTwo([newer, older]: string[]) {
+    const named = (id: string) => ({ id, name: id.slice(0, 7) });
+    void this.repository.compare(named(older), named(newer));
+  }
 
   /** Whether the history shows the commit `id`: it can be selected. */
   protected inHistory(id: string): boolean {

@@ -3,7 +3,7 @@
 mod common;
 
 use common::{commit, git, repository, write};
-use ramure_git::{apply_lines, Part, Picked};
+use ramure_git::{apply_lines, revert_lines, Part, Picked};
 use std::path::Path;
 use std::process::Command;
 
@@ -136,4 +136,18 @@ fn a_hunk_is_staged_with_windows_line_endings() {
     assert_eq!(staged(d, "a.txt"), "1\ntwo\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n");
     apply_lines(d, "a.txt", Part::Discard, &[added(12)]).unwrap();
     assert_eq!(read(d, "a.txt"), "1\r\ntwo\r\n3\r\n4\r\n5\r\n6\r\n7\r\n8\r\n9\r\n10\r\neleven\r\n12\r\n");
+}
+
+#[test]
+fn a_commits_hunk_is_taken_back_out_of_the_working_tree() {
+    let dir = changed();
+    let d = dir.path();
+    git(d, &["commit", "-q", "-am", "Change a"]);
+    // the first hunk, 2 become two, reverted; the second stays
+    revert_lines(d, "HEAD^", "HEAD", "a.txt", &[removed(2), added(2)]).unwrap();
+    assert_eq!(read(d, "a.txt"), "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\neleven\nmore\n12\n");
+    // a line alone of the second
+    revert_lines(d, "HEAD^", "HEAD", "a.txt", &[added(12)]).unwrap();
+    assert_eq!(read(d, "a.txt"), "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\neleven\n12\n");
+    assert_eq!(staged(d, "a.txt"), AFTER);
 }
